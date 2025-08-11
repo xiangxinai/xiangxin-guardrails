@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:16-alpine
+    container_name: xiangxin-guardrails-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: xiangxin_guardrails
+      POSTGRES_USER: xiangxin
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      - "54321:5432"
+    volumes:
+      - ~/xiangxin-guardrails-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xiangxin -d xiangxin_guardrails"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - xiangxin-network
+
+  # 后端API服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: xiangxin-guardrails-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # 数据库配置
+      - DATABASE_URL=postgresql://xiangxin:your_password@postgres:5432/xiangxin_guardrails
+      - RESET_DATABASE_ON_STARTUP=true
+      
+      # 应用配置
+      - DEBUG=false
+      - JWT_SECRET_KEY=your-secret-key-change-in-production
+      - DEPLOYMENT_MODE=local
+      
+      # 模型API配置（请根据实际情况修改）
+      - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
+      - GUARDRAILS_MODEL_API_KEY=your-model-api-key
+      
+      # 日志配置
+      - LOG_DIR=/app/logs
+      - LOG_LEVEL=INFO
+      
+      # CORS配置
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      
+      # 管理员配置
+      - SUPER_ADMIN_USERNAME=admin@yourdomain.com
+      - SUPER_ADMIN_PASSWORD=CHANGE-THIS-PASSWORD-IN-PRODUCTION
+      
+      # SMTP邮件配置
+      - SMTP_SERVER=
+      - SMTP_PORT=
+      - SMTP_USERNAME=
+      - SMTP_PASSWORD=
+      - SMTP_USE_TLS=
+      - SMTP_USE_SSL=
+      
+    volumes:
+      - ./logs:/app/logs
+      - ./backend/config:/app/config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - xiangxin-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 前端Web界面
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+      args:
+        VITE_BASE: "/platform/"
+    container_name: xiangxin-guardrails-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_BASE=/platform/
+    depends_on:
+      - backend
+    networks:
+      - xiangxin-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  xiangxin-network:
+    driver: bridge

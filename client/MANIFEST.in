@@ -1,0 +1,8 @@
+include README.md
+include LICENSE
+include pyproject.toml
+recursive-include xiangxinai *.py
+recursive-include xiangxinai py.typed
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude tests *
