@@ -57,7 +57,18 @@ class AdminService:
                     db.commit()
                     db.refresh(existing_admin)
                     logger.info("Super admin ensured active/verified and password synced to .env")
-                else:
+                
+                # 检查并为超级管理员创建默认代答模板（如果还没有的话）
+                try:
+                    from services.template_service import create_user_default_templates
+                    template_count = create_user_default_templates(db, existing_admin.id)
+                    if template_count > 0:
+                        logger.info(f"为现有超级管理员 {existing_admin.email} 创建了 {template_count} 个默认代答模板")
+                except Exception as e:
+                    logger.error(f"为现有超级管理员 {existing_admin.email} 创建默认代答模板失败: {e}")
+                    # 不影响超级管理员运行，只是记录错误
+                
+                if not updated:
                     logger.info("Super admin already exists and up to date")
                 return existing_admin
             
@@ -77,6 +88,15 @@ class AdminService:
             db.add(super_admin)
             db.commit()
             db.refresh(super_admin)
+            
+            # 为超级管理员创建默认代答模板
+            try:
+                from services.template_service import create_user_default_templates
+                template_count = create_user_default_templates(db, super_admin.id)
+                logger.info(f"为超级管理员 {super_admin.email} 创建了 {template_count} 个默认代答模板")
+            except Exception as e:
+                logger.error(f"为超级管理员 {super_admin.email} 创建默认代答模板失败: {e}")
+                # 不影响超级管理员创建过程，只是记录错误
             
             logger.info(f"Super admin created: {super_admin.email} (API Key: {api_key})")
             return super_admin

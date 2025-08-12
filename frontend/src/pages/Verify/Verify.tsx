@@ -196,7 +196,7 @@ const Verify: React.FC = () => {
           <div className="register-footer">
             <Space direction="vertical" align="center">
               <Text type="secondary" style={{ fontSize: '12px' }}>
-                © 2024 象信AI. All rights reserved.
+                © 2025 象信AI. All rights reserved.
               </Text>
             </Space>
           </div>

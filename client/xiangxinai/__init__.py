@@ -26,7 +26,7 @@ Example:
     print(result.suggest_action)  # 输出: 通过/代答/阻断
 """
 
-from .client import XiangxinAI
+from .client import XiangxinAI, AsyncXiangxinAI
 from .models import (
     GuardrailRequest,
     GuardrailResponse,
@@ -42,12 +42,13 @@ from .exceptions import (
     ValidationError
 )
 
-__version__ = "1.0.5"
+__version__ = "1.1.0"
 __author__ = "XiangxinAI"
 __email__ = "wanglei@xiangxinai.cn"
 
 __all__ = [
     "XiangxinAI",
+    "AsyncXiangxinAI",
     "GuardrailRequest",
     "GuardrailResponse", 
     "GuardrailResult",

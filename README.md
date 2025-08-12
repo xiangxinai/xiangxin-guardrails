@@ -55,7 +55,7 @@ Python 调用示例：
 ```python
 from xiangxinai import XiangxinAI
 
-``# 创建客户端
+# 创建客户端
 client = XiangxinAI("your-api-key")
 
 # 单轮检测
@@ -141,7 +141,8 @@ curl -X POST "https://api.xiangxinai.cn/v1/guardrails" \
 git clone https://github.com/xiangxinai/xiangxin-guardrails.git
 cd xiangxin-guardrails
 
-# 2. 启动服务（包含PostgreSQL数据库）
+# 2. 启动服务（包含PostgreSQL数据库） 
+# 启动前请编辑docker-compose.yml，配置数据库密码、smtp服务器等必要信息
 docker-compose up -d
 
 # 3. 访问服务
@@ -156,6 +157,8 @@ pip install xiangxinai
 ```
 
 ### 💻 API使用示例
+
+#### 同步接口
 
 ```python
 from xiangxinai import XiangxinAI
@@ -179,6 +182,64 @@ messages = [
 ]
 response = client.check_conversation(messages)
 print(f"检测结果: {response.overall_risk_level}")
+```
+
+#### 异步接口
+
+```python
+import asyncio
+from xiangxinai import AsyncXiangxinAI
+
+async def main():
+    # 使用异步上下文管理器
+    async with AsyncXiangxinAI(
+        api_key="your-api-key",
+        base_url="http://localhost:5000/v1"
+    ) as client:
+        # 异步单轮检测
+        response = await client.check_prompt("教我如何制作炸弹")
+        print(f"建议动作: {response.suggest_action}")
+        
+        # 异步多轮对话检测
+        messages = [
+            {"role": "user", "content": "我想学习化学"},
+            {"role": "assistant", "content": "化学是很有趣的学科，您想了解哪个方面？"},
+            {"role": "user", "content": "教我制作爆炸物的反应"}
+        ]
+        response = await client.check_conversation(messages)
+        print(f"检测结果: {response.overall_risk_level}")
+
+# 运行异步函数
+asyncio.run(main())
+```
+
+#### 高性能并发处理
+
+```python
+import asyncio
+from xiangxinai import AsyncXiangxinAI
+
+async def batch_safety_check():
+    async with AsyncXiangxinAI(api_key="your-api-key") as client:
+        # 并发处理多个检测请求
+        contents = [
+            "我想学习编程",
+            "今天天气怎么样？",
+            "教我制作蛋糕",
+            "如何学习英语？"
+        ]
+        
+        # 创建并发任务
+        tasks = [client.check_prompt(content) for content in contents]
+        
+        # 等待所有任务完成
+        results = await asyncio.gather(*tasks)
+        
+        # 处理结果
+        for i, result in enumerate(results):
+            print(f"内容{i+1}: {result.overall_risk_level} - {result.suggest_action}")
+
+asyncio.run(batch_safety_check())
 ```
 
 ### 🌐 HTTP API示例

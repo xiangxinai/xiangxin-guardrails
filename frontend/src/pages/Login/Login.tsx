@@ -60,7 +60,7 @@ const Login: React.FC = () => {
               象信AI安全护栏
             </Title>
             <Text type="secondary" className="login-subtitle">
-              登录
+              账号登录
             </Text>
           </div>
 
@@ -154,7 +154,7 @@ const Login: React.FC = () => {
                 </Text>
               </Space>
               <Text type="secondary" style={{ fontSize: '12px' }}>
-                © 2024 象信AI. All rights reserved.
+                © 2025 象信AI. All rights reserved.
               </Text>
             </Space>
           </div>

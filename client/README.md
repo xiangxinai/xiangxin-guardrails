@@ -13,6 +13,7 @@
 - 📋 **内容合规检测** - 符合《生成式人工智能服务安全基本要求》
 - 🛠️ **易于集成** - 兼容OpenAI API格式，一行代码接入
 - ⚡ **OpenAI风格API** - 熟悉的接口设计，快速上手
+- 🚀 **同步/异步支持** - 支持同步和异步两种调用方式，满足不同场景需求
 
 ## 安装
 
@@ -56,19 +57,74 @@ if result.suggest_answer:
     print(f"建议回答: {result.suggest_answer}")
 ```
 
+### 异步接口（推荐）
+
+```python
+import asyncio
+from xiangxinai import AsyncXiangxinAI
+
+async def main():
+    # 使用异步上下文管理器
+    async with AsyncXiangxinAI(api_key="your-api-key") as client:
+        # 异步检测提示词
+        result = await client.check_prompt("我想学习Python编程")
+        print(result.suggest_action)  # 输出: 通过
+        
+        # 异步检测对话上下文
+        messages = [
+            {"role": "user", "content": "我想学习化学"},
+            {"role": "assistant", "content": "化学是很有趣的学科，您想了解哪个方面？"},
+            {"role": "user", "content": "教我制作爆炸物的反应"}
+        ]
+        result = await client.check_conversation(messages)
+        print(result.overall_risk_level)
+
+# 运行异步函数
+asyncio.run(main())
+```
+
+### 并发处理
+
+```python
+import asyncio
+from xiangxinai import AsyncXiangxinAI
+
+async def batch_check():
+    async with AsyncXiangxinAI(api_key="your-api-key") as client:
+        # 并发处理多个请求
+        tasks = [
+            client.check_prompt("内容1"),
+            client.check_prompt("内容2"),
+            client.check_prompt("内容3")
+        ]
+        results = await asyncio.gather(*tasks)
+        
+        for i, result in enumerate(results):
+            print(f"内容{i+1}: {result.overall_risk_level}")
+
+asyncio.run(batch_check())
+```
+
 ### 私有化部署
 
 ```python
-# 连接本地部署的服务
+# 同步客户端连接本地部署的服务
 client = XiangxinAI(
     api_key="your-local-api-key",
     base_url="http://localhost:5000/v1"  # 本地部署地址
 )
+
+# 异步客户端连接本地部署的服务
+async with AsyncXiangxinAI(
+    api_key="your-local-api-key",
+    base_url="http://localhost:5000/v1"
+) as client:
+    result = await client.check_prompt("测试内容")
 ```
 
 ## API参考
 
-### XiangxinAI类
+### XiangxinAI类（同步）
 
 #### 初始化参数
 
@@ -96,6 +152,44 @@ client = XiangxinAI(
 - `messages`: 消息列表，每个消息包含 `role` 和 `content` 字段
 
 **返回:** `GuardrailResponse` 对象
+
+### AsyncXiangxinAI类（异步）
+
+#### 初始化参数
+
+与同步版本相同。
+
+#### 方法
+
+##### async check_prompt(content: str) -> GuardrailResponse
+
+异步检测单个提示词的安全性。
+
+**参数:**
+- `content`: 要检测的文本内容
+
+**返回:** `GuardrailResponse` 对象
+
+##### async check_conversation(messages: List[Message]) -> GuardrailResponse
+
+异步检测对话上下文的安全性（核心功能）。
+
+**参数:**
+- `messages`: 消息列表，每个消息包含 `role` 和 `content` 字段
+
+**返回:** `GuardrailResponse` 对象
+
+##### async health_check() -> Dict[str, Any]
+
+异步检查API服务健康状态。
+
+##### async get_models() -> Dict[str, Any]
+
+异步获取可用模型列表。
+
+##### async close()
+
+关闭异步会话（在使用完毕后调用，或使用 `async with` 自动管理）。
 
 ### GuardrailResponse类
 
@@ -135,6 +229,8 @@ client = XiangxinAI(
 
 ## 错误处理
 
+### 同步错误处理
+
 ```python
 from xiangxinai import XiangxinAI, AuthenticationError, ValidationError, RateLimitError
 
@@ -148,6 +244,29 @@ except RateLimitError:
     print("请求频率限制")
 except Exception as e:
     print(f"其他错误: {e}")
+```
+
+### 异步错误处理
+
+```python
+import asyncio
+from xiangxinai import AsyncXiangxinAI, AuthenticationError, ValidationError, RateLimitError
+
+async def safe_check():
+    try:
+        async with AsyncXiangxinAI(api_key="your-api-key") as client:
+            result = await client.check_prompt("测试内容")
+            return result
+    except AuthenticationError:
+        print("API密钥无效")
+    except ValidationError as e:
+        print(f"输入验证失败: {e}")
+    except RateLimitError:
+        print("请求频率限制")
+    except Exception as e:
+        print(f"其他错误: {e}")
+
+asyncio.run(safe_check())
 ```
 
 ## 开发

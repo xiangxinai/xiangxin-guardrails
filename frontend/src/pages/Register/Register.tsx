@@ -299,7 +299,7 @@ const Register: React.FC = () => {
                 已有账户？ <Link to="/login">立即登录</Link>
               </Text>
               <Text type="secondary" style={{ fontSize: '12px' }}>
-                © 2024 象信AI. All rights reserved.
+                © 2025 象信AI. All rights reserved.
               </Text>
             </Space>
           </div>

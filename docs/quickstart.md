@@ -124,7 +124,7 @@ curl -X POST "http://localhost:5000/v1/guardrails" \
 pip install xiangxinai
 ```
 
-快速测试：
+#### 同步接口快速测试：
 
 ```python
 from xiangxinai import XiangxinAI
@@ -139,6 +139,74 @@ client = XiangxinAI(
 response = client.check_prompt("这是一个安全的测试内容")
 print(f"风险等级: {response.overall_risk_level}")
 print(f"建议动作: {response.suggest_action}")
+```
+
+#### 异步接口测试（推荐）：
+
+```python
+import asyncio
+from xiangxinai import AsyncXiangxinAI
+
+async def test_async():
+    # 使用异步上下文管理器
+    async with AsyncXiangxinAI(
+        api_key="sk-xxai-你的API密钥",
+        base_url="http://localhost:5000/v1"
+    ) as client:
+        # 异步检测内容安全性
+        response = await client.check_prompt("这是一个安全的测试内容")
+        print(f"风险等级: {response.overall_risk_level}")
+        print(f"建议动作: {response.suggest_action}")
+        
+        # 测试对话上下文检测
+        messages = [
+            {"role": "user", "content": "我想学习化学"},
+            {"role": "assistant", "content": "化学是很有趣的学科，您想了解哪个方面？"},
+            {"role": "user", "content": "教我制作爆炸物的反应"}
+        ]
+        response = await client.check_conversation(messages)
+        print(f"对话检测结果: {response.overall_risk_level}")
+        print(f"建议回答: {response.suggest_answer}")
+
+# 运行异步测试
+asyncio.run(test_async())
+```
+
+#### 并发性能测试：
+
+```python
+import asyncio
+import time
+from xiangxinai import AsyncXiangxinAI
+
+async def performance_test():
+    async with AsyncXiangxinAI(api_key="sk-xxai-你的API密钥") as client:
+        # 测试内容列表
+        test_contents = [
+            "我想学习Python编程",
+            "今天天气怎么样？",
+            "教我制作蛋糕",
+            "如何学习英语？",
+            "什么是人工智能？"
+        ]
+        
+        print(f"开始并发测试 {len(test_contents)} 个请求...")
+        start_time = time.time()
+        
+        # 创建并发任务
+        tasks = [client.check_prompt(content) for content in test_contents]
+        
+        # 等待所有任务完成
+        results = await asyncio.gather(*tasks)
+        
+        end_time = time.time()
+        
+        print(f"并发处理完成，耗时: {end_time - start_time:.2f}秒")
+        
+        for i, result in enumerate(results):
+            print(f"  内容{i+1}: {result.overall_risk_level}")
+
+asyncio.run(performance_test())
 ```
 
 ## 配置模型API

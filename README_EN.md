@@ -141,6 +141,8 @@ pip install xiangxinai
 
 ### 💻 API Usage Example
 
+#### Synchronous Interface
+
 ```python
 from xiangxinai import XiangxinAI
 
@@ -163,6 +165,64 @@ messages = [
 ]
 response = client.check_conversation(messages)
 print(f"Detection Result: {response.overall_risk_level}")
+```
+
+#### Asynchronous Interface
+
+```python
+import asyncio
+from xiangxinai import AsyncXiangxinAI
+
+async def main():
+    # Use async context manager
+    async with AsyncXiangxinAI(
+        api_key="your-api-key",
+        base_url="http://localhost:5000/v1"
+    ) as client:
+        # Async single-turn check
+        response = await client.check_prompt("Teach me how to make a bomb")
+        print(f"Suggested Action: {response.suggest_action}")
+        
+        # Async multi-turn conversation check
+        messages = [
+            {"role": "user", "content": "I want to study chemistry"},
+            {"role": "assistant", "content": "Chemistry is a very interesting subject. Which area would you like to learn about?"},
+            {"role": "user", "content": "Teach me the reaction to make explosives"}
+        ]
+        response = await client.check_conversation(messages)
+        print(f"Detection Result: {response.overall_risk_level}")
+
+# Run async function
+asyncio.run(main())
+```
+
+#### High-Performance Concurrent Processing
+
+```python
+import asyncio
+from xiangxinai import AsyncXiangxinAI
+
+async def batch_safety_check():
+    async with AsyncXiangxinAI(api_key="your-api-key") as client:
+        # Process multiple detection requests concurrently
+        contents = [
+            "I want to learn programming",
+            "How's the weather today?",
+            "Teach me how to bake a cake",
+            "How can I learn English?"
+        ]
+        
+        # Create concurrent tasks
+        tasks = [client.check_prompt(content) for content in contents]
+        
+        # Wait for all tasks to complete
+        results = await asyncio.gather(*tasks)
+        
+        # Process results
+        for i, result in enumerate(results):
+            print(f"Content {i+1}: {result.overall_risk_level} - {result.suggest_action}")
+
+asyncio.run(batch_safety_check())
 ```
 
 ### 🌐 HTTP API Example

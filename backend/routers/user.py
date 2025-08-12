@@ -46,6 +46,7 @@ class UserInfo(BaseModel):
     is_active: bool
     is_verified: bool
     is_super_admin: bool
+    rate_limit: int  # 速度限制（每秒请求数，0表示无限制，默认为1）
 
 class ApiKeyResponse(BaseModel):
     api_key: str
@@ -248,13 +249,31 @@ async def get_current_user_info(
     """获取当前用户信息"""
     user = get_current_user_from_token(credentials, db)
     
+    # 获取用户的速度限制配置
+    try:
+        from services.rate_limiter import RateLimitService
+        from utils.logger import setup_logger
+        logger = setup_logger()
+        
+        rate_limit_service = RateLimitService(db)
+        rate_limit_config = rate_limit_service.get_user_rate_limit(str(user.id))
+        # 如果有配置且激活，使用配置值；否则使用默认值1 RPS
+        rate_limit = rate_limit_config.requests_per_second if rate_limit_config and rate_limit_config.is_active else 1
+        logger.info(f"用户 {user.email} 的速度限制: {rate_limit} (配置存在: {rate_limit_config is not None})")
+    except Exception as e:
+        from utils.logger import setup_logger
+        logger = setup_logger()
+        logger.error(f"获取用户速度限制失败: {e}")
+        rate_limit = 1  # 默认值
+    
     return UserInfo(
         id=str(user.id),  # 转换为字符串格式
         email=user.email,
         api_key=user.api_key,
         is_active=user.is_active,
         is_verified=user.is_verified,
-        is_super_admin=admin_service.is_super_admin(user)
+        is_super_admin=admin_service.is_super_admin(user),
+        rate_limit=rate_limit
     )
 
 @router.post("/regenerate-api-key", response_model=ApiKeyResponse)

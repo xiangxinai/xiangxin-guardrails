@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL数据库
   postgres:
@@ -14,7 +12,7 @@ services:
     ports:
       - "54321:5432"
     volumes:
-      - ~/xiangxin-guardrails-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U xiangxin -d xiangxin_guardrails"]
       interval: 5s
