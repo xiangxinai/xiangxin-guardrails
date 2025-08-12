@@ -51,7 +51,11 @@ const UserManagement: React.FC = () => {
     setLoading(true);
     try {
       const response = await adminApi.getUsers();
-      setUsers(response.users || []);
+      // 按创建时间倒序排列，新注册的用户在最前面
+      const sortedUsers = (response.users || []).sort((a: User, b: User) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setUsers(sortedUsers);
     } catch (error) {
       console.error('Failed to load users:', error);
       message.error('加载用户列表失败');
