@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     super_admin_password: str = "CHANGE-THIS-PASSWORD-IN-PRODUCTION"
     
     # 数据目录配置
-    data_dir: str = "~/xiangxin-guardrails-data"
+    data_dir: str = "/mnt/data/xiangxin-guardrails-data"
     
     # 数据库配置
     database_url: str = "postgresql://xiangxin:your_password@localhost:54321/xiangxin_guardrails"
