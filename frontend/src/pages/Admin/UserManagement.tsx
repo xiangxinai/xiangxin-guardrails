@@ -57,10 +57,9 @@ const UserManagement: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [searchText, setSearchText] = useState('');
-  const [sortBy, setSortBy] = useState<'created_at' | 'detection_count'>('created_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
   const [form] = Form.useForm();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, switchToUser, switchInfo } = useAuth();
 
   const loadAdminStats = async () => {
     try {
@@ -153,6 +152,18 @@ const UserManagement: React.FC = () => {
     }
   };
 
+  const handleSwitchToUser = async (userId: string, email: string) => {
+    try {
+      await switchToUser(userId);
+      message.success(`已切换到用户 ${email} 的视角`);
+      // 刷新当前页面以更新状态
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Switch user failed:', error);
+      message.error(error.response?.data?.detail || '切换用户失败');
+    }
+  };
+
   const columns = [
     {
       title: '用户邮箱',
@@ -161,25 +172,39 @@ const UserManagement: React.FC = () => {
       render: (email: string, record: User) => (
         <Space>
           <UserOutlined />
-          <Text>{email}</Text>
+          {/* 只有超级管理员且不是当前用户且未在切换状态时才可点击切换 */}
+          {currentUser?.is_super_admin && record.id !== currentUser?.id && !switchInfo.is_switched ? (
+            <Text 
+              style={{ cursor: 'pointer', color: '#1890ff' }}
+              onClick={() => handleSwitchToUser(record.id, record.email)}
+              title="点击切换到此用户视角"
+            >
+              {email}
+            </Text>
+          ) : (
+            <Text>{email}</Text>
+          )}
           {record.id === currentUser?.id && <Tag color="blue">当前用户</Tag>}
+          {switchInfo.is_switched && switchInfo.target_user?.id === record.id && (
+            <Tag color="orange">切换中</Tag>
+          )}
         </Space>
       ),
     },
     {
       title: '状态',
       key: 'status',
-      width: 160,
+      width: 120,
       render: (_: any, record: User) => (
-        <Space size={4} direction="vertical" style={{ display: 'flex' }}>
-          <Tag color={record.is_active ? 'green' : 'red'} size="small">
-            {record.is_active ? '已激活' : '已禁用'}
+        <Space size={2} direction="vertical" style={{ display: 'flex' }}>
+          <Tag color={record.is_active ? 'green' : 'red'}>
+            {record.is_active ? '激活' : '禁用'}
           </Tag>
-          <Tag color={record.is_verified ? 'green' : 'orange'} size="small">
+          <Tag color={record.is_verified ? 'green' : 'orange'}>
             {record.is_verified ? '已验证' : '未验证'}
           </Tag>
           {record.is_super_admin && (
-            <Tag color="red" size="small">超级管理员</Tag>
+            <Tag color="red">管理员</Tag>
           )}
         </Space>
       ),

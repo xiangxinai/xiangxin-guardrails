@@ -333,10 +333,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           placeholder="请选择用户"
           loading={loading}
           showSearch
-          optionFilterProp="children"
-          filterOption={(input, option) =>
-            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-          }
+          filterOption={(input, option) => {
+            // 从 users 数组中找到对应的用户进行过滤
+            const user = users.find(u => u.id === option?.value);
+            return user ? user.email.toLowerCase().includes(input.toLowerCase()) : false;
+          }}
           onSelect={handleSwitchUser}
           options={users.map(user => ({
             value: user.id,

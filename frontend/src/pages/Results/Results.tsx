@@ -165,8 +165,12 @@ const Results: React.FC = () => {
         showTitle: false,
       },
       width: 250,
-      render: (text: string) => (
-        <span title={text} style={{ cursor: 'pointer' }}>
+      render: (text: string, record: DetectionResult) => (
+        <span 
+          title={text} 
+          style={{ cursor: 'pointer', color: '#1890ff' }}
+          onClick={() => showDetail(record)}
+        >
           {text}
         </span>
       ),
