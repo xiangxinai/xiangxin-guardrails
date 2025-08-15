@@ -4,7 +4,7 @@
 <br>
 
 <p align="center">
-        🤗 <a href="https://huggingface.co/xiangxinai/Xiangxin-Guardrais-Text">Hugging Face</a>&nbsp&nbsp ｜  &nbsp&nbsp<a href="assets/wechat.jpg">微信公众号</a>&nbsp&nbsp ｜  &nbsp&nbsp<a href="https://www.xiangxinai.cn">官网</a>
+        🤗 <a href="https://huggingface.co/xiangxinai/Xiangxin-Guardrails-Text">Hugging Face</a>&nbsp&nbsp ｜  &nbsp&nbsp<a href="assets/wechat.jpg">微信公众号</a>&nbsp&nbsp ｜  &nbsp&nbsp<a href="https://www.xiangxinai.cn">官网</a>
 </p>
 
 # 象信AI安全护栏
