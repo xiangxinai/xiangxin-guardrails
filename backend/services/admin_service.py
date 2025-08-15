@@ -4,9 +4,10 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Union
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from passlib.context import CryptContext
 
-from database.models import User, UserSwitch
+from database.models import User, UserSwitch, DetectionResult
 from utils.user import generate_api_key
 from config import settings
 from utils.logger import setup_logger
@@ -121,7 +122,11 @@ class AdminService:
         if not self.is_super_admin(admin_user):
             raise PermissionError("Only super admin can access all users")
         
-        users = db.query(User).all()  # 获取所有用户，包括禁用的用户
+        # 获取用户及其检测次数
+        users_with_counts = db.query(
+            User,
+            func.count(DetectionResult.id).label('detection_count')
+        ).outerjoin(DetectionResult, User.id == DetectionResult.user_id).group_by(User.id).all()
         
         return [{
             "id": str(user.id),
@@ -131,9 +136,10 @@ class AdminService:
             "is_super_admin": self.is_super_admin(user),
             "is_verified": user.is_verified,
             "api_key": user.api_key,
+            "detection_count": detection_count,  # 新增检测次数
             "created_at": user.created_at.isoformat() if user.created_at else None,
             "updated_at": user.updated_at.isoformat() if user.updated_at else None
-        } for user in users]
+        } for user, detection_count in users_with_counts]
     
     def switch_to_user(self, db: Session, admin_user: User, target_user_id: Union[str, uuid.UUID]) -> str:
         """超级管理员切换到指定用户视角"""

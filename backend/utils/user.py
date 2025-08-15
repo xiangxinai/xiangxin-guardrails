@@ -5,7 +5,10 @@ from typing import Optional, Union
 from sqlalchemy.orm import Session
 from database.models import User, EmailVerification
 from utils.auth import get_password_hash
+from utils.logger import setup_logger
 from datetime import datetime
+
+logger = setup_logger()
 
 def generate_api_key() -> str:
     """生成API密钥（以 sk-xxai- 开头，总长<=64）"""
@@ -119,28 +122,19 @@ def record_login_attempt(db: Session, email: str, ip_address: str, user_agent: s
     db.commit()
 
 def check_login_rate_limit(db: Session, email: str, ip_address: str, time_window_minutes: int = 15, max_attempts: int = 5) -> bool:
-    """检查登录速率限制"""
     from database.models import LoginAttempt
     from datetime import datetime, timedelta
     
     cutoff_time = datetime.utcnow() - timedelta(minutes=time_window_minutes)
     
-    # 检查邮箱失败次数
     email_failures = db.query(LoginAttempt).filter(
         LoginAttempt.email == email,
         LoginAttempt.success == False,
         LoginAttempt.attempted_at >= cutoff_time
     ).count()
     
-    # 检查IP失败次数
-    ip_failures = db.query(LoginAttempt).filter(
-        LoginAttempt.ip_address == ip_address,
-        LoginAttempt.success == False,
-        LoginAttempt.attempted_at >= cutoff_time
-    ).count()
-    
-    # 如果邮箱或IP超过限制，返回False
-    return email_failures < max_attempts and ip_failures < max_attempts
+    # 邮箱失败次数超过限制则拒绝
+    return email_failures < max_attempts
 
 def cleanup_old_login_attempts(db: Session, days_to_keep: int = 30):
     """清理旧的登录尝试记录"""
@@ -149,9 +143,45 @@ def cleanup_old_login_attempts(db: Session, days_to_keep: int = 30):
     
     cutoff_time = datetime.utcnow() - timedelta(days=days_to_keep)
     
-    deleted_count = db.query(LoginAttempt).filter(
-        LoginAttempt.attempted_at < cutoff_time
-    ).delete()
+    try:
+        deleted_count = db.query(LoginAttempt).filter(
+            LoginAttempt.attempted_at < cutoff_time
+        ).delete()
+        db.commit()
+        
+        if deleted_count > 0:
+            logger.info(f"Cleaned up {deleted_count} old login attempts older than {days_to_keep} days")
+        
+        return deleted_count
+    except Exception as e:
+        logger.error(f"Failed to cleanup old login attempts: {e}")
+        db.rollback()
+        return 0
+
+def emergency_clear_rate_limit(db: Session, email: str = None, ip_address: str = None, time_window_minutes: int = 15):
+    """紧急清理频率限制（用于解决误封问题）"""
+    from database.models import LoginAttempt
+    from datetime import datetime, timedelta
     
-    db.commit()
-    return deleted_count
+    cutoff_time = datetime.utcnow() - timedelta(minutes=time_window_minutes)
+    
+    try:
+        query = db.query(LoginAttempt).filter(
+            LoginAttempt.attempted_at >= cutoff_time,
+            LoginAttempt.success == False
+        )
+        
+        if email:
+            query = query.filter(LoginAttempt.email == email)
+        if ip_address:
+            query = query.filter(LoginAttempt.ip_address == ip_address)
+            
+        deleted_count = query.delete()
+        db.commit()
+        
+        logger.info(f"Emergency cleared {deleted_count} failed login attempts for email={email}, ip={ip_address}")
+        return deleted_count
+    except Exception as e:
+        logger.error(f"Failed to emergency clear rate limit: {e}")
+        db.rollback()
+        return 0

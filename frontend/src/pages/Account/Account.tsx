@@ -81,9 +81,56 @@ const Account: React.FC = () => {
         </div>
 
         <div>
+          <Text type="secondary">用户 UUID</Text>
+          <Space style={{ width: '100%', marginTop: 8, alignItems: 'center' }}>
+            <div style={{ 
+              flex: 1,
+              padding: '8px 12px',
+              border: '1px solid #d9d9d9',
+              borderRadius: '6px',
+              backgroundColor: '#fafafa',
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              wordBreak: 'break-all'
+            }}>
+              <Text code style={{ backgroundColor: 'transparent', border: 'none', padding: 0 }}>
+                {user?.id || '-'}
+              </Text>
+            </div>
+            <Button 
+              icon={<CopyOutlined />} 
+              onClick={() => {
+                if (user?.id) {
+                  navigator.clipboard.writeText(user.id);
+                  message.success('UUID 已复制到剪贴板');
+                }
+              }}
+            >
+              复制
+            </Button>
+          </Space>
+          <div style={{ marginTop: 8 }}>
+            <Text type="secondary">提示：UUID 是您的唯一用户标识符。</Text>
+          </div>
+        </div>
+
+        <div>
           <Text type="secondary">当前 API Key</Text>
-          <Space style={{ width: '100%', marginTop: 8 }}>
-            <Input value={user?.api_key || ''} readOnly size="large" />
+          <Space style={{ width: '100%', marginTop: 8, alignItems: 'center' }}>
+            <div style={{ 
+              flex: 1,
+              padding: '8px 12px',
+              border: '1px solid #d9d9d9',
+              borderRadius: '6px',
+              backgroundColor: '#fafafa',
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              wordBreak: 'break-all'
+            }}>
+              <Text code style={{ backgroundColor: 'transparent', border: 'none', padding: 0 }}>
+                {user?.api_key || '-'}
+              </Text>
+            </div>
             <Button icon={<CopyOutlined />} onClick={handleCopy}>复制</Button>
             <Button type="primary" loading={loading} icon={<ReloadOutlined />} onClick={handleRegenerate}>
               重新生成

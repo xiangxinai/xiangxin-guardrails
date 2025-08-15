@@ -35,27 +35,48 @@ interface User {
   is_verified: boolean;
   is_super_admin: boolean;
   api_key: string;
+  detection_count: number;
   created_at: string;
   updated_at: string;
 }
 
+interface AdminStats {
+  total_users: number;
+  total_detections: number;
+  user_detection_counts: Array<{
+    user_id: string;
+    email: string;
+    detection_count: number;
+  }>;
+}
+
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [searchText, setSearchText] = useState('');
+  const [sortBy, setSortBy] = useState<'created_at' | 'detection_count'>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [form] = Form.useForm();
   const { user: currentUser } = useAuth();
+
+  const loadAdminStats = async () => {
+    try {
+      const response = await adminApi.getAdminStats();
+      setAdminStats(response.data);
+    } catch (error) {
+      console.error('Failed to load admin stats:', error);
+      message.error('加载统计信息失败');
+    }
+  };
 
   const loadUsers = async () => {
     setLoading(true);
     try {
       const response = await adminApi.getUsers();
-      // 按创建时间倒序排列，新注册的用户在最前面
-      const sortedUsers = (response.users || []).sort((a: User, b: User) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-      setUsers(sortedUsers);
+      setUsers(response.users || []);
     } catch (error) {
       console.error('Failed to load users:', error);
       message.error('加载用户列表失败');
@@ -64,8 +85,12 @@ const UserManagement: React.FC = () => {
     }
   };
 
+  const loadData = async () => {
+    await Promise.all([loadUsers(), loadAdminStats()]);
+  };
+
   useEffect(() => {
-    loadUsers();
+    loadData();
   }, []);
 
   const handleEdit = (user: User) => {
@@ -144,16 +169,17 @@ const UserManagement: React.FC = () => {
     {
       title: '状态',
       key: 'status',
+      width: 160,
       render: (_: any, record: User) => (
-        <Space>
-          <Tag color={record.is_active ? 'green' : 'red'}>
+        <Space size={4} direction="vertical" style={{ display: 'flex' }}>
+          <Tag color={record.is_active ? 'green' : 'red'} size="small">
             {record.is_active ? '已激活' : '已禁用'}
           </Tag>
-          <Tag color={record.is_verified ? 'green' : 'orange'}>
+          <Tag color={record.is_verified ? 'green' : 'orange'} size="small">
             {record.is_verified ? '已验证' : '未验证'}
           </Tag>
           {record.is_super_admin && (
-            <Tag color="red">超级管理员</Tag>
+            <Tag color="red" size="small">超级管理员</Tag>
           )}
         </Space>
       ),
@@ -179,9 +205,31 @@ const UserManagement: React.FC = () => {
       ),
     },
     {
+      title: 'UUID',
+      dataIndex: 'id',
+      key: 'id',
+      render: (id: string) => (
+        <Text code copyable={{ text: id }}>
+          {id.substring(0, 8)}...
+        </Text>
+      ),
+    },
+    {
+      title: '检测次数',
+      dataIndex: 'detection_count',
+      key: 'detection_count',
+      sorter: (a: User, b: User) => a.detection_count - b.detection_count,
+      render: (count: number) => (
+        <Tag color={count > 0 ? 'blue' : 'default'}>
+          {count}
+        </Tag>
+      ),
+    },
+    {
       title: '创建时间',
       dataIndex: 'created_at',
       key: 'created_at',
+      sorter: (a: User, b: User) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
       render: (date: string) => new Date(date).toLocaleString(),
     },
     {
@@ -230,11 +278,23 @@ const UserManagement: React.FC = () => {
               用户管理
             </Title>
             <Text type="secondary">管理系统中的所有用户账号</Text>
+            {adminStats && (
+              <div style={{ marginTop: 8 }}>
+                <Space split={<Text type="secondary">|</Text>}>
+                  <Text>
+                    <strong>{adminStats.total_users}</strong> 个用户
+                  </Text>
+                  <Text>
+                    总检测次数: <strong>{adminStats.total_detections}</strong>
+                  </Text>
+                </Space>
+              </div>
+            )}
           </div>
           <Space>
             <Button
               icon={<ReloadOutlined />}
-              onClick={loadUsers}
+              onClick={loadData}
               loading={loading}
             >
               刷新
@@ -249,9 +309,22 @@ const UserManagement: React.FC = () => {
           </Space>
         </div>
 
+        {/* 搜索框 */}
+        <div style={{ marginBottom: 16 }}>
+          <Input.Search
+            placeholder="按 UUID 搜索用户"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ width: 300 }}
+            allowClear
+          />
+        </div>
+
         <Table
           columns={columns}
-          dataSource={users}
+          dataSource={users.filter(user => 
+            !searchText || user.id.toLowerCase().includes(searchText.toLowerCase())
+          )}
           rowKey="id"
           loading={loading}
           pagination={{

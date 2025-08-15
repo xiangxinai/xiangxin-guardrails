@@ -163,6 +163,21 @@ export const configApi = {
 
 // 管理员API
 export const adminApi = {
+  // 获取管理员统计信息
+  getAdminStats: (): Promise<{ 
+    status: string; 
+    data: { 
+      total_users: number; 
+      total_detections: number; 
+      user_detection_counts: Array<{
+        user_id: string;
+        email: string;
+        detection_count: number;
+      }>
+    } 
+  }> =>
+    api.get('/api/v1/admin/stats').then(res => res.data),
+  
   // 获取所有用户列表
   getUsers: (): Promise<{ status: string; users: any[]; total: number }> =>
     api.get('/api/v1/admin/users').then(res => res.data),

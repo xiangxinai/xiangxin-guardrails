@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from typing import Optional, List
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from database.connection import get_db
 import uuid
-from database.models import User
+from database.models import User, DetectionResult
 from services.admin_service import admin_service
 from utils.logger import setup_logger
 
@@ -38,6 +39,55 @@ def get_current_user(request: Request) -> User:
         return user
     finally:
         db.close()
+
+@router.get("/admin/stats")
+async def get_admin_stats(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    获取管理员统计信息（仅超级管理员可访问）
+    """
+    try:
+        current_user = get_current_user(request)
+        
+        if not admin_service.is_super_admin(current_user):
+            raise HTTPException(status_code=403, detail="Only super admin can access this endpoint")
+        
+        # 获取用户总数
+        total_users = db.query(User).count()
+        
+        # 获取所有用户的检测总次数
+        total_detections = db.query(DetectionResult).count()
+        
+        # 获取每个用户的检测次数
+        user_detection_counts = db.query(
+            User.id.label('user_id'),
+            User.email.label('email'),
+            func.count(DetectionResult.id).label('detection_count')
+        ).outerjoin(DetectionResult, User.id == DetectionResult.user_id).group_by(User.id, User.email).all()
+        
+        return {
+            "status": "success",
+            "data": {
+                "total_users": total_users,
+                "total_detections": total_detections,
+                "user_detection_counts": [
+                    {
+                        "user_id": str(row.user_id),
+                        "email": row.email,
+                        "detection_count": row.detection_count
+                    }
+                    for row in user_detection_counts
+                ]
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get admin stats error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/admin/users")
 async def get_all_users(

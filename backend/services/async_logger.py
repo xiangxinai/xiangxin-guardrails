@@ -90,7 +90,7 @@ class AsyncDetectionLogger:
                             today = datetime.now().strftime('%Y%m%d')
                             if current_date != today:
                                 if current_file:
-                                    await current_file.aclose()
+                                    await current_file.close()
                                 
                                 current_date = today
                                 log_file_path = self.log_dir / f"detection_{today}.jsonl"
@@ -116,7 +116,7 @@ class AsyncDetectionLogger:
             logger.error(f"Fatal error in async logger writer loop: {e}")
         finally:
             if current_file:
-                await current_file.aclose()
+                await current_file.close()
             logger.info("Async logger writer loop stopped")
     
     async def _flush_batch(self, batch: list, current_date: str, current_file):
