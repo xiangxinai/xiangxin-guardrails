@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import BlacklistManagement from './BlacklistManagement';
 import WhitelistManagement from './WhitelistManagement';
 import ResponseTemplateManagement from './ResponseTemplateManagement';
+import RiskTypeManagement from './RiskTypeManagement';
 
 const Config: React.FC = () => {
   const navigate = useNavigate();
@@ -15,7 +16,8 @@ const Config: React.FC = () => {
     if (path.includes('/blacklist')) return 'blacklist';
     if (path.includes('/whitelist')) return 'whitelist';
     if (path.includes('/responses')) return 'responses';
-    return 'blacklist';
+    if (path.includes('/risk-types')) return 'risk-types';
+    return 'risk-types';
   };
 
   const handleTabChange = (key: string) => {
@@ -24,6 +26,11 @@ const Config: React.FC = () => {
   };
 
   const items = [
+    {
+      key: 'risk-types',
+      label: '风险类型配置',
+      children: <RiskTypeManagement />,
+    },
     {
       key: 'blacklist',
       label: '黑名单管理',

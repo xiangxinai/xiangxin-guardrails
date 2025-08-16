@@ -6,8 +6,20 @@ set -e
 echo "Stopping Xiangxin Guardrails Services..."
 echo "========================================"
 
-# 从配置文件获取日志目录
-LOG_DIR=$(python3 -c "from config import settings; print(settings.log_dir)" 2>/dev/null || echo "logs")
+# 检查.env文件是否存在
+if [ ! -f ".env" ]; then
+    echo "Error: .env file not found. Using default log directory."
+    LOG_DIR="logs"
+else
+    # 从.env文件获取数据目录
+    source .env
+    if [ -z "$DATA_DIR" ]; then
+        echo "Warning: DATA_DIR not set in .env file, using default."
+        LOG_DIR="logs"
+    else
+        LOG_DIR="$DATA_DIR/logs"
+    fi
+fi
 
 # 停止检测服务
 if [ -f "$LOG_DIR/detection_service.pid" ]; then

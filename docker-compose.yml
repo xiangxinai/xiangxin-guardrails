@@ -21,19 +21,18 @@ services:
     networks:
       - xiangxin-network
 
-  # 后端API服务
-  backend:
+  # 后端检测服务（高并发处理检测API）
+  detection-service:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: xiangxin-guardrails-backend
+    container_name: xiangxin-guardrails-detection
     restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
       # 数据库配置
       - DATABASE_URL=postgresql://xiangxin:your_password@postgres:5432/xiangxin_guardrails
-      - RESET_DATABASE_ON_STARTUP=true
       
       # 应用配置
       - DEBUG=false
@@ -44,8 +43,56 @@ services:
       - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
       - GUARDRAILS_MODEL_API_KEY=your-model-api-key
       
-      # 日志配置
-      - LOG_DIR=/app/logs
+      # 数据目录配置
+      - DATA_DIR=/app/data
+      - LOG_LEVEL=INFO
+      
+      # CORS配置
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      
+      # 双服务配置
+      - DETECTION_PORT=5000
+      - DETECTION_UVICORN_WORKERS=32
+      - DETECTION_MAX_CONCURRENT_REQUESTS=400
+      
+    command: ["python3", "start_detection_service.py"]
+    volumes:
+      - ./data:/app/data
+      - ./backend/config:/app/config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - xiangxin-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 后端管理服务（处理管理平台API）
+  admin-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: xiangxin-guardrails-admin
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      # 数据库配置
+      - DATABASE_URL=postgresql://xiangxin:your_password@postgres:5432/xiangxin_guardrails
+      - RESET_DATABASE_ON_STARTUP=true
+      
+      # 应用配置
+      - DEBUG=false
+      - JWT_SECRET_KEY=your-secret-key-change-in-production
+      - DEPLOYMENT_MODE=local
+      
+      # 数据目录配置
+      - DATA_DIR=/app/data
       - LOG_LEVEL=INFO
       
       # CORS配置
@@ -63,8 +110,14 @@ services:
       - SMTP_USE_TLS=
       - SMTP_USE_SSL=
       
+      # 双服务配置
+      - ADMIN_PORT=5001
+      - ADMIN_UVICORN_WORKERS=2
+      - ADMIN_MAX_CONCURRENT_REQUESTS=50
+      
+    command: ["python3", "start_admin_service.py"]
     volumes:
-      - ./logs:/app/logs
+      - ./data:/app/data
       - ./backend/config:/app/config:ro
     depends_on:
       postgres:
@@ -74,7 +127,7 @@ services:
     networks:
       - xiangxin-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -93,7 +146,8 @@ services:
     environment:
       - VITE_BASE=/platform/
     depends_on:
-      - backend
+      - detection-service
+      - admin-service
     networks:
       - xiangxin-network
 

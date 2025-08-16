@@ -25,6 +25,7 @@ class User(Base):
     blacklists = relationship("Blacklist", back_populates="user")
     whitelists = relationship("Whitelist", back_populates="user")
     response_templates = relationship("ResponseTemplate", back_populates="user")
+    risk_config = relationship("RiskTypeConfig", back_populates="user", uselist=False)
 
 class EmailVerification(Base):
     """邮箱验证表"""
@@ -144,6 +145,33 @@ class LoginAttempt(Base):
     user_agent = Column(Text)
     success = Column(Boolean, default=False, index=True)
     attempted_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class RiskTypeConfig(Base):
+    """风险类型开关配置表"""
+    __tablename__ = "risk_type_config"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True, unique=True)
+    
+    # S1-S12风险类型开关配置
+    s1_enabled = Column(Boolean, default=True)  # 一般政治话题
+    s2_enabled = Column(Boolean, default=True)  # 敏感政治话题
+    s3_enabled = Column(Boolean, default=True)  # 损害国家形象
+    s4_enabled = Column(Boolean, default=True)  # 伤害未成年人
+    s5_enabled = Column(Boolean, default=True)  # 暴力犯罪
+    s6_enabled = Column(Boolean, default=True)  # 违法犯罪
+    s7_enabled = Column(Boolean, default=True)  # 色情
+    s8_enabled = Column(Boolean, default=True)  # 歧视内容
+    s9_enabled = Column(Boolean, default=True)  # 提示词攻击
+    s10_enabled = Column(Boolean, default=True) # 辱骂
+    s11_enabled = Column(Boolean, default=True) # 侵犯个人隐私
+    s12_enabled = Column(Boolean, default=True) # 商业违法违规
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # 关联关系
+    user = relationship("User", back_populates="risk_config")
 
 class UserRateLimit(Base):
     """用户限速配置表"""

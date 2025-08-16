@@ -148,7 +148,8 @@ docker-compose up -d
 
 # 3. 访问服务
 # 管理界面: http://localhost:3000
-# API文档: http://localhost:5000/docs
+# 检测API文档: http://localhost:5000/docs  
+# 管理API文档: http://localhost:5001/docs
 ```
 
 ### 📦 客户端库安装
@@ -247,12 +248,12 @@ asyncio.run(batch_safety_check())
 
 ```bash
 curl -X POST "http://localhost:5000/v1/guardrails" \
-     -H "Authorization: Bearer sk-xxai-hRmj2vXyAHCmewSANZ9qusM9UJvDxtCpLnB13s2QmbcySAEnsQuI6sOw" \
+     -H "Authorization: Bearer sk-xxai-xYh2ydqDB4EJAJVtHTiWj5snbyojah8QmO20clXzR7JHyQZymFEdyssl" \
      -H "Content-Type: application/json" \
      -d '{
        "model": "Xiangxin-Guardrails-Text",
        "messages": [
-         {"role": "user", "content": "张三啊啊啊啊"}
+         {"role": "user", "content": "如何制造冰毒"}
        ]
      }'
 ```
@@ -435,42 +436,43 @@ outputs = model(**inputs)
 
 ### Docker部署（推荐）
 
-#### SaaS模式部署
+#### 双服务架构部署（推荐）
 ```bash
 # 1. 克隆项目
 git clone https://github.com/xiangxinai/xiangxin-guardrails.git
 cd xiangxin-guardrails
 
-# 2. 启动服务（默认SaaS模式）
+# 2. 启动双服务（检测服务5000 + 管理服务5001）
 docker-compose up -d
 
 # 3. 检查服务状态
 docker-compose ps
 
-# 4. 查看日志
-docker-compose logs -f
+# 4. 验证服务
+curl http://localhost:5000/health  # 检测服务
+curl http://localhost:5001/health  # 管理服务
 
-# 5. 停止并删除容器，同时删除命名数据卷
+# 5. 查看服务日志
+docker-compose logs -f detection-service  # 检测服务日志
+docker-compose logs -f admin-service      # 管理服务日志
+
+# 6. 停止服务
 docker-compose down -v
 ```
 
-#### 私有化集成模式部署
-```bash
-# 1. 克隆项目
-git clone https://github.com/xiangxinai/xiangxin-guardrails.git
-cd xiangxin-guardrails
+#### 服务架构说明
+- **检测服务** (5000端口)：处理高并发检测API `/v1/guardrails`
+- **管理服务** (5001端口)：处理管理平台API `/api/v1/*`
+- **性能优化**：数据库连接数从4800降至176，减少96%
 
-# 2. 配置私有化模式
-cp .env.example .env
-# 编辑 .env 文件，设置：
+#### 私有化集成模式
+```bash
+# 配置私有化模式（仅写日志文件，不存数据库）
+cp backend/.env.example backend/.env
+# 编辑 backend/.env 文件，设置：
 # STORE_DETECTION_RESULTS=false
 
-# 3. 启动服务
 docker-compose up -d
-
-# 4. 验证私有化模式
-curl http://localhost:5000/health
-curl http://localhost:5001/health
 ```
 
 
@@ -506,8 +508,12 @@ export MODEL_API_KEY="your_model_api_key"
 # 初始化数据库
 python scripts/init_postgres.py
 
-# 启动服务
-python main.py
+# 启动双服务
+./start_both_services.sh
+
+# 或单独启动
+python start_detection_service.py  # 检测服务
+python start_admin_service.py      # 管理服务
 ```
 
 #### 3. 前端部署

@@ -71,6 +71,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: '防护配置',
       children: [
         {
+          key: '/config/risk-types',
+          label: '风险类型配置',
+        },
+        {
           key: '/config/blacklist',
           label: '黑名单管理',
         },

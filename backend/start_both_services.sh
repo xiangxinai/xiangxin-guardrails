@@ -12,12 +12,21 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-# 从配置文件获取日志目录
-LOG_DIR=$(python3 -c "from config import settings; print(settings.log_dir)")
-if [ -z "$LOG_DIR" ]; then
-    echo "Error: Could not get log directory from config"
+# 检查.env文件是否存在
+if [ ! -f ".env" ]; then
+    echo "Error: .env file not found. Please copy .env.example to .env and configure it."
     exit 1
 fi
+
+# 从.env文件获取数据目录
+source .env
+if [ -z "$DATA_DIR" ]; then
+    echo "Error: DATA_DIR not set in .env file"
+    exit 1
+fi
+
+# 设置日志目录为数据目录下的logs子目录
+LOG_DIR="$DATA_DIR/logs"
 
 # 创建日志目录
 mkdir -p "$LOG_DIR"
@@ -46,15 +55,18 @@ echo "Both services started successfully!"
 echo ""
 echo "Detection Service:"
 echo "  - PID: $DETECTION_PID"
-echo "  - Port: $(grep DETECTION_PORT .env | cut -d'=' -f2 || echo '5000')"
+echo "  - Port: ${DETECTION_PORT:-5000}"
 echo "  - API: /v1/guardrails"
 echo "  - Log: $LOG_DIR/detection_service.log"
 echo ""
 echo "Admin Service:"
 echo "  - PID: $ADMIN_PID" 
-echo "  - Port: $(grep ADMIN_PORT .env | cut -d'=' -f2 || echo '5001')"
+echo "  - Port: ${ADMIN_PORT:-5001}"
 echo "  - API: /api/v1/*"
 echo "  - Log: $LOG_DIR/admin_service.log"
+echo ""
+echo "Data Directory: $DATA_DIR"
+echo "Log Directory: $LOG_DIR"
 echo ""
 echo "To stop services:"
 echo "  ./stop_both_services.sh"

@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 管理服务负责完整管理功能和日志导入数据库
   - 数据库连接数优化：从4,800降至176（减少96%）
 
+- 🐳 **Docker部署架构优化**
+  - Docker Compose支持双服务架构
+  - 独立的检测服务容器(detection-service)和管理服务容器(admin-service)
+  - Nginx反向代理自动路由到对应服务
+  - 统一的数据目录挂载和日志管理
+
 - 🔌 **私有化集成模式** 🆕
   - 支持与客户现有用户系统深度集成
   - 新增 `STORE_DETECTION_RESULTS` 配置开关，控制检测结果存储方式
@@ -52,6 +58,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `backend/client-sdk/nodejs/guardrails-client.js` - Node.js客户端SDK
 
 ### 变更 Changed
+- 🔄 **架构重构**
+  - 将单一服务拆分为双服务架构，显著提升性能
+  - 检测服务工作进程从单一服务的复杂配置改为32个高并发进程
+  - 管理服务工作进程优化为2个轻量级进程
+  - 日志目录配置统一使用DATA_DIR环境变量
+
+- 🌐 **API路由更新**
+  - 检测API路径保持 `/v1/guardrails` 不变
+  - 管理API路径保持 `/api/v1/*` 不变
+  - Nginx代理规则更新支持双服务自动路由
+  - 新增健康检查端点分别对应两个服务
+
+- 📦 **部署配置更新**
+  - Docker Compose配置支持独立的检测和管理服务容器
+  - 环境变量配置增加双服务相关参数
+  - 脚本文件从配置文件获取数据目录，不再硬编码
+
 - 🔧 **配置优化**
   - 更新.env配置支持双服务端口配置
   - 新增检测服务配置：DETECTION_PORT、DETECTION_UVICORN_WORKERS

@@ -8,6 +8,7 @@ from services.keyword_service import KeywordService
 from services.keyword_cache import keyword_cache
 from services.template_cache import template_cache
 from services.async_logger import async_detection_logger
+from services.risk_config_cache import risk_config_cache
 from models.requests import GuardrailRequest, Message
 from models.responses import GuardrailResponse, GuardrailResult, ComplianceResult, SecurityResult
 from utils.logger import setup_logger
@@ -88,8 +89,8 @@ class DetectionGuardrailService:
             messages_dict = [{"role": msg.role, "content": msg.content} for msg in request.messages]
             model_response = await model_service.check_messages(messages_dict)
             
-            # 3. 解析模型响应
-            compliance_result, security_result = self._parse_model_response(model_response)
+            # 3. 解析模型响应并应用风险类型过滤
+            compliance_result, security_result = await self._parse_model_response(model_response, user_id)
             
             # 4. 确定建议动作和回答
             overall_risk_level, suggest_action, suggest_answer = await self._determine_action(
@@ -133,8 +134,8 @@ class DetectionGuardrailService:
                 conversation_parts.append(f"[{role_label}]: {msg.content}")
             return '\n'.join(conversation_parts)
     
-    def _parse_model_response(self, response: str) -> Tuple[ComplianceResult, SecurityResult]:
-        """解析模型响应"""
+    async def _parse_model_response(self, response: str, user_id: Optional[str] = None) -> Tuple[ComplianceResult, SecurityResult]:
+        """解析模型响应并应用风险类型过滤"""
         response = response.strip()
         
         if response == "无风险":
@@ -144,27 +145,31 @@ class DetectionGuardrailService:
             )
         
         if response.startswith("unsafe\n"):
-            lines = response.split('\n')[1:]
-            categories = [line.strip() for line in lines if line.strip()]
+            category = response.split('\n')[1] if '\n' in response else ""
             
-            compliance_categories = []
-            security_categories = []
+            # 检查用户是否禁用了此风险类型
+            if user_id and not await risk_config_cache.is_risk_type_enabled(user_id, category):
+                logger.info(f"Risk type {category} is disabled for user {user_id}, treating as safe")
+                return (
+                    ComplianceResult(risk_level="无风险", categories=[]),
+                    SecurityResult(risk_level="无风险", categories=[])
+                )
             
-            for category in categories:
-                if category in CATEGORY_NAMES:
-                    if category == 'S9':  # 提示词攻击属于安全类别
-                        security_categories.append(CATEGORY_NAMES[category])
-                    else:  # 其他所有类别都属于内容合规类别
-                        compliance_categories.append(CATEGORY_NAMES[category])
+            risk_level = RISK_LEVEL_MAPPING.get(category, "中风险")
+            category_name = CATEGORY_NAMES.get(category, category)
             
-            compliance_risk = self._get_highest_risk_level(compliance_categories)
-            security_risk = self._get_highest_risk_level(security_categories)
-            
-            return (
-                ComplianceResult(risk_level=compliance_risk, categories=compliance_categories),
-                SecurityResult(risk_level=security_risk, categories=security_categories)
-            )
+            if category == "S9":  # 提示词攻击
+                return (
+                    ComplianceResult(risk_level="无风险", categories=[]),
+                    SecurityResult(risk_level=risk_level, categories=[category_name])
+                )
+            else:  # 内容合规问题
+                return (
+                    ComplianceResult(risk_level=risk_level, categories=[category_name]),
+                    SecurityResult(risk_level="无风险", categories=[])
+                )
         
+        # 默认返回安全
         return (
             ComplianceResult(risk_level="无风险", categories=[]),
             SecurityResult(risk_level="无风险", categories=[])

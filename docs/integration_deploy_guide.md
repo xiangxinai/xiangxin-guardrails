@@ -17,11 +17,12 @@
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-### 服务组件
-- **检测服务 (Detection Service)**: 端口5000，处理高并发检测请求
-- **管理服务 (Admin Service)**: 端口5001，处理配置管理请求  
+### 双服务架构组件
+- **检测服务 (Detection Service)**: 端口5000，32个工作进程，处理高并发检测API `/v1/guardrails`
+- **管理服务 (Admin Service)**: 端口5001，2个工作进程，处理管理平台API `/api/v1/*`  
 - **数据库 (PostgreSQL)**: 存储配置信息和可选的检测结果
 - **AI模型服务**: 提供内容安全检测能力
+- **Nginx反向代理**: 自动路由请求到对应服务
 
 ## 系统要求
 
@@ -80,21 +81,28 @@ DATABASE_URL=postgresql://guardrails:password@postgres:5432/guardrails_db
 GUARDRAILS_MODEL_API_URL=http://model-service:8000/v1
 GUARDRAILS_MODEL_API_KEY=your-model-api-key
 
-# 数据目录
+# 数据目录 (日志文件将存储在此目录的logs子目录下)
 DATA_DIR=/opt/xiangxin-guardrails/data
+
+# 双服务配置
+DETECTION_PORT=5000
+DETECTION_UVICORN_WORKERS=32
+ADMIN_PORT=5001
+ADMIN_UVICORN_WORKERS=2
 ```
 
 ### 3. 启动服务
 
 ```bash
-# 使用Docker Compose启动
+# 使用Docker Compose启动双服务
 docker-compose up -d
 
 # 检查服务状态
 docker-compose ps
 
-# 查看日志
-docker-compose logs -f
+# 查看服务日志
+docker-compose logs -f detection-service  # 检测服务日志
+docker-compose logs -f admin-service      # 管理服务日志
 ```
 
 ### 4. 验证部署

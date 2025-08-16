@@ -16,7 +16,7 @@ from pathlib import Path
 
 from config import settings
 from database.connection import init_db, create_admin_engine
-from routers import dashboard, config_api, results, auth, user, sync, admin, online_test, test_models
+from routers import dashboard, config_api, results, auth, user, sync, admin, online_test, test_models, risk_config_api
 from services.data_sync_service import data_sync_service
 from utils.logger import setup_logger
 from services.admin_service import admin_service
@@ -315,6 +315,7 @@ app.include_router(sync.router, prefix="/api/v1", dependencies=[Depends(verify_u
 app.include_router(admin.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
 app.include_router(online_test.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
 app.include_router(test_models.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
+app.include_router(risk_config_api.router, dependencies=[Depends(verify_user_auth)])
 
 # 全局异常处理
 @app.exception_handler(Exception)

@@ -271,4 +271,36 @@ export const testModelsApi = {
   toggleModel: (id: number) => api.patch(`/api/v1/test-models/${id}/toggle`).then(res => res.data),
 };
 
+// 风险类型配置API
+export const riskConfigApi = {
+  // 获取风险配置
+  get: () => api.get('/api/v1/config/risk-types').then(res => res.data),
+  
+  // 更新风险配置
+  update: (config: {
+    s1_enabled: boolean;
+    s2_enabled: boolean;
+    s3_enabled: boolean;
+    s4_enabled: boolean;
+    s5_enabled: boolean;
+    s6_enabled: boolean;
+    s7_enabled: boolean;
+    s8_enabled: boolean;
+    s9_enabled: boolean;
+    s10_enabled: boolean;
+    s11_enabled: boolean;
+    s12_enabled: boolean;
+  }) => api.put('/api/v1/config/risk-types', config).then(res => res.data),
+  
+  // 获取启用的风险类型
+  getEnabled: () => api.get('/api/v1/config/risk-types/enabled').then(res => res.data),
+  
+  // 重置为默认配置
+  reset: () => api.post('/api/v1/config/risk-types/reset').then(res => res.data),
+};
+
+// 便捷函数
+export const getRiskConfig = () => riskConfigApi.get();
+export const updateRiskConfig = (config: any) => riskConfigApi.update(config);
+
 export default api;

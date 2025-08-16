@@ -9,6 +9,7 @@ from services.keyword_service import KeywordService
 from services.keyword_cache import keyword_cache
 from services.template_cache import template_cache
 from services.async_logger import async_detection_logger
+from services.risk_config_service import RiskConfigService
 from models.requests import GuardrailRequest, Message
 from models.responses import GuardrailResponse, GuardrailResult, ComplianceResult, SecurityResult
 from utils.logger import setup_logger
@@ -53,6 +54,7 @@ class GuardrailService:
     def __init__(self, db: Session):
         self.db = db
         self.keyword_service = KeywordService(db)
+        self.risk_config_service = RiskConfigService(db)
     
     async def check_guardrails(
         self, 
@@ -89,8 +91,8 @@ class GuardrailService:
             messages_dict = [{"role": msg.role, "content": msg.content} for msg in request.messages]
             model_response = await model_service.check_messages(messages_dict)
             
-            # 3. 解析模型响应
-            compliance_result, security_result = self._parse_model_response(model_response)
+            # 3. 解析模型响应并应用风险类型过滤
+            compliance_result, security_result = self._parse_model_response(model_response, user_id)
             
             # 4. 确定建议动作和回答（传入 user_id 以按用户选择代答模板）
             overall_risk_level, suggest_action, suggest_answer = await self._determine_action(
@@ -136,8 +138,8 @@ class GuardrailService:
                 conversation_parts.append(f"[{role_label}]: {msg.content}")
             return '\n'.join(conversation_parts)
     
-    def _parse_model_response(self, response: str) -> Tuple[ComplianceResult, SecurityResult]:
-        """解析模型响应"""
+    def _parse_model_response(self, response: str, user_id: Optional[str] = None) -> Tuple[ComplianceResult, SecurityResult]:
+        """解析模型响应并应用风险类型过滤"""
         response = response.strip()
         
         if response == "无风险":
@@ -148,6 +150,15 @@ class GuardrailService:
         
         if response.startswith("unsafe\n"):
             category = response.split('\n')[1] if '\n' in response else ""
+            
+            # 检查用户是否禁用了此风险类型
+            if user_id and not self.risk_config_service.is_risk_type_enabled(user_id, category):
+                logger.info(f"Risk type {category} is disabled for user {user_id}, treating as safe")
+                return (
+                    ComplianceResult(risk_level="无风险", categories=[]),
+                    SecurityResult(risk_level="无风险", categories=[])
+                )
+            
             risk_level = RISK_LEVEL_MAPPING.get(category, "中风险")
             category_name = CATEGORY_NAMES.get(category, category)
             
