@@ -1,0 +1,33 @@
+{
+  "name": "xiangxin-guardrails-client",
+  "version": "1.0.0",
+  "description": "象信AI安全护栏 Node.js 客户端SDK",
+  "main": "guardrails-client.js",
+  "scripts": {
+    "test": "node guardrails-client.js",
+    "example": "node example.js"
+  },
+  "keywords": [
+    "guardrails",
+    "content-safety",
+    "ai-safety",
+    "xiangxin"
+  ],
+  "author": "XiangxinAI",
+  "license": "MIT",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2",
+    "axios": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiangxinai/xiangxin-guardrails"
+  },
+  "bugs": {
+    "url": "https://github.com/xiangxinai/xiangxin-guardrails/issues"
+  },
+  "homepage": "https://github.com/xiangxinai/xiangxin-guardrails#readme"
+}

@@ -176,7 +176,7 @@ async def call_guardrail_api(api_key: str, messages: List[Dict[str, str]]) -> Di
     """调用护栏API"""
     try:
         # 构建护栏API的URL
-        guardrail_url = f"http://{settings.host}:{settings.port}/v1/guardrails"
+        guardrail_url = f"http://{settings.host}:{settings.detection_port}/v1/guardrails"
         
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(

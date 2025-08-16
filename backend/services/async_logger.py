@@ -49,7 +49,23 @@ class AsyncDetectionLogger:
         # 添加时间戳
         detection_data['logged_at'] = datetime.now().isoformat()
         
-        # 加入队列
+        # 直接写入文件（简化版本用于调试）
+        try:
+            today = datetime.now().strftime('%Y%m%d')
+            log_file_path = self.log_dir / f"detection_{today}.jsonl"
+            
+            import json
+            import aiofiles
+            async with aiofiles.open(log_file_path, 'a', encoding='utf-8') as f:
+                json_line = json.dumps(detection_data, ensure_ascii=False) + '\n'
+                await f.write(json_line)
+                await f.flush()
+            
+            logger.debug(f"Logged detection: {detection_data['request_id']}")
+        except Exception as e:
+            logger.error(f"Failed to log detection: {e}")
+        
+        # 也加入队列（保持兼容性）
         await self._queue.put(detection_data)
     
     async def _writer_loop(self):
@@ -57,9 +73,9 @@ class AsyncDetectionLogger:
         current_date = None
         current_file = None
         batch = []
-        batch_size = 50  # 批量大小
+        batch_size = 1  # 立即写入模式（用于调试）
         last_flush_time = asyncio.get_event_loop().time()
-        flush_interval = 2.0  # 2秒强制刷新一次
+        flush_interval = 0.1  # 0.1秒强制刷新一次（立即写入）
         
         try:
             while self._running:

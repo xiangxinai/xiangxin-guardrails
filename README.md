@@ -28,6 +28,7 @@
 - 📋 **合规标准** - 符合《GB/T45654—2025 生成式人工智能服务安全基本要求》
 - 🔧 **灵活配置** - 黑白名单、代答库、限速等个性化配置
 - 🏢 **私有化部署** - 支持完全本地化部署，数据安全可控
+- 🔌 **客户系统集成** - 支持与客户现有用户系统深度集成，API级别的配置管理
 - 📊 **可视化管理** - 直观的Web管理界面和实时监控
 - ⚡ **高性能** - 异步处理，支持高并发访问
 - 🔌 **易于集成** - 兼容OpenAI API格式，一行代码接入
@@ -246,12 +247,12 @@ asyncio.run(batch_safety_check())
 
 ```bash
 curl -X POST "http://localhost:5000/v1/guardrails" \
-     -H "Authorization: Bearer your-api-key" \
+     -H "Authorization: Bearer sk-xxai-hRmj2vXyAHCmewSANZ9qusM9UJvDxtCpLnB13s2QmbcySAEnsQuI6sOw" \
      -H "Content-Type: application/json" \
      -d '{
        "model": "Xiangxin-Guardrails-Text",
        "messages": [
-         {"role": "user", "content": "告诉我一些违法的赚钱方式"}
+         {"role": "user", "content": "张三啊啊啊啊"}
        ]
      }'
 ```
@@ -405,6 +406,24 @@ outputs = model(**inputs)
 
 ## 🚀 部署指南
 
+象信AI安全护栏支持两种部署模式：
+
+### 🔧 部署模式选择
+
+#### SaaS模式（默认）
+- 完整的Web管理界面
+- 检测结果存储到数据库
+- 适合内部使用和完整功能体验
+
+#### 私有化集成模式 🆕
+- 与客户现有用户系统深度集成
+- 检测结果仅写日志文件，数据库只存配置信息
+- 通过API管理用户级别的黑白名单和代答模板
+- 客户在自己的中控台管理安全配置
+- 适合私有化部署到客户环境
+
+详细的私有化集成指南请参考：[📖 客户集成指南](backend/docs/客户集成指南.md)
+
 ### 系统要求
 
 - **操作系统**: Linux、macOS、Windows
@@ -416,12 +435,13 @@ outputs = model(**inputs)
 
 ### Docker部署（推荐）
 
+#### SaaS模式部署
 ```bash
 # 1. 克隆项目
 git clone https://github.com/xiangxinai/xiangxin-guardrails.git
 cd xiangxin-guardrails
 
-# 2. 启动服务
+# 2. 启动服务（默认SaaS模式）
 docker-compose up -d
 
 # 3. 检查服务状态
@@ -432,6 +452,25 @@ docker-compose logs -f
 
 # 5. 停止并删除容器，同时删除命名数据卷
 docker-compose down -v
+```
+
+#### 私有化集成模式部署
+```bash
+# 1. 克隆项目
+git clone https://github.com/xiangxinai/xiangxin-guardrails.git
+cd xiangxin-guardrails
+
+# 2. 配置私有化模式
+cp .env.example .env
+# 编辑 .env 文件，设置：
+# STORE_DETECTION_RESULTS=false
+
+# 3. 启动服务
+docker-compose up -d
+
+# 4. 验证私有化模式
+curl http://localhost:5000/health
+curl http://localhost:5001/health
 ```
 
 
@@ -494,6 +533,13 @@ sudo cp -r dist/* /var/www/html/
 - [🔧 开发指南](docs/development.md)
 - [❓ 常见问题](docs/faq.md)
 - [🔄 更新日志](CHANGELOG.md)
+
+### 私有化集成文档 🆕
+- [📖 客户集成指南](backend/docs/客户集成指南.md) - 详细的客户系统集成说明
+- [📋 API接口文档](backend/docs/API接口文档.md) - 完整的API接口说明
+- [🚀 私有化部署指南](backend/docs/私有化部署指南.md) - Docker和源码部署指导
+- [💻 Python SDK](backend/client-sdk/python/guardrails_client.py) - Python客户端SDK
+- [💻 Node.js SDK](backend/client-sdk/nodejs/guardrails-client.js) - Node.js客户端SDK
 
 ## 🤝 贡献指南
 

@@ -220,7 +220,7 @@ print(f"检测结果: {response.overall_risk_level}")`}
               header={
                 <Space>
                   <Tag color="green">Python 异步</Tag>
-                  <Text>异步接口方式</Text>
+                  <Text>异步接口方式（不会超过API速度限制）</Text>
                 </Space>
               } 
               key="async"

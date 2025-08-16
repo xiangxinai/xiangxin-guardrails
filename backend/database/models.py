@@ -159,6 +159,18 @@ class UserRateLimit(Base):
     # 关联关系
     user = relationship("User")
 
+class UserRateLimitCounter(Base):
+    """用户实时限速计数器表 - 用于跨进程限速"""
+    __tablename__ = "user_rate_limit_counters"
+    
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True, index=True)
+    current_count = Column(Integer, default=0, nullable=False)  # 当前窗口内的请求计数
+    window_start = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)  # 窗口开始时间
+    last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)  # 最后更新时间
+    
+    # 关联关系
+    user = relationship("User")
+
 class TestModelConfig(Base):
     """被测模型配置表"""
     __tablename__ = "test_model_configs"

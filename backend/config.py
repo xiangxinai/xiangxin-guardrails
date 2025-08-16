@@ -64,14 +64,26 @@ class Settings(BaseSettings):
     smtp_use_ssl: bool = False
     
 
-    # 服务器配置
+    # 服务器配置 - 双服务架构
     host: str = "0.0.0.0"
-    port: int = 5000
-    uvicorn_workers: int = 4
-    max_concurrent_requests: int = 100
+    
+    # 检测服务配置（高并发）
+    detection_port: int = 5000
+    detection_uvicorn_workers: int = 32
+    detection_max_concurrent_requests: int = 400
+    
+    # 管理服务配置（低并发）
+    admin_port: int = 5001
+    admin_uvicorn_workers: int = 2
+    admin_max_concurrent_requests: int = 50
 
     # 开发运维：是否在启动时重置数据库（删除并重建所有表）
     reset_database_on_startup: bool = False
+    
+    # 私有化部署配置：是否将检测结果存储到数据库
+    # true: 存储到数据库（SaaS模式，完整数据分析）
+    # false: 仅写日志文件（私有化模式，减少数据库压力）
+    store_detection_results: bool = True
 
     class Config:
         # Ensure we load the .env file next to this config module,

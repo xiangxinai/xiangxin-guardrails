@@ -12,6 +12,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [未发布 Unreleased]
 
+### 新增 Added
+- 🏗️ **双服务架构重构**
+  - 拆分为检测服务(detection_service.py)和管理服务(admin_service.py)
+  - 检测服务专注高并发处理，只做认证和写日志文件
+  - 管理服务负责完整管理功能和日志导入数据库
+  - 数据库连接数优化：从4,800降至176（减少96%）
+
+- 🔌 **私有化集成模式** 🆕
+  - 支持与客户现有用户系统深度集成
+  - 新增 `STORE_DETECTION_RESULTS` 配置开关，控制检测结果存储方式
+  - 客户可通过API管理用户级别的黑白名单和代答模板
+  - JWT认证确保用户数据完全隔离
+  - 数据库仅存储配置信息，检测数据可选择性存储
+
+- 🚀 **性能优化**
+  - 检测服务连接池优化：从150连接/worker降至5连接/worker
+  - 新增轻量级DetectionGuardrailService，移除不必要的数据库写入
+  - 异步日志导入服务(LogToDbService)，定期将日志文件导入数据库
+  - 检测API响应速度显著提升
+
+- 📁 **新增文件**
+  - `backend/detection_service.py` - 高并发检测服务入口
+  - `backend/admin_service.py` - 低并发管理服务入口
+  - `backend/services/detection_guardrail_service.py` - 轻量级检测服务
+  - `backend/services/log_to_db_service.py` - 日志导入数据库服务
+  - `backend/routers/detection_guardrails.py` - 检测专用路由
+  - `backend/start_detection_service.py` - 检测服务启动脚本
+  - `backend/start_admin_service.py` - 管理服务启动脚本
+  - `backend/start_both_services.sh` - 双服务启动脚本
+  - `backend/stop_both_services.sh` - 双服务停止脚本
+  - `backend/README_DUAL_SERVICES.md` - 双服务架构说明文档
+
+- 📖 **私有化集成文档和SDK** 🆕
+  - `backend/docs/客户集成指南.md` - 详细的客户系统集成说明
+  - `backend/docs/API接口文档.md` - 完整的API接口文档
+  - `backend/docs/私有化部署指南.md` - Docker和源码部署指导
+  - `backend/client-sdk/python/guardrails_client.py` - Python客户端SDK
+  - `backend/client-sdk/nodejs/guardrails-client.js` - Node.js客户端SDK
+
+### 变更 Changed
+- 🔧 **配置优化**
+  - 更新.env配置支持双服务端口配置
+  - 新增检测服务配置：DETECTION_PORT、DETECTION_UVICORN_WORKERS
+  - 新增管理服务配置：ADMIN_PORT、ADMIN_UVICORN_WORKERS
+  - 数据库连接池分离配置
+  - 新增 `STORE_DETECTION_RESULTS` 环境变量控制检测结果存储策略
+
+- 📊 **数据流架构重设计**
+  ```
+  # SaaS模式 (STORE_DETECTION_RESULTS=true)
+  检测API → 检测服务 → 认证缓存 + 写日志文件
+  日志文件 → 管理服务 → 日志导入器 → 数据库
+  管理API → 管理服务 → 数据库查询
+  
+  # 私有化集成模式 (STORE_DETECTION_RESULTS=false)
+  检测API → 检测服务 → 认证缓存 + 写日志文件
+  配置API → 管理服务 → 数据库（仅配置数据）
+  客户中控台 → 通过JWT管理用户配置
+  ```
+
+### 修复 Fixed
+- 🐛 **数据库连接池问题**
+  - 解决32个worker×150连接=4,800连接的资源浪费问题
+  - 修复高并发下数据库连接耗尽的风险
+  - 优化内存使用，避免不必要的数据库操作
+
 ### 计划中 Planned
 - [ ] 多模态内容检测支持（图像、音频）
 - [ ] 边缘计算轻量化部署方案

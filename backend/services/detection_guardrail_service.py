@@ -3,7 +3,6 @@ import json
 from typing import List, Dict, Tuple, Optional, Union
 from datetime import datetime
 from sqlalchemy.orm import Session
-from database.models import DetectionResult, ResponseTemplate
 from services.model_service import model_service
 from services.keyword_service import KeywordService
 from services.keyword_cache import keyword_cache
@@ -47,27 +46,28 @@ CATEGORY_NAMES = {
     'S12': '商业违法违规',
 }
 
-class GuardrailService:
-    """护栏检测服务"""
+class DetectionGuardrailService:
+    """检测服务专用护栏服务 - 只写日志，不写数据库"""
     
-    def __init__(self, db: Session):
-        self.db = db
-        self.keyword_service = KeywordService(db)
+    def __init__(self):
+        # 不需要数据库连接，只使用缓存
+        pass
     
     async def check_guardrails(
         self, 
         request: GuardrailRequest,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
-        user_id: Optional[str] = None  # 改为字符串类型
+        user_id: Optional[str] = None
     ) -> GuardrailResponse:
-        """执行护栏检测"""
+        """执行护栏检测（只写日志文件）"""
         
         # 生成请求ID
         request_id = f"guardrails-{uuid.uuid4().hex}"
         
         # 提取用户内容
         user_content = self._extract_user_content(request.messages)
+        
         try:
             # 1. 黑白名单预检（使用高性能内存缓存，按用户隔离）
             blacklist_hit, blacklist_name, blacklist_keywords = await keyword_cache.check_blacklist(user_content, user_id)
@@ -85,19 +85,18 @@ class GuardrailService:
                 )
             
             # 2. 模型检测
-            # 将 Message 对象转换为字典格式
             messages_dict = [{"role": msg.role, "content": msg.content} for msg in request.messages]
             model_response = await model_service.check_messages(messages_dict)
             
             # 3. 解析模型响应
             compliance_result, security_result = self._parse_model_response(model_response)
             
-            # 4. 确定建议动作和回答（传入 user_id 以按用户选择代答模板）
+            # 4. 确定建议动作和回答
             overall_risk_level, suggest_action, suggest_answer = await self._determine_action(
                 compliance_result, security_result, user_id
             )
             
-            # 5. 异步记录检测结果到日志
+            # 5. 异步记录检测结果到日志文件（不写数据库）
             await self._log_detection_result(
                 request_id, user_content, compliance_result, security_result,
                 suggest_action, suggest_answer, model_response, 
@@ -126,10 +125,8 @@ class GuardrailService:
     def _extract_user_content(self, messages: List[Message]) -> str:
         """提取完整对话内容"""
         if len(messages) == 1 and messages[0].role == 'user':
-            # 单条用户消息（提示词检测）
             return messages[0].content
         else:
-            # 多条消息（对话检测），保存完整对话
             conversation_parts = []
             for msg in messages:
                 role_label = "用户" if msg.role == "user" else "助手" if msg.role == "assistant" else msg.role
@@ -147,59 +144,67 @@ class GuardrailService:
             )
         
         if response.startswith("unsafe\n"):
-            category = response.split('\n')[1] if '\n' in response else ""
-            risk_level = RISK_LEVEL_MAPPING.get(category, "中风险")
-            category_name = CATEGORY_NAMES.get(category, category)
+            lines = response.split('\n')[1:]
+            categories = [line.strip() for line in lines if line.strip()]
             
-            if category == "S9":  # 提示词攻击
-                return (
-                    ComplianceResult(risk_level="无风险", categories=[]),
-                    SecurityResult(risk_level=risk_level, categories=[category_name])
-                )
-            else:  # 内容合规问题
-                return (
-                    ComplianceResult(risk_level=risk_level, categories=[category_name]),
-                    SecurityResult(risk_level="无风险", categories=[])
-                )
+            compliance_categories = []
+            security_categories = []
+            
+            for category in categories:
+                if category in CATEGORY_NAMES:
+                    if category == 'S9':  # 提示词攻击属于安全类别
+                        security_categories.append(CATEGORY_NAMES[category])
+                    else:  # 其他所有类别都属于内容合规类别
+                        compliance_categories.append(CATEGORY_NAMES[category])
+            
+            compliance_risk = self._get_highest_risk_level(compliance_categories)
+            security_risk = self._get_highest_risk_level(security_categories)
+            
+            return (
+                ComplianceResult(risk_level=compliance_risk, categories=compliance_categories),
+                SecurityResult(risk_level=security_risk, categories=security_categories)
+            )
         
-        # 默认返回安全
         return (
             ComplianceResult(risk_level="无风险", categories=[]),
             SecurityResult(risk_level="无风险", categories=[])
         )
     
-    async def _determine_action(
-        self, 
-        compliance_result: ComplianceResult,
-        security_result: SecurityResult,
-        user_id: Optional[str] = None
-    ) -> Tuple[str, str, Optional[str]]:
-        """确定建议动作和回答"""
+    def _get_highest_risk_level(self, categories: List[str]) -> str:
+        """获取最高风险等级"""
+        if not categories:
+            return "无风险"
         
-        # 定义风险等级优先级（数值越高优先级越高）
-        risk_priority = {
-            "无风险": 0,
-            "低风险": 1,
-            "中风险": 2,
-            "高风险": 3
-        }
+        risk_levels = []
+        for category in categories:
+            for code, name in CATEGORY_NAMES.items():
+                if name == category:
+                    risk_levels.append(RISK_LEVEL_MAPPING[code])
+                    break
         
-        # 获取最高风险等级
-        compliance_priority = risk_priority.get(compliance_result.risk_level, 0)
-        security_priority = risk_priority.get(security_result.risk_level, 0)
-        
-        # 取最高优先级对应的风险等级
-        max_priority = max(compliance_priority, security_priority)
-        overall_risk_level = next(level for level, priority in risk_priority.items() if priority == max_priority)
-        
-        # 收集所有风险类别
+        if "高风险" in risk_levels:
+            return "高风险"
+        elif "中风险" in risk_levels:
+            return "中风险"
+        elif "低风险" in risk_levels:
+            return "低风险"
+        else:
+            return "无风险"
+    
+    async def _determine_action(self, compliance_result: ComplianceResult, security_result: SecurityResult, user_id: Optional[str] = None) -> Tuple[str, str, Optional[str]]:
+        """确定建议动作"""
+        overall_risk_level = "无风险"
         risk_categories = []
+        
         if compliance_result.risk_level != "无风险":
+            overall_risk_level = compliance_result.risk_level
             risk_categories.extend(compliance_result.categories)
+        
         if security_result.risk_level != "无风险":
+            if overall_risk_level == "无风险" or (overall_risk_level != "高风险" and security_result.risk_level == "高风险"):
+                overall_risk_level = security_result.risk_level
             risk_categories.extend(security_result.categories)
         
-        # 根据综合风险等级确定动作
         if overall_risk_level == "无风险":
             return overall_risk_level, "通过", None
         elif overall_risk_level == "高风险":
@@ -213,7 +218,7 @@ class GuardrailService:
             return overall_risk_level, "代答", suggest_answer
     
     async def _get_suggest_answer(self, categories: List[str], user_id: Optional[str] = None) -> str:
-        """获取建议回答（使用高性能内存缓存，并按用户隔离）"""
+        """获取建议回答"""
         return await template_cache.get_suggest_answer(categories, user_id)
     
     async def _handle_blacklist_hit(
@@ -223,7 +228,6 @@ class GuardrailService:
     ) -> GuardrailResponse:
         """处理黑名单命中"""
         
-        # 异步记录到日志
         detection_data = {
             "request_id": request_id,
             "user_id": user_id,
@@ -260,7 +264,6 @@ class GuardrailService:
     ) -> GuardrailResponse:
         """处理白名单命中"""
         
-        # 异步记录到日志
         detection_data = {
             "request_id": request_id,
             "user_id": user_id,
@@ -296,8 +299,7 @@ class GuardrailService:
         model_response: str, ip_address: Optional[str], user_agent: Optional[str],
         user_id: Optional[str] = None
     ):
-        """异步记录检测结果到日志"""
-        
+        """异步记录检测结果到日志文件（不写数据库）"""
         detection_data = {
             "request_id": request_id,
             "user_id": user_id,
@@ -312,16 +314,13 @@ class GuardrailService:
             "compliance_risk_level": compliance_result.risk_level,
             "compliance_categories": compliance_result.categories,
             "created_at": datetime.now().isoformat(),
-            "hit_keywords": None  # 只有黑白名单命中才有值
+            "hit_keywords": None
         }
-        
-        # 只写日志文件，不写数据库（由管理服务的日志处理器负责写数据库）
         await async_detection_logger.log_detection(detection_data)
     
-    async def _handle_error(self, request_id: str, content: str, error: str, user_id: Optional[int] = None) -> GuardrailResponse:
+    async def _handle_error(self, request_id: str, content: str, error: str, user_id: Optional[str] = None) -> GuardrailResponse:
         """处理错误情况"""
         
-        # 异步记录错误检测结果
         detection_data = {
             "request_id": request_id,
             "user_id": user_id,
@@ -346,7 +345,7 @@ class GuardrailService:
                 compliance=ComplianceResult(risk_level="无风险", categories=[]),
                 security=SecurityResult(risk_level="无风险", categories=[])
             ),
-            overall_risk_level="无风险",  # 系统错误时按无风险通过处理
+            overall_risk_level="无风险",
             suggest_action="通过",
             suggest_answer=None
         )
