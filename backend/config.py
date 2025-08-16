@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     guardrails_model_api_key: str = "your-model-api-key"
     guardrails_model_name: str = "Xiangxin-Guardrails-Text"
     
+    # 检测最大上下文长度配置 (应该等于模型max-model-len - 1000)
+    max_detection_context_length: int = 7168
+    
     # API配置
     cors_origins: str = "*"
     

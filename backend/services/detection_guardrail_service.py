@@ -12,6 +12,7 @@ from services.risk_config_cache import risk_config_cache
 from models.requests import GuardrailRequest, Message
 from models.responses import GuardrailResponse, GuardrailResult, ComplianceResult, SecurityResult
 from utils.logger import setup_logger
+from utils.message_truncator import MessageTruncator
 
 logger = setup_logger()
 
@@ -66,8 +67,16 @@ class DetectionGuardrailService:
         # 生成请求ID
         request_id = f"guardrails-{uuid.uuid4().hex}"
         
-        # 提取用户内容
-        user_content = self._extract_user_content(request.messages)
+        # 首先截断消息以符合最大上下文长度要求
+        truncated_messages = MessageTruncator.truncate_messages(request.messages)
+        
+        # 如果截断后没有消息，返回错误
+        if not truncated_messages:
+            logger.warning(f"No valid messages after truncation for request {request_id}")
+            return await self._handle_error(request_id, "", "No valid messages after truncation", user_id)
+        
+        # 提取用户内容（使用截断后的消息）
+        user_content = self._extract_user_content(truncated_messages)
         
         try:
             # 1. 黑白名单预检（使用高性能内存缓存，按用户隔离）
@@ -85,8 +94,8 @@ class DetectionGuardrailService:
                     ip_address, user_agent, user_id
                 )
             
-            # 2. 模型检测
-            messages_dict = [{"role": msg.role, "content": msg.content} for msg in request.messages]
+            # 2. 模型检测（使用截断后的消息）
+            messages_dict = [{"role": msg.role, "content": msg.content} for msg in truncated_messages]
             model_response = await model_service.check_messages(messages_dict)
             
             # 3. 解析模型响应并应用风险类型过滤
