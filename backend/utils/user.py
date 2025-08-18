@@ -99,9 +99,11 @@ def regenerate_api_key(db: Session, user_id: Union[str, uuid.UUID]) -> Optional[
     return new_api_key
 
 def get_user_by_api_key(db: Session, api_key: str) -> Optional[User]:
-    """通过API密钥获取用户（允许未激活账号用于API访问）"""
+    """通过API密钥获取用户（仅返回已验证用户）"""
     return db.query(User).filter(
-        User.api_key == api_key
+        User.api_key == api_key,
+        User.is_verified == True,
+        User.is_active == True
     ).first()
 
 def get_user_by_email(db: Session, email: str) -> Optional[User]:

@@ -69,8 +69,8 @@ def get_current_user_from_token(credentials: HTTPAuthorizationCredentials, db: S
                 raise HTTPException(status_code=401, detail="Invalid user ID format")
         
         user = db.query(User).filter(User.id == user_id).first()
-        if not user or not user.is_active:
-            raise HTTPException(status_code=401, detail="User not found or inactive")
+        if not user or not user.is_active or not user.is_verified:
+            raise HTTPException(status_code=401, detail="User not found, inactive, or not verified")
         
         return user
     except Exception as e:
@@ -214,12 +214,12 @@ async def login_user(login_data: LoginRequest, request: Request, db: Session = D
             detail="Invalid credentials"
         )
     
-    # 检查账号是否已激活
-    if not user.is_active:
+    # 检查账号是否已激活且邮箱已验证
+    if not user.is_active or not user.is_verified:
         record_login_attempt(db, login_data.email, client_ip, user_agent, False)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account not activated. Please verify your email address."
+            detail="Account not verified. Please check your email address and complete verification."
         )
     
     # 记录成功登录
