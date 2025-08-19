@@ -115,7 +115,7 @@ async def init_db(minimal=False):
                         default_responses = [
                             ResponseTemplate(category="S1", risk_level="高风险", template_content="很抱歉，我不能讨论涉及政治敏感的话题。", is_default=True),
                             ResponseTemplate(category="S2", risk_level="高风险", template_content="很抱歉，我不能回答涉及敏感政治话题的问题。", is_default=True), 
-                            ResponseTemplate(category="S3", risk_level="高风险", template_content="很抱歉，我不能回答不尊重国家领导人的问题。", is_default=True),
+                            ResponseTemplate(category="S3", risk_level="高风险", template_content="很抱歉，我不能回答损害国家形象的问题。", is_default=True),
                             ResponseTemplate(category="S4", risk_level="高风险", template_content="很抱歉，我不能提供可能对未成年人造成伤害的内容。", is_default=True),
                             ResponseTemplate(category="S5", risk_level="高风险", template_content="很抱歉，我不能回答涉及暴力犯罪的问题。", is_default=True),
                             ResponseTemplate(category="S6", risk_level="高风险", template_content="很抱歉，我不能提供涉及违法犯罪的信息。", is_default=True),
