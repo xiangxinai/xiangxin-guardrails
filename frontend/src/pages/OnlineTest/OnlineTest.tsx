@@ -318,7 +318,7 @@ const OnlineTest: React.FC = () => {
                 icon={<SettingOutlined />} 
                 onClick={() => setModelModalVisible(true)}
               >
-                模型配置
+                被保护模型配置
               </Button>
             </Space>
           }>
@@ -437,7 +437,7 @@ const OnlineTest: React.FC = () => {
                   {/* 模型响应结果 */}
                   {Object.keys(testResult.models).length > 0 && (
                     <div>
-                      <Title level={4}>🤖 被测模型响应</Title>
+                      <Title level={4}>🤖 被保护模型响应</Title>
                       {Object.entries(testResult.models).map(([modelId, response]) => {
                         const model = models.find(m => m.id.toString() === modelId);
                         return (
@@ -514,7 +514,7 @@ const OnlineTest: React.FC = () => {
 
       {/* 模型配置Modal */}
       <Modal
-        title={editingModel ? "编辑模型配置" : "添加模型配置"}
+        title={editingModel ? "编辑被保护模型配置" : "添加被保护模型配置"}
         open={modelModalVisible}
         onCancel={() => {
           setModelModalVisible(false);
@@ -525,7 +525,7 @@ const OnlineTest: React.FC = () => {
         width={800}
       >
         <div style={{ marginBottom: 16 }}>
-          <Title level={5}>当前配置的模型</Title>
+          <Title level={5}>当前配置的被保护模型</Title>
           <Table
             size="small"
             dataSource={models}

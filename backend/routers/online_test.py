@@ -233,7 +233,7 @@ async def test_model_api(model: ModelConfig, messages: List[Dict[str, str]]) -> 
         client = AsyncOpenAI(
             api_key=model.api_key,
             base_url=model.base_url.rstrip('/'),
-            timeout=30.0
+            timeout=120.0
         )
         
         # 调用模型API

@@ -200,7 +200,7 @@ class UserRateLimitCounter(Base):
     user = relationship("User")
 
 class TestModelConfig(Base):
-    """被测模型配置表"""
+    """被保护模型配置表"""
     __tablename__ = "test_model_configs"
     
     id = Column(Integer, primary_key=True, index=True)
