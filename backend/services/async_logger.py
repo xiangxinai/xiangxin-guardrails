@@ -2,7 +2,7 @@ import os
 import json
 import asyncio
 import aiofiles
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from pathlib import Path
 from utils.logger import setup_logger
@@ -46,8 +46,8 @@ class AsyncDetectionLogger:
         if not self._running:
             await self.start()
         
-        # 添加时间戳
-        detection_data['logged_at'] = datetime.now().isoformat()
+        # 添加时间戳（带时区信息）
+        detection_data['logged_at'] = datetime.now(timezone.utc).isoformat()
         
         # 直接写入文件（简化版本用于调试）
         try:

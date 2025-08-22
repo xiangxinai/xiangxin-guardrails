@@ -255,6 +255,7 @@ const UserManagement: React.FC = () => {
       dataIndex: 'created_at',
       key: 'created_at',
       sorter: (a: User, b: User) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      defaultSortOrder: 'descend' as const,
       render: (date: string) => new Date(date).toLocaleString(),
     },
     {

@@ -1,7 +1,7 @@
 import json
 import asyncio
 import aiofiles
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
@@ -182,9 +182,16 @@ class DataSyncService:
             created_at = None
             if detection_data.get('created_at'):
                 try:
-                    created_at = datetime.fromisoformat(detection_data['created_at'].replace('Z', '+00:00'))
+                    # 处理多种时间格式
+                    time_str = detection_data['created_at']
+                    if time_str.endswith('Z'):
+                        time_str = time_str.replace('Z', '+00:00')
+                    elif not time_str.endswith(('+00:00', '+08:00')) and 'T' in time_str:
+                        # 如果没有时区信息，假设是中国本地时间（UTC+8）
+                        time_str = time_str + '+08:00'
+                    created_at = datetime.fromisoformat(time_str)
                 except ValueError:
-                    created_at = datetime.now()
+                    created_at = datetime.now(timezone.utc)
             
             # 创建检测结果记录
             user_id = detection_data.get('user_id')
@@ -220,7 +227,7 @@ class DataSyncService:
                     security_categories=detection_data.get('security_categories', []),
                     compliance_risk_level=detection_data.get('compliance_risk_level', '无风险'),
                     compliance_categories=detection_data.get('compliance_categories', []),
-                    created_at=created_at or datetime.now()
+                    created_at=created_at or datetime.now(timezone.utc)
                 )
             
             db.add(detection_result)

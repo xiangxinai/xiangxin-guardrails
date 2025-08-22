@@ -2,7 +2,7 @@ import asyncio
 import json
 import uuid
 import pickle
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Set
 from sqlalchemy.orm import Session
@@ -144,11 +144,18 @@ class LogToDbService:
             created_at = None
             if log_data.get('created_at'):
                 try:
-                    created_at = datetime.fromisoformat(log_data['created_at'].replace('Z', '+00:00'))
+                    # 处理多种时间格式
+                    time_str = log_data['created_at']
+                    if time_str.endswith('Z'):
+                        time_str = time_str.replace('Z', '+00:00')
+                    elif not time_str.endswith(('+00:00', '+08:00')) and 'T' in time_str:
+                        # 如果没有时区信息，假设是中国本地时间（UTC+8）
+                        time_str = time_str + '+08:00'
+                    created_at = datetime.fromisoformat(time_str)
                 except ValueError:
-                    created_at = datetime.now()
+                    created_at = datetime.now(timezone.utc)
             else:
-                created_at = datetime.now()
+                created_at = datetime.now(timezone.utc)
             
             # 创建检测结果记录
             detection_result = DetectionResult(

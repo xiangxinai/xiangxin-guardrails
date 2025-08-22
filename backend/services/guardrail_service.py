@@ -1,7 +1,7 @@
 import uuid
 import json
 from typing import List, Dict, Tuple, Optional, Union
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from database.models import DetectionResult, ResponseTemplate
 from services.model_service import model_service
@@ -249,7 +249,7 @@ class GuardrailService:
             "security_categories": [],
             "compliance_risk_level": "高风险",
             "compliance_categories": [list_name],
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         await async_detection_logger.log_detection(detection_data)
         
@@ -286,7 +286,7 @@ class GuardrailService:
             "security_categories": [],
             "compliance_risk_level": "无风险",
             "compliance_categories": [],
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         await async_detection_logger.log_detection(detection_data)
         
@@ -322,7 +322,7 @@ class GuardrailService:
             "security_categories": security_result.categories,
             "compliance_risk_level": compliance_result.risk_level,
             "compliance_categories": compliance_result.categories,
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "hit_keywords": None  # 只有黑白名单命中才有值
         }
         
@@ -344,7 +344,7 @@ class GuardrailService:
             "security_categories": [],
             "compliance_risk_level": "无风险",
             "compliance_categories": [],
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "hit_keywords": None,
             "ip_address": None,
             "user_agent": None
