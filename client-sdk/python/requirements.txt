@@ -1,0 +1,10 @@
+# 象信AI安全护栏 Python SDK 依赖
+# Python 3.7+ 支持
+
+pyjwt==2.8.0
+requests==2.31.0
+
+# 可选依赖 - 用于更好的性能和功能
+# urllib3==2.1.0  # 更新的HTTP库
+# certifi==2023.11.17  # SSL证书验证
+# charset-normalizer==3.3.2  # 字符编码处理

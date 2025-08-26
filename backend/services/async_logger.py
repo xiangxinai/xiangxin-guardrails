@@ -46,8 +46,12 @@ class AsyncDetectionLogger:
         if not self._running:
             await self.start()
         
+        # 清理数据中的NUL字符
+        from utils.validators import clean_detection_data
+        cleaned_data = clean_detection_data(detection_data.copy())
+        
         # 添加时间戳（带时区信息）
-        detection_data['logged_at'] = datetime.now(timezone.utc).isoformat()
+        cleaned_data['logged_at'] = datetime.now(timezone.utc).isoformat()
         
         # 直接写入文件（简化版本用于调试）
         try:
@@ -57,16 +61,16 @@ class AsyncDetectionLogger:
             import json
             import aiofiles
             async with aiofiles.open(log_file_path, 'a', encoding='utf-8') as f:
-                json_line = json.dumps(detection_data, ensure_ascii=False) + '\n'
+                json_line = json.dumps(cleaned_data, ensure_ascii=False) + '\n'
                 await f.write(json_line)
                 await f.flush()
             
-            logger.debug(f"Logged detection: {detection_data['request_id']}")
+            logger.debug(f"Logged detection: {cleaned_data['request_id']}")
         except Exception as e:
             logger.error(f"Failed to log detection: {e}")
         
         # 也加入队列（保持兼容性）
-        await self._queue.put(detection_data)
+        await self._queue.put(cleaned_data)
     
     async def _writer_loop(self):
         """异步写入循环（批量优化版）"""

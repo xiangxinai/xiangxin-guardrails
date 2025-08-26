@@ -61,6 +61,7 @@ interface GuardrailResult {
   overall_risk_level: string;
   suggest_action: string;
   suggest_answer: string;
+  error?: string; // 添加错误信息字段
 }
 
 interface ModelResponse {
@@ -201,7 +202,37 @@ const OnlineTest: React.FC = () => {
     } catch (error: any) {
       console.error('Test failed:', error);
       const errorMessage = error?.response?.data?.detail || error?.message || '测试执行失败';
-      message.error(`测试执行失败: ${errorMessage}`);
+      const status = error?.response?.status;
+      
+      // 对于特定的HTTP错误，在护栏结果中显示
+      if (status === 429 || status === 401 || status === 500) {
+        let displayMessage = errorMessage;
+        
+        // 为特定错误状态添加更友好的描述
+        if (status === 401) {
+          displayMessage = 'API认证失败，请检查您的API Key是否正确';
+        } else if (status === 429) {
+          // 429是限速错误，不要覆盖后端返回的具体限速信息
+          displayMessage = errorMessage;
+        } else if (status === 500) {
+          displayMessage = '服务器内部错误，请稍后重试或联系管理员';
+        }
+        
+        setTestResult({
+          guardrail: {
+            compliance: { risk_level: '测试失败', categories: [] },
+            security: { risk_level: '测试失败', categories: [] },
+            overall_risk_level: '测试失败',
+            suggest_action: '测试失败',
+            suggest_answer: '',
+            error: displayMessage
+          },
+          models: {}
+        });
+      } else {
+        // 其他错误（如网络错误）仍然使用弹窗提示
+        message.error(`测试执行失败: ${errorMessage}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -285,6 +316,9 @@ const OnlineTest: React.FC = () => {
       case '无风险': 
       case 'safe': 
         return 'green';
+      case '测试失败':
+      case '检测失败':
+        return 'red';
       default: return 'default';
     }
   };
@@ -294,6 +328,9 @@ const OnlineTest: React.FC = () => {
       case '阻断': return 'red';
       case '代答': return 'orange';
       case '通过': return 'green';
+      case '测试失败':
+      case '系统错误':
+        return 'red';
       default: return 'default';
     }
   };
@@ -365,73 +402,93 @@ const OnlineTest: React.FC = () => {
                   {/* 护栏检测结果 */}
                   <div>
                     <Title level={4}>🛡️ 安全护栏检测结果</Title>
-                    <Row gutter={16}>
-                      <Col span={12}>
-                        <Card size="small" title="安全风险">
-                          <Space direction="vertical">
-                            <div>
-                              <Text>风险等级: </Text>
-                              <Tag color={getRiskColor(testResult.guardrail.security?.risk_level)}>
-                                {testResult.guardrail.security?.risk_level || '无风险'}
-                              </Tag>
-                            </div>
-                            {testResult.guardrail.security?.categories?.length > 0 && (
-                              <div>
-                                <Text>风险类别: </Text>
-                                {testResult.guardrail.security.categories.map((cat, idx) => (
-                                  <Tag key={idx} color="red">{cat}</Tag>
-                                ))}
-                              </div>
-                            )}
-                          </Space>
-                        </Card>
-                      </Col>
-                      <Col span={12}>
-                        <Card size="small" title="合规风险">
-                          <Space direction="vertical">
-                            <div>
-                              <Text>风险等级: </Text>
-                              <Tag color={getRiskColor(testResult.guardrail.compliance?.risk_level)}>
-                                {testResult.guardrail.compliance?.risk_level || '无风险'}
-                              </Tag>
-                            </div>
-                            {testResult.guardrail.compliance?.categories?.length > 0 && (
-                              <div>
-                                <Text>风险类别: </Text>
-                                {testResult.guardrail.compliance.categories.map((cat, idx) => (
-                                  <Tag key={idx} color="orange">{cat}</Tag>
-                                ))}
-                              </div>
-                            )}
-                          </Space>
-                        </Card>
-                      </Col>
-                    </Row>
                     
-                    <Divider />
-                    
-                    <Row gutter={16}>
-                      <Col span={8}>
-                        <Text>综合风险等级: </Text>
-                        <Tag color={getRiskColor(testResult.guardrail.overall_risk_level)}>
-                          <strong>{testResult.guardrail.overall_risk_level}</strong>
-                        </Tag>
-                      </Col>
-                      <Col span={8}>
-                        <Text>建议行动: </Text>
-                        <Tag color={getActionColor(testResult.guardrail.suggest_action)}>
-                          <strong>{testResult.guardrail.suggest_action}</strong>
-                        </Tag>
-                      </Col>
-                      <Col span={8}>
-                        {testResult.guardrail.suggest_answer && (
+                    {/* 如果有错误信息，优先显示错误 */}
+                    {testResult.guardrail.error ? (
+                      <Alert
+                        message="检测失败"
+                        description={
                           <div>
-                            <Text>建议回答: </Text>
-                            <Text code>{testResult.guardrail.suggest_answer}</Text>
+                            <Text strong>失败原因：</Text>
+                            <br />
+                            <Text>{testResult.guardrail.error}</Text>
                           </div>
-                        )}
-                      </Col>
-                    </Row>
+                        }
+                        type="error"
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                      />
+                    ) : (
+                      <>
+                        <Row gutter={16}>
+                          <Col span={12}>
+                            <Card size="small" title="安全风险">
+                              <Space direction="vertical">
+                                <div>
+                                  <Text>风险等级: </Text>
+                                  <Tag color={getRiskColor(testResult.guardrail.security?.risk_level)}>
+                                    {testResult.guardrail.security?.risk_level || '无风险'}
+                                  </Tag>
+                                </div>
+                                {testResult.guardrail.security?.categories?.length > 0 && (
+                                  <div>
+                                    <Text>风险类别: </Text>
+                                    {testResult.guardrail.security.categories.map((cat, idx) => (
+                                      <Tag key={idx} color="red">{cat}</Tag>
+                                    ))}
+                                  </div>
+                                )}
+                              </Space>
+                            </Card>
+                          </Col>
+                          <Col span={12}>
+                            <Card size="small" title="合规风险">
+                              <Space direction="vertical">
+                                <div>
+                                  <Text>风险等级: </Text>
+                                  <Tag color={getRiskColor(testResult.guardrail.compliance?.risk_level)}>
+                                    {testResult.guardrail.compliance?.risk_level || '无风险'}
+                                  </Tag>
+                                </div>
+                                {testResult.guardrail.compliance?.categories?.length > 0 && (
+                                  <div>
+                                    <Text>风险类别: </Text>
+                                    {testResult.guardrail.compliance.categories.map((cat, idx) => (
+                                      <Tag key={idx} color="orange">{cat}</Tag>
+                                    ))}
+                                  </div>
+                                )}
+                              </Space>
+                            </Card>
+                          </Col>
+                        </Row>
+                        
+                        <Divider />
+                        
+                        <Row gutter={16}>
+                          <Col span={8}>
+                            <Text>综合风险等级: </Text>
+                            <Tag color={getRiskColor(testResult.guardrail.overall_risk_level)}>
+                              <strong>{testResult.guardrail.overall_risk_level}</strong>
+                            </Tag>
+                          </Col>
+                          <Col span={8}>
+                            <Text>建议行动: </Text>
+                            <Tag color={getActionColor(testResult.guardrail.suggest_action)}>
+                              <strong>{testResult.guardrail.suggest_action}</strong>
+                            </Tag>
+                          </Col>
+                          <Col span={8}>
+                            {testResult.guardrail.suggest_answer && (
+                              <div>
+                                <Text>建议回答: </Text>
+                                <Text code>{testResult.guardrail.suggest_answer}</Text>
+                              </div>
+                            )}
+                          </Col>
+                        </Row>
+                      </>
+                    )}
                   </div>
 
                   {/* 模型响应结果 */}

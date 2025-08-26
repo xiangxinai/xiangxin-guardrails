@@ -1,20 +1,30 @@
 """
-象信AI安全护栏 - Python客户端SDK
+象信AI安全护栏 - Python客户端SDK (v2.0)
 
 使用示例:
     from guardrails_client import GuardrailsClient
     
+    # 方式一：使用API Key（推荐）
     client = GuardrailsClient(
-        api_base_url="http://your-guardrails-api.com",
+        detection_url="http://your-guardrails-detection:5000",
+        admin_url="http://your-guardrails-admin:5001", 
+        api_key="your-api-key"
+    )
+    
+    # 方式二：使用JWT密钥（向后兼容）
+    client = GuardrailsClient(
+        detection_url="http://your-guardrails-detection:5000",
+        admin_url="http://your-guardrails-admin:5001",
         jwt_secret="your-jwt-secret-key"
     )
     
     # 检测内容
     result = client.check_content(
-        user_id="550e8400-e29b-41d4-a716-446655440001",
-        user_email="user@example.com",
         messages=[{"role": "user", "content": "要检测的内容"}]
     )
+    
+    # 管理黑名单
+    blacklists = client.get_blacklists()
 """
 
 import jwt
@@ -52,21 +62,29 @@ class RateLimitError(GuardrailsError):
 class GuardrailsClient:
     """象信AI安全护栏客户端"""
     
-    def __init__(self, api_base_url: str, jwt_secret: str, 
+    def __init__(self, detection_url: str, admin_url: str, 
+                 api_key: str = None, jwt_secret: str = None,
                  timeout: int = 30, max_retries: int = 3):
         """
         初始化客户端
         
         Args:
-            api_base_url: API基础URL
-            jwt_secret: JWT密钥（与护栏系统相同）
+            detection_url: 检测服务URL (通常是端口5000)
+            admin_url: 管理服务URL (通常是端口5001)
+            api_key: API密钥（推荐方式）
+            jwt_secret: JWT密钥（与护栏系统相同，向后兼容）
             timeout: 请求超时时间（秒）
             max_retries: 最大重试次数
         """
-        self.api_base_url = api_base_url.rstrip('/')
+        self.detection_url = detection_url.rstrip('/')
+        self.admin_url = admin_url.rstrip('/')
+        self.api_key = api_key
         self.jwt_secret = jwt_secret
         self.timeout = timeout
         self.max_retries = max_retries
+        
+        if not api_key and not jwt_secret:
+            raise ValueError("必须提供 api_key 或 jwt_secret 其中之一")
         
         # 设置日志
         self.logger = logging.getLogger(__name__)
@@ -74,13 +92,13 @@ class GuardrailsClient:
         # 会话对象，支持连接池
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'GuardrailsClient-Python/1.0.0'
+            'User-Agent': 'GuardrailsClient-Python/2.0.0'
         })
     
     def generate_user_token(self, user_id: str, user_email: str, 
                           expire_hours: int = 1) -> str:
         """
-        为指定用户生成JWT token
+        为指定用户生成JWT token (仅在JWT模式下使用)
         
         Args:
             user_id: 用户UUID字符串
@@ -90,6 +108,9 @@ class GuardrailsClient:
         Returns:
             JWT token字符串
         """
+        if not self.jwt_secret:
+            raise ValueError("JWT模式需要提供jwt_secret")
+            
         payload = {
             "user_id": str(user_id),
             "sub": str(user_id),
@@ -99,16 +120,17 @@ class GuardrailsClient:
         }
         return jwt.encode(payload, self.jwt_secret, algorithm='HS256')
     
-    def _make_request(self, method: str, endpoint: str, user_id: str, 
-                     user_email: str, **kwargs) -> requests.Response:
+    def _make_request(self, method: str, endpoint: str, service: str = "admin",
+                     user_id: str = None, user_email: str = None, **kwargs) -> requests.Response:
         """
         发起API请求
         
         Args:
             method: HTTP方法
             endpoint: API端点
-            user_id: 用户ID
-            user_email: 用户邮箱
+            service: 服务类型 ("detection" 或 "admin")
+            user_id: 用户ID (JWT方式需要)
+            user_email: 用户邮箱 (JWT方式需要)
             **kwargs: 其他requests参数
             
         Returns:
@@ -117,14 +139,28 @@ class GuardrailsClient:
         Raises:
             GuardrailsError: API请求相关错误
         """
-        # 生成JWT token
-        token = self.generate_user_token(user_id, user_email)
+        # 选择服务URL
+        if service == "detection":
+            base_url = self.detection_url
+        else:
+            base_url = self.admin_url
         
-        # 设置请求头
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
+        # 设置认证头
+        if self.api_key:
+            # 使用API Key认证
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+        else:
+            # 使用JWT认证（需要用户信息）
+            if not user_id or not user_email:
+                raise ValueError("使用JWT认证时必须提供user_id和user_email")
+            token = self.generate_user_token(user_id, user_email)
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }
         
         if 'headers' in kwargs:
             headers.update(kwargs['headers'])
@@ -134,7 +170,7 @@ class GuardrailsClient:
         if 'timeout' not in kwargs:
             kwargs['timeout'] = self.timeout
         
-        url = f"{self.api_base_url}{endpoint}"
+        url = f"{base_url}{endpoint}"
         
         # 重试机制
         last_exception = None
@@ -145,7 +181,7 @@ class GuardrailsClient:
                 
                 # 处理HTTP错误
                 if response.status_code == 401:
-                    raise AuthenticationError("认证失败，请检查JWT密钥和用户信息")
+                    raise AuthenticationError("认证失败，请检查API密钥或JWT配置")
                 elif response.status_code == 403:
                     raise AuthenticationError("权限不足")
                 elif response.status_code == 404:
@@ -190,81 +226,91 @@ class GuardrailsClient:
     
     # ========== 内容检测接口 ==========
     
-    def check_content(self, user_id: str, user_email: str,
-                     messages: List[Dict[str, str]]) -> Dict[str, Any]:
+    def check_content(self, messages: List[Dict[str, str]], 
+                     user_id: str = None, user_email: str = None) -> Dict[str, Any]:
         """
         检测内容安全性
         
         Args:
-            user_id: 用户ID
-            user_email: 用户邮箱
             messages: 消息列表，每个消息包含role和content字段
+            user_id: 用户ID (JWT方式需要)
+            user_email: 用户邮箱 (JWT方式需要)
             
         Returns:
             检测结果字典
             
         Example:
+            # API Key方式
             result = client.check_content(
-                user_id="user-uuid",
-                user_email="user@example.com", 
                 messages=[{
                     "role": "user",
                     "content": "要检测的内容"
                 }]
             )
+            
+            # JWT方式
+            result = client.check_content(
+                messages=[{
+                    "role": "user",
+                    "content": "要检测的内容"
+                }],
+                user_id="user-uuid",
+                user_email="user@example.com"
+            )
         """
-        data = {"messages": messages}
-        response = self._make_request("POST", "/v1/guardrails",
+        data = {"model": "Xiangxin-Guardrails-Text", "messages": messages}
+        response = self._make_request("POST", "/v1/guardrails", "detection",
                                     user_id, user_email, json=data)
         return self._handle_response(response)
     
-    def get_available_models(self, user_id: str, user_email: str) -> Dict[str, Any]:
-        """获取可用模型列表"""
-        response = self._make_request("GET", "/v1/guardrails/models",
-                                    user_id, user_email)
-        return self._handle_response(response)
-    
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self, service: str = "detection") -> Dict[str, Any]:
         """
-        检测服务健康检查（不需要认证）
+        服务健康检查（不需要认证）
+        
+        Args:
+            service: 服务类型 ("detection" 或 "admin")
         
         Returns:
             健康状态信息
         """
-        response = self.session.get(f"{self.api_base_url}/health", 
-                                  timeout=self.timeout)
+        if service == "detection":
+            url = f"{self.detection_url}/health"
+        else:
+            url = f"{self.admin_url}/health"
+            
+        response = self.session.get(url, timeout=self.timeout)
         return response.json()
     
     # ========== 黑名单管理接口 ==========
     
-    def get_blacklists(self, user_id: str, user_email: str) -> List[Dict[str, Any]]:
+    def get_blacklists(self, user_id: str = None, user_email: str = None) -> List[Dict[str, Any]]:
         """
         获取用户黑名单列表
         
         Args:
-            user_id: 用户ID
-            user_email: 用户邮箱
+            user_id: 用户ID (JWT方式需要)
+            user_email: 用户邮箱 (JWT方式需要)
             
         Returns:
             黑名单列表
         """
-        response = self._make_request("GET", "/config/blacklist",
+        response = self._make_request("GET", "/api/v1/config/blacklist", "admin",
                                     user_id, user_email)
         return self._handle_response(response)
     
-    def create_blacklist(self, user_id: str, user_email: str,
-                        name: str, keywords: List[str],
-                        description: str = "", is_active: bool = True) -> Dict[str, Any]:
+    def create_blacklist(self, name: str, keywords: List[str],
+                        description: str = "", is_active: bool = True,
+                        user_id: str = None, user_email: str = None) -> Dict[str, Any]:
         """
         创建黑名单
         
         Args:
-            user_id: 用户ID
-            user_email: 用户邮箱
             name: 黑名单名称
             keywords: 关键词列表
             description: 描述信息
             is_active: 是否启用
+            user_id: 用户ID (JWT方式需要)
+            user_email: 用户邮箱 (JWT方式需要)
             
         Returns:
             创建结果
@@ -275,24 +321,24 @@ class GuardrailsClient:
             "description": description,
             "is_active": is_active
         }
-        response = self._make_request("POST", "/config/blacklist",
+        response = self._make_request("POST", "/api/v1/config/blacklist", "admin",
                                     user_id, user_email, json=data)
         return self._handle_response(response)
     
-    def update_blacklist(self, user_id: str, user_email: str,
-                        blacklist_id: int, name: str, keywords: List[str],
-                        description: str = "", is_active: bool = True) -> Dict[str, Any]:
+    def update_blacklist(self, blacklist_id: int, name: str, keywords: List[str],
+                        description: str = "", is_active: bool = True,
+                        user_id: str = None, user_email: str = None) -> Dict[str, Any]:
         """
         更新黑名单
         
         Args:
-            user_id: 用户ID
-            user_email: 用户邮箱
             blacklist_id: 黑名单ID
             name: 黑名单名称
             keywords: 关键词列表
             description: 描述信息
             is_active: 是否启用
+            user_id: 用户ID (JWT方式需要)
+            user_email: 用户邮箱 (JWT方式需要)
             
         Returns:
             更新结果
@@ -303,38 +349,38 @@ class GuardrailsClient:
             "description": description,
             "is_active": is_active
         }
-        response = self._make_request("PUT", f"/config/blacklist/{blacklist_id}",
+        response = self._make_request("PUT", f"/api/v1/config/blacklist/{blacklist_id}", "admin",
                                     user_id, user_email, json=data)
         return self._handle_response(response)
     
-    def delete_blacklist(self, user_id: str, user_email: str,
-                        blacklist_id: int) -> Dict[str, Any]:
+    def delete_blacklist(self, blacklist_id: int,
+                        user_id: str = None, user_email: str = None) -> Dict[str, Any]:
         """
         删除黑名单
         
         Args:
-            user_id: 用户ID
-            user_email: 用户邮箱
             blacklist_id: 黑名单ID
+            user_id: 用户ID (JWT方式需要)
+            user_email: 用户邮箱 (JWT方式需要)
             
         Returns:
             删除结果
         """
-        response = self._make_request("DELETE", f"/config/blacklist/{blacklist_id}",
+        response = self._make_request("DELETE", f"/api/v1/config/blacklist/{blacklist_id}", "admin",
                                     user_id, user_email)
         return self._handle_response(response)
     
     # ========== 白名单管理接口 ==========
     
-    def get_whitelists(self, user_id: str, user_email: str) -> List[Dict[str, Any]]:
+    def get_whitelists(self, user_id: str = None, user_email: str = None) -> List[Dict[str, Any]]:
         """获取用户白名单列表"""
-        response = self._make_request("GET", "/config/whitelist",
+        response = self._make_request("GET", "/api/v1/config/whitelist", "admin",
                                     user_id, user_email)
         return self._handle_response(response)
     
-    def create_whitelist(self, user_id: str, user_email: str,
-                        name: str, keywords: List[str],
-                        description: str = "", is_active: bool = True) -> Dict[str, Any]:
+    def create_whitelist(self, name: str, keywords: List[str],
+                        description: str = "", is_active: bool = True,
+                        user_id: str = None, user_email: str = None) -> Dict[str, Any]:
         """创建白名单"""
         data = {
             "name": name,
@@ -342,13 +388,13 @@ class GuardrailsClient:
             "description": description,
             "is_active": is_active
         }
-        response = self._make_request("POST", "/config/whitelist",
+        response = self._make_request("POST", "/api/v1/config/whitelist", "admin",
                                     user_id, user_email, json=data)
         return self._handle_response(response)
     
-    def update_whitelist(self, user_id: str, user_email: str,
-                        whitelist_id: int, name: str, keywords: List[str],
-                        description: str = "", is_active: bool = True) -> Dict[str, Any]:
+    def update_whitelist(self, whitelist_id: int, name: str, keywords: List[str],
+                        description: str = "", is_active: bool = True,
+                        user_id: str = None, user_email: str = None) -> Dict[str, Any]:
         """更新白名单"""
         data = {
             "name": name,
@@ -356,40 +402,40 @@ class GuardrailsClient:
             "description": description,
             "is_active": is_active
         }
-        response = self._make_request("PUT", f"/config/whitelist/{whitelist_id}",
+        response = self._make_request("PUT", f"/api/v1/config/whitelist/{whitelist_id}", "admin",
                                     user_id, user_email, json=data)
         return self._handle_response(response)
     
-    def delete_whitelist(self, user_id: str, user_email: str,
-                        whitelist_id: int) -> Dict[str, Any]:
+    def delete_whitelist(self, whitelist_id: int,
+                        user_id: str = None, user_email: str = None) -> Dict[str, Any]:
         """删除白名单"""
-        response = self._make_request("DELETE", f"/config/whitelist/{whitelist_id}",
+        response = self._make_request("DELETE", f"/api/v1/config/whitelist/{whitelist_id}", "admin",
                                     user_id, user_email)
         return self._handle_response(response)
     
     # ========== 代答模板管理接口 ==========
     
-    def get_response_templates(self, user_id: str, user_email: str) -> List[Dict[str, Any]]:
+    def get_response_templates(self, user_id: str = None, user_email: str = None) -> List[Dict[str, Any]]:
         """获取用户代答模板列表"""
-        response = self._make_request("GET", "/config/responses",
+        response = self._make_request("GET", "/api/v1/config/responses", "admin",
                                     user_id, user_email)
         return self._handle_response(response)
     
-    def create_response_template(self, user_id: str, user_email: str,
-                               category: str, risk_level: str,
+    def create_response_template(self, category: str, risk_level: str,
                                template_content: str, is_default: bool = True,
-                               is_active: bool = True) -> Dict[str, Any]:
+                               is_active: bool = True,
+                               user_id: str = None, user_email: str = None) -> Dict[str, Any]:
         """
         创建代答模板
         
         Args:
-            user_id: 用户ID
-            user_email: 用户邮箱
             category: 风险类别代码 (S1-S12或default)
             risk_level: 风险等级 (无风险/低风险/中风险/高风险)
             template_content: 模板内容
             is_default: 是否为默认模板
             is_active: 是否启用
+            user_id: 用户ID (JWT方式需要)
+            user_email: 用户邮箱 (JWT方式需要)
             
         Returns:
             创建结果
@@ -401,14 +447,14 @@ class GuardrailsClient:
             "is_default": is_default,
             "is_active": is_active
         }
-        response = self._make_request("POST", "/config/responses",
+        response = self._make_request("POST", "/api/v1/config/responses", "admin",
                                     user_id, user_email, json=data)
         return self._handle_response(response)
     
-    def update_response_template(self, user_id: str, user_email: str,
-                               template_id: int, category: str, risk_level: str,
+    def update_response_template(self, template_id: int, category: str, risk_level: str,
                                template_content: str, is_default: bool = True,
-                               is_active: bool = True) -> Dict[str, Any]:
+                               is_active: bool = True,
+                               user_id: str = None, user_email: str = None) -> Dict[str, Any]:
         """更新代答模板"""
         data = {
             "category": category,
@@ -417,79 +463,136 @@ class GuardrailsClient:
             "is_default": is_default,
             "is_active": is_active
         }
-        response = self._make_request("PUT", f"/config/responses/{template_id}",
+        response = self._make_request("PUT", f"/api/v1/config/responses/{template_id}", "admin",
                                     user_id, user_email, json=data)
         return self._handle_response(response)
     
-    def delete_response_template(self, user_id: str, user_email: str,
-                               template_id: int) -> Dict[str, Any]:
+    def delete_response_template(self, template_id: int,
+                               user_id: str = None, user_email: str = None) -> Dict[str, Any]:
         """删除代答模板"""
-        response = self._make_request("DELETE", f"/config/responses/{template_id}",
+        response = self._make_request("DELETE", f"/api/v1/config/responses/{template_id}", "admin",
                                     user_id, user_email)
         return self._handle_response(response)
     
     # ========== 系统信息接口 ==========
     
-    def get_system_info(self, user_id: str, user_email: str) -> Dict[str, Any]:
+    def get_system_info(self, user_id: str = None, user_email: str = None) -> Dict[str, Any]:
         """获取系统信息"""
-        response = self._make_request("GET", "/config/system-info",
+        response = self._make_request("GET", "/api/v1/config/system-info", "admin",
                                     user_id, user_email)
         return self._handle_response(response)
     
-    def get_cache_info(self, user_id: str, user_email: str) -> Dict[str, Any]:
+    def get_cache_info(self, user_id: str = None, user_email: str = None) -> Dict[str, Any]:
         """获取缓存状态信息"""
-        response = self._make_request("GET", "/config/cache-info",
+        response = self._make_request("GET", "/api/v1/config/cache-info", "admin",
                                     user_id, user_email)
         return self._handle_response(response)
     
-    def refresh_cache(self, user_id: str, user_email: str) -> Dict[str, Any]:
+    def refresh_cache(self, user_id: str = None, user_email: str = None) -> Dict[str, Any]:
         """手动刷新缓存"""
-        response = self._make_request("POST", "/config/cache/refresh",
+        response = self._make_request("POST", "/api/v1/config/cache/refresh", "admin",
+                                    user_id, user_email)
+        return self._handle_response(response)
+    
+    # ========== 检测结果查询接口 ==========
+    
+    def get_results(self, page: int = 1, per_page: int = 20, 
+                   risk_level: str = None, category: str = None,
+                   start_date: str = None, end_date: str = None,
+                   content_search: str = None, request_id_search: str = None,
+                   user_id: str = None, user_email: str = None) -> Dict[str, Any]:
+        """
+        获取检测结果列表
+        
+        Args:
+            page: 页码
+            per_page: 每页数量
+            risk_level: 风险等级过滤
+            category: 风险类别过滤
+            start_date: 开始日期
+            end_date: 结束日期
+            content_search: 内容搜索
+            request_id_search: 请求ID搜索
+            user_id: 用户ID (JWT方式需要)
+            user_email: 用户邮箱 (JWT方式需要)
+            
+        Returns:
+            分页的检测结果
+        """
+        params = {"page": page, "per_page": per_page}
+        if risk_level:
+            params["risk_level"] = risk_level
+        if category:
+            params["category"] = category
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        if content_search:
+            params["content_search"] = content_search
+        if request_id_search:
+            params["request_id_search"] = request_id_search
+            
+        response = self._make_request("GET", "/api/v1/results", "admin",
+                                    user_id, user_email, params=params)
+        return self._handle_response(response)
+    
+    def get_result(self, result_id: int,
+                  user_id: str = None, user_email: str = None) -> Dict[str, Any]:
+        """
+        获取单个检测结果详情
+        
+        Args:
+            result_id: 结果ID
+            user_id: 用户ID (JWT方式需要)
+            user_email: 用户邮箱 (JWT方式需要)
+            
+        Returns:
+            检测结果详情
+        """
+        response = self._make_request("GET", f"/api/v1/results/{result_id}", "admin",
                                     user_id, user_email)
         return self._handle_response(response)
     
     # ========== 批量操作辅助方法 ==========
     
-    def batch_create_blacklists(self, user_id: str, user_email: str,
-                               blacklists: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def batch_create_blacklists(self, blacklists: List[Dict[str, Any]],
+                               user_id: str = None, user_email: str = None) -> List[Dict[str, Any]]:
         """
         批量创建黑名单
         
         Args:
-            user_id: 用户ID
-            user_email: 用户邮箱
             blacklists: 黑名单定义列表
+            user_id: 用户ID (JWT方式需要)
+            user_email: 用户邮箱 (JWT方式需要)
             
         Returns:
             创建结果列表
             
         Example:
-            results = client.batch_create_blacklists(
-                user_id="user-uuid",
-                user_email="user@example.com",
-                blacklists=[
-                    {
-                        "name": "敏感词1",
-                        "keywords": ["词1", "词2"],
-                        "description": "描述1"
-                    },
-                    {
-                        "name": "敏感词2", 
-                        "keywords": ["词3", "词4"],
-                        "description": "描述2"
-                    }
-                ]
-            )
+            results = client.batch_create_blacklists([
+                {
+                    "name": "敏感词1",
+                    "keywords": ["词1", "词2"],
+                    "description": "描述1"
+                },
+                {
+                    "name": "敏感词2", 
+                    "keywords": ["词3", "词4"],
+                    "description": "描述2"
+                }
+            ])
         """
         results = []
         for blacklist_data in blacklists:
             try:
                 result = self.create_blacklist(
-                    user_id, user_email,
                     name=blacklist_data["name"],
                     keywords=blacklist_data["keywords"],
                     description=blacklist_data.get("description", ""),
-                    is_active=blacklist_data.get("is_active", True)
+                    is_active=blacklist_data.get("is_active", True),
+                    user_id=user_id,
+                    user_email=user_email
                 )
                 results.append({"success": True, "data": result})
             except Exception as e:
@@ -497,15 +600,15 @@ class GuardrailsClient:
         
         return results
     
-    def batch_check_content(self, user_id: str, user_email: str,
-                           content_list: List[str]) -> List[Dict[str, Any]]:
+    def batch_check_content(self, content_list: List[str],
+                           user_id: str = None, user_email: str = None) -> List[Dict[str, Any]]:
         """
         批量检测内容
         
         Args:
-            user_id: 用户ID
-            user_email: 用户邮箱
             content_list: 要检测的内容列表
+            user_id: 用户ID (JWT方式需要)
+            user_email: 用户邮箱 (JWT方式需要)
             
         Returns:
             检测结果列表
@@ -514,8 +617,9 @@ class GuardrailsClient:
         for content in content_list:
             try:
                 result = self.check_content(
-                    user_id, user_email,
-                    messages=[{"role": "user", "content": content}]
+                    messages=[{"role": "user", "content": content}],
+                    user_id=user_id,
+                    user_email=user_email
                 )
                 results.append({"success": True, "content": content, "result": result})
             except Exception as e:
@@ -614,49 +718,23 @@ if __name__ == "__main__":
     # 设置日志
     logging.basicConfig(level=logging.INFO)
     
-    # 初始化客户端
+    # 示例1: 使用API Key（推荐方式）
     client = GuardrailsClient(
-        api_base_url="http://localhost:5000",  # 替换为实际API地址
-        jwt_secret="your-jwt-secret-key"       # 替换为实际JWT密钥
+        detection_url="http://localhost:5000",
+        admin_url="http://localhost:5001",
+        api_key="your-api-key"  # 替换为实际API密钥
     )
-    
-    # 用户信息
-    user_id = "550e8400-e29b-41d4-a716-446655440001"
-    user_email = "user@example.com"
     
     try:
         # 检查服务健康状态
-        health = client.health_check()
-        print(f"服务状态: {health}")
+        health = client.health_check("detection")
+        print(f"检测服务状态: {health}")
         
-        # 创建黑名单
-        blacklist_result = client.create_blacklist(
-            user_id=user_id,
-            user_email=user_email,
-            name="测试黑名单",
-            keywords=["敏感词1", "敏感词2"],
-            description="Python SDK测试用黑名单"
-        )
-        print(f"创建黑名单: {blacklist_result}")
+        health = client.health_check("admin")
+        print(f"管理服务状态: {health}")
         
-        # 获取黑名单列表
-        blacklists = client.get_blacklists(user_id, user_email)
-        print(f"黑名单列表: {blacklists}")
-        
-        # 创建默认代答模板
-        templates = create_default_response_templates()
-        for template in templates[:3]:  # 只创建前3个作为示例
-            result = client.create_response_template(
-                user_id=user_id,
-                user_email=user_email,
-                **template
-            )
-            print(f"创建模板: {result}")
-        
-        # 检测内容
+        # 检测内容（API Key方式）
         detection_result = client.check_content(
-            user_id=user_id,
-            user_email=user_email,
             messages=[{
                 "role": "user",
                 "content": "这是一个测试内容"
@@ -664,12 +742,24 @@ if __name__ == "__main__":
         )
         print(f"检测结果: {detection_result}")
         
-        # 批量检测示例
-        batch_results = client.batch_check_content(
-            user_id=user_id,
-            user_email=user_email,
-            content_list=["内容1", "内容2", "内容3"]
+        # 获取黑名单列表
+        blacklists = client.get_blacklists()
+        print(f"黑名单列表: {blacklists}")
+        
+        # 创建黑名单
+        blacklist_result = client.create_blacklist(
+            name="测试黑名单",
+            keywords=["敏感词1", "敏感词2"],
+            description="Python SDK v2.0测试用黑名单"
         )
+        print(f"创建黑名单: {blacklist_result}")
+        
+        # 获取检测结果
+        results = client.get_results(page=1, per_page=10)
+        print(f"检测结果列表: {results}")
+        
+        # 批量检测示例
+        batch_results = client.batch_check_content(["内容1", "内容2", "内容3"])
         print(f"批量检测结果: {batch_results}")
         
     except GuardrailsError as e:
@@ -680,3 +770,52 @@ if __name__ == "__main__":
     finally:
         # 关闭客户端
         client.close()
+    
+    print("\n" + "="*50)
+    print("示例2: 使用JWT密钥（向后兼容）")
+    print("="*50)
+    
+    # 示例2: 使用JWT密钥（向后兼容）
+    jwt_client = GuardrailsClient(
+        detection_url="http://localhost:5000",
+        admin_url="http://localhost:5001",
+        jwt_secret="your-jwt-secret-key"  # 替换为实际JWT密钥
+    )
+    
+    user_id = "550e8400-e29b-41d4-a716-446655440001"
+    user_email = "user@example.com"
+    
+    try:
+        # 检测内容（JWT方式）
+        detection_result = jwt_client.check_content(
+            messages=[{
+                "role": "user",
+                "content": "这是JWT方式的测试内容"
+            }],
+            user_id=user_id,
+            user_email=user_email
+        )
+        print(f"JWT检测结果: {detection_result}")
+        
+        # 创建代答模板
+        templates = create_default_response_templates()
+        for template in templates[:3]:  # 只创建前3个作为示例
+            result = jwt_client.create_response_template(
+                category=template["category"],
+                risk_level=template["risk_level"],
+                template_content=template["template_content"],
+                is_default=template["is_default"],
+                is_active=template["is_active"],
+                user_id=user_id,
+                user_email=user_email
+            )
+            print(f"创建模板: {result}")
+        
+    except GuardrailsError as e:
+        print(f"护栏系统错误: {e}")
+    except Exception as e:
+        print(f"其他错误: {e}")
+    
+    finally:
+        # 关闭客户端
+        jwt_client.close()

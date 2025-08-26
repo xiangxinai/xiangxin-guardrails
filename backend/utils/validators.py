@@ -53,6 +53,32 @@ def sanitize_input(text: str) -> str:
     
     return text.strip()
 
+def clean_null_characters(text: str) -> str:
+    """清理字符串中的NUL字符，防止数据库插入错误"""
+    if not text:
+        return text
+    
+    # 移除NUL字符（0x00）和其他控制字符
+    # 保留常见的控制字符如换行符、制表符等
+    import re
+    # 移除NUL字符
+    text = text.replace('\x00', '')
+    # 移除其他可能导致问题的控制字符，但保留常见的如\n, \r, \t
+    text = re.sub(r'[\x01-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+    
+    return text
+
+def clean_detection_data(data: dict) -> dict:
+    """递归清理检测数据中的NUL字符"""
+    if isinstance(data, dict):
+        return {key: clean_detection_data(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [clean_detection_data(item) for item in data]
+    elif isinstance(data, str):
+        return clean_null_characters(data)
+    else:
+        return data
+
 def extract_keywords(text: str) -> List[str]:
     """从文本中提取关键词"""
     # 简单的关键词提取，可以后续优化

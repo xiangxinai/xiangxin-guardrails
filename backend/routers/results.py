@@ -40,7 +40,13 @@ async def get_detection_results(
         
         # 添加用户过滤条件
         if user_id is not None:
-            filters.append(DetectionResult.user_id == user_id)
+            try:
+                import uuid
+                user_uuid = uuid.UUID(str(user_id))
+                filters.append(DetectionResult.user_id == user_uuid)
+            except ValueError:
+                # 如果user_id格式无效，返回空结果
+                raise HTTPException(status_code=400, detail="Invalid user ID format")
         
         # 风险等级过滤 - 支持整体风险等级或具体类型风险等级
         if risk_level:
@@ -83,7 +89,13 @@ async def get_detection_results(
         else:
             # 如果无过滤条件也必须限定用户
             if user_id is not None:
-                base_query = base_query.filter(DetectionResult.user_id == user_id)
+                try:
+                    import uuid
+                    user_uuid = uuid.UUID(str(user_id))
+                    base_query = base_query.filter(DetectionResult.user_id == user_uuid)
+                except ValueError:
+                    # 如果user_id格式无效，返回空结果
+                    raise HTTPException(status_code=400, detail="Invalid user ID format")
         
         # 获取总数
         total = base_query.count()
@@ -141,8 +153,15 @@ async def get_detection_result(result_id: int, request: Request, db: Session = D
             raise HTTPException(status_code=404, detail="Detection result not found")
         
         # 权限校验：只能查看自己的记录
-        if user_id is not None and result.user_id != user_id:
-            raise HTTPException(status_code=403, detail="Forbidden")
+        if user_id is not None:
+            # 将字符串类型的user_id转换为UUID进行比较
+            try:
+                import uuid
+                user_uuid = uuid.UUID(str(user_id))
+                if result.user_id != user_uuid:
+                    raise HTTPException(status_code=403, detail="Forbidden")
+            except ValueError:
+                raise HTTPException(status_code=403, detail="Invalid user ID format")
         
         return DetectionResultResponse(
             id=result.id,

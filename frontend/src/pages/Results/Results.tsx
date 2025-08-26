@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Select, DatePicker, Space, Tag, Button, Drawer, Typography, Row, Col, Input } from 'antd';
+import { Table, Card, Select, DatePicker, Space, Tag, Button, Drawer, Typography, Row, Col, Input, Spin } from 'antd';
 import { EyeOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { resultsApi } from '../../services/api';
@@ -14,6 +14,7 @@ const Results: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedResult, setSelectedResult] = useState<DetectionResult | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [filters, setFilters] = useState({
     risk_level: undefined as string | undefined,
     result_type: undefined as string | undefined,
@@ -83,9 +84,20 @@ const Results: React.FC = () => {
     setPagination(prev => ({ ...prev, current: 1 })); // 重置页码
   };
 
-  const showDetail = (record: DetectionResult) => {
-    setSelectedResult(record);
+  const showDetail = async (record: DetectionResult) => {
+    setDetailLoading(true);
     setDrawerVisible(true);
+    try {
+      // 调用详情API获取完整内容
+      const fullRecord = await resultsApi.getResult(record.id);
+      setSelectedResult(fullRecord);
+    } catch (error) {
+      console.error('Failed to fetch full record:', error);
+      // 如果获取详情失败，仍然显示截断的内容
+      setSelectedResult(record);
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const getRiskLevelColor = (level: string) => {
@@ -94,27 +106,7 @@ const Results: React.FC = () => {
       case '中风险': return 'orange';
       case '低风险': return 'yellow';
       case '无风险': return 'green';
-      // Legacy support for old English names
-      case 'high': return 'red';
-      case 'medium': return 'orange';
-      case 'low': return 'yellow';
-      case 'safe': return 'green';
       default: return 'default';
-    }
-  };
-
-  const getRiskLevelText = (level: string) => {
-    switch (level) {
-      case '高风险': return '高风险';
-      case '中风险': return '中风险';
-      case '低风险': return '低风险';
-      case '无风险': return '无风险';
-      // Legacy support for old English names
-      case 'high': return '高风险';
-      case 'medium': return '中风险';
-      case 'low': return '低风险';
-      case 'safe': return '无风险';
-      default: return level;
     }
   };
 
@@ -370,10 +362,18 @@ const Results: React.FC = () => {
       <Drawer
         title="检测结果详情"
         width={720}
-        onClose={() => setDrawerVisible(false)}
+        onClose={() => {
+          setDrawerVisible(false);
+          setSelectedResult(null);
+        }}
         open={drawerVisible}
       >
-        {selectedResult && (
+        {detailLoading ? (
+          <div style={{ textAlign: 'center', padding: '50px 0' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: 16 }}>加载详细内容中...</div>
+          </div>
+        ) : selectedResult && (
           <div>
             <Row gutter={16} style={{ marginBottom: 16 }}>
               <Col span={8}>
@@ -438,6 +438,9 @@ const Results: React.FC = () => {
               >
                 {selectedResult.content}
               </Paragraph>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                内容长度: {selectedResult.content.length} 字符
+              </Text>
             </div>
             
             {selectedResult.suggest_answer && (

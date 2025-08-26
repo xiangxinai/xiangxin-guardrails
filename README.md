@@ -17,7 +17,7 @@
 
 > 🚀 **企业级AI安全护栏平台** - 为AI应用提供全方位的安全防护
 
-象信AI安全护栏是一款开源且免费可商用的AI安全防护解决方案。基于先进的大语言模型，提供提示词攻击检测、内容合规检测等功能，支持完全私有化部署，为AI应用构建坚实的安全防线。
+象信AI安全护栏是北京象信智能科技有限公司开源的免费可商用的AI安全防护解决方案。基于先进的大语言模型，提供提示词攻击检测、内容合规检测等功能，支持完全私有化部署，为AI应用构建坚实的安全防线。
 
 [English](./README_EN.md) | 中文
 
@@ -616,9 +616,7 @@ git push origin feature/amazing-feature
 
 - 📧 **技术支持**: wanglei@xiangxinai.cn
 - 🌐 **官方网站**: https://xiangxinai.cn
-- 📱 **微信群**: 扫描二维码加入技术交流群
-
-*[微信群二维码占位符 - 需要替换为实际二维码]*
+- 📱 **微信公众号**: 扫描二维码关注<a href="assets/wechat.jpg">微信公众号</a>
 
 ---
 
@@ -626,6 +624,6 @@ git push origin feature/amazing-feature
 
 **让AI更安全，让应用更可信** 🛡️
 
-Made with ❤️ by [象信AI](https://xiangxinai.cn)
+Made with ❤️ by [北京象信智能科技有限公司](https://xiangxinai.cn) 象信AI®是注册商标
 
 </div>

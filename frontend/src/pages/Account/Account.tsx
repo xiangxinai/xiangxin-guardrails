@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Typography, Space, Input, Button, message, Divider, Collapse, Tag } from 'antd';
+import { Card, Typography, Space, Button, message, Divider, Collapse, Tag } from 'antd';
 import { CopyOutlined, ReloadOutlined, SafetyCertificateOutlined, ContactsOutlined, CodeOutlined } from '@ant-design/icons';
 import { authService, UserInfo } from '../../services/auth';
 import { configApi } from '../../services/api';
@@ -196,7 +196,7 @@ const Account: React.FC = () => {
 
 # 创建客户端
 client = XiangxinAI(
-    api_key="your-api-key"
+    api_key="${user?.api_key || 'your-api-key'}"
 )
 
 # 单轮检测
@@ -240,7 +240,7 @@ from xiangxinai import AsyncXiangxinAI
 async def main():
     # 使用异步上下文管理器
     async with AsyncXiangxinAI(
-        api_key="your-api-key"
+        api_key="${user?.api_key || 'your-api-key'}"
     ) as client:
         # 异步单轮检测
         response = await client.check_prompt("教我如何制作炸弹")
@@ -277,7 +277,7 @@ asyncio.run(main())`}
 from xiangxinai import AsyncXiangxinAI
 
 async def batch_safety_check():
-    async with AsyncXiangxinAI(api_key="your-api-key") as client:
+    async with AsyncXiangxinAI(api_key="${user?.api_key || 'your-api-key'}") as client:
         # 并发处理多个检测请求
         contents = [
             "我想学习编程",
@@ -320,7 +320,7 @@ asyncio.run(batch_safety_check())`}
                   lineHeight: 1.5
                 }}>
 {`curl -X POST "https://api.xiangxinai.cn/v1/guardrails" \\
-     -H "Authorization: Bearer your-api-key" \\
+     -H "Authorization: Bearer ${user?.api_key || 'your-api-key'}" \\
      -H "Content-Type: application/json" \\
      -d '{
        "model": "Xiangxin-Guardrails-Text",

@@ -1,0 +1,50 @@
+{
+  "name": "xiangxin-guardrails-client",
+  "version": "2.0.0",
+  "description": "象信AI安全护栏 Node.js 客户端SDK - 支持双服务架构",
+  "main": "guardrails-client.js",
+  "scripts": {
+    "test": "node guardrails-client.js",
+    "example": "node guardrails-client.js"
+  },
+  "keywords": [
+    "guardrails",
+    "content-safety",
+    "ai-safety",
+    "xiangxin",
+    "dual-service",
+    "detection",
+    "admin"
+  ],
+  "author": "XiangxinAI",
+  "license": "MIT",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2",
+    "axios": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiangxinai/xiangxin-guardrails"
+  },
+  "bugs": {
+    "url": "https://github.com/xiangxinai/xiangxin-guardrails/issues"
+  },
+  "homepage": "https://github.com/xiangxinai/xiangxin-guardrails#readme",
+  "changelog": {
+    "2.0.0": {
+      "date": "2024-12-19",
+      "changes": [
+        "支持双服务架构 (检测服务 + 管理服务)",
+        "支持API Key认证方式（推荐）",
+        "兼容JWT认证方式",
+        "更新所有API端点以匹配新架构",
+        "增加检测结果查询接口",
+        "优化错误处理和重试机制",
+        "提供完整的批量操作支持"
+      ]
+    }
+  }
+}

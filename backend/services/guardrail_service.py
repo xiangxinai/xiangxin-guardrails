@@ -309,15 +309,18 @@ class GuardrailService:
     ):
         """异步记录检测结果到日志"""
         
+        # 清理内容中的NUL字符
+        from utils.validators import clean_null_characters
+        
         detection_data = {
             "request_id": request_id,
             "user_id": user_id,
-            "content": content,
+            "content": clean_null_characters(content) if content else content,
             "suggest_action": suggest_action,
-            "suggest_answer": suggest_answer,
-            "model_response": model_response,
+            "suggest_answer": clean_null_characters(suggest_answer) if suggest_answer else suggest_answer,
+            "model_response": clean_null_characters(model_response) if model_response else model_response,
             "ip_address": ip_address,
-            "user_agent": user_agent,
+            "user_agent": clean_null_characters(user_agent) if user_agent else user_agent,
             "security_risk_level": security_result.risk_level,
             "security_categories": security_result.categories,
             "compliance_risk_level": compliance_result.risk_level,

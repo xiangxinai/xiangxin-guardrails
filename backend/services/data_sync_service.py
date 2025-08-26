@@ -141,8 +141,12 @@ class DataSyncService:
                         # 解析JSON行
                         detection_data = json.loads(line)
                         
+                        # 清理数据中的NUL字符
+                        from utils.validators import clean_detection_data
+                        cleaned_data = clean_detection_data(detection_data)
+                        
                         # 同步到数据库
-                        await self._sync_detection_to_db(detection_data)
+                        await self._sync_detection_to_db(cleaned_data)
                         processed_count += 1
                         
                         # 批量提交，提高性能

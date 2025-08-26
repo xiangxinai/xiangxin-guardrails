@@ -65,10 +65,17 @@ api.interceptors.response.use(
   (error) => {
     const status = error.response?.status;
     const url: string | undefined = error.config?.url;
+    
     // 静默处理某些非关键性401（例如检查切换状态时未就绪）
     if (status === 401 && url && url.includes('/admin/current-switch')) {
       return Promise.reject(error);
     }
+    
+    // 对于429限速错误，让业务逻辑自行处理，不在全局显示弹窗
+    if (status === 429) {
+      return Promise.reject(error);
+    }
+    
     const errorMessage = error.response?.data?.detail || error.message || '请求失败';
     message.error(errorMessage);
     return Promise.reject(error);

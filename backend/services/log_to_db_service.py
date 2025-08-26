@@ -105,7 +105,12 @@ class LogToDbService:
                         
                         try:
                             log_data = json.loads(line)
-                            await self._save_log_to_db(db, log_data)
+                            
+                            # 清理数据中的NUL字符
+                            from utils.validators import clean_detection_data
+                            cleaned_data = clean_detection_data(log_data)
+                            
+                            await self._save_log_to_db(db, cleaned_data)
                         except json.JSONDecodeError as e:
                             logger.warning(f"Invalid JSON in {log_file}:{line_num}: {e}")
                         except Exception as e:

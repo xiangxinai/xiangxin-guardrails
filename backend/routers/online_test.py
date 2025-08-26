@@ -111,7 +111,7 @@ async def online_test(
             raise HTTPException(status_code=400, detail="用户API key未找到")
         
         # 使用用户API key调用护栏API
-        guardrail_dict = await call_guardrail_api(user_api_key, messages)
+        guardrail_dict = await call_guardrail_api(user_api_key, messages, user_uuid, db)
         
         # 如果是问题类型且配置了模型，从数据库获取完整配置并调用模型API
         model_results = {}
@@ -166,13 +166,16 @@ async def online_test(
             models=model_results
         )
         
+    except HTTPException:
+        # 重新抛出HTTPException（包括429限速错误），不要转换为500错误
+        raise
     except Exception as e:
         import traceback
         error_msg = f"Online test error: {e}\nTraceback: {traceback.format_exc()}"
         logger.error(error_msg)
         raise HTTPException(status_code=500, detail=f"测试执行失败: {str(e)}")
 
-async def call_guardrail_api(api_key: str, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+async def call_guardrail_api(api_key: str, messages: List[Dict[str, str]], user_uuid: uuid.UUID, db: Session) -> Dict[str, Any]:
     """调用护栏API"""
     try:
         # 构建护栏API的URL
@@ -206,24 +209,72 @@ async def call_guardrail_api(api_key: str, messages: List[Dict[str, str]]) -> Di
                     "suggest_action": result.get('suggest_action', '通过'),
                     "suggest_answer": result.get('suggest_answer', '')
                 }
+            elif response.status_code == 429:
+                # 处理限速错误，获取用户限速配置
+                try:
+                    from services.rate_limiter import RateLimitService
+                    rate_limit_service = RateLimitService(db)
+                    rate_limit_config = rate_limit_service.get_user_rate_limit(str(user_uuid))
+                    rate_limit = rate_limit_config.requests_per_second if rate_limit_config and rate_limit_config.is_active else 1
+                    
+                    rate_limit_text = "无限制" if rate_limit == 0 else f"{rate_limit} 请求/秒"
+                    
+                    raise HTTPException(
+                        status_code=429, 
+                        detail=f"API调用频率超过限制，请稍后再试。当前限速：{rate_limit_text}。如需调整请联系管理员 {settings.support_email}"
+                    )
+                except HTTPException:
+                    raise
+                except Exception as e:
+                    logger.error(f"获取用户限速配置失败: {e}")
+                    raise HTTPException(
+                        status_code=429, 
+                        detail="API调用频率超过限制，请稍后再试。请检查您的API速度限制设置。"
+                    )
             else:
                 raise Exception(f"护栏API调用失败: HTTP {response.status_code}")
                 
+    except HTTPException:
+        # 重新抛出HTTPException，不要捕获
+        raise
     except Exception as e:
         logger.error(f"Guardrail API call failed: {e}")
-        # 返回默认的安全结果
+        # 检查是否是限速相关的错误
+        error_str = str(e).lower()
+        if "rate limit" in error_str or "429" in error_str or "too many requests" in error_str:
+            try:
+                from services.rate_limiter import RateLimitService
+                rate_limit_service = RateLimitService(db)
+                rate_limit_config = rate_limit_service.get_user_rate_limit(str(user_uuid))
+                rate_limit = rate_limit_config.requests_per_second if rate_limit_config and rate_limit_config.is_active else 1
+                
+                rate_limit_text = "无限制" if rate_limit == 0 else f"{rate_limit} 请求/秒"
+                
+                raise HTTPException(
+                    status_code=429, 
+                    detail=f"API调用频率超过限制，请稍后再试。当前限速：{rate_limit_text}。如需调整请联系管理员 {settings.support_email}"
+                )
+            except HTTPException:
+                raise
+            except Exception as ex:
+                logger.error(f"获取用户限速配置失败: {ex}")
+                raise HTTPException(
+                    status_code=429, 
+                    detail="API调用频率超过限制，请稍后再试。请检查您的API速度限制设置。"
+                )
+        
         return {
             "compliance": {
-                "risk_level": "无风险",
-                "categories": []
+                "risk_level": "检测失败",
+                "categories": ["系统错误"]
             },
             "security": {
-                "risk_level": "无风险", 
-                "categories": []
+                "risk_level": "检测失败", 
+                "categories": ["系统错误"]
             },
-            "overall_risk_level": "无风险",
-            "suggest_action": "通过",
-            "suggest_answer": ""
+            "overall_risk_level": "检测失败",
+            "suggest_action": "系统错误",
+            "suggest_answer": f"护栏检测系统出现错误: {str(e)}"
         }
 
 async def test_model_api(model: ModelConfig, messages: List[Dict[str, str]]) -> ModelResponse:
