@@ -363,7 +363,7 @@ checkConversation();`}
               header={
                 <Space>
                   <Tag color="purple">Node.js 异步</Tag>
-                  <Text>Node.js 异步接口方式（高性能并发处理）</Text>
+                  <Text>Node.js 异步接口方式（不会超过API速度限制）</Text>
                 </Space>
               } 
               key="nodejs-async"
@@ -519,7 +519,7 @@ public class GuardrailsExample {
               header={
                 <Space>
                   <Tag color="gold">Java 异步</Tag>
-                  <Text>Java 异步接口方式（高性能并发处理）</Text>
+                  <Text>Java 异步接口方式（不会超过API速度限制）</Text>
                 </Space>
               } 
               key="java-async"
@@ -711,7 +711,7 @@ func main() {
               header={
                 <Space>
                   <Tag color="lime">Go 异步</Tag>
-                  <Text>Go 异步接口方式（高性能并发处理）</Text>
+                  <Text>Go 异步接口方式（不会超过API速度限制）</Text>
                 </Space>
               } 
               key="go-async"
