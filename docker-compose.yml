@@ -104,11 +104,11 @@ services:
       
       # SMTP邮件配置
       - SMTP_SERVER=
-      - SMTP_PORT=
+      - SMTP_PORT=587
       - SMTP_USERNAME=
       - SMTP_PASSWORD=
-      - SMTP_USE_TLS=
-      - SMTP_USE_SSL=
+      - SMTP_USE_TLS=false
+      - SMTP_USE_SSL=false
       
       # 双服务配置
       - ADMIN_PORT=5001

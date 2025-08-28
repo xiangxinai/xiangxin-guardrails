@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pathlib import Path
 import os
@@ -60,11 +60,11 @@ class Settings(BaseSettings):
     
     # 邮箱配置
     smtp_server: str = ""
-    smtp_port: int = 587
+    smtp_port: Optional[int] = None
     smtp_username: str = ""
     smtp_password: str = ""
-    smtp_use_tls: bool = True
-    smtp_use_ssl: bool = False
+    smtp_use_tls: Optional[bool] = None
+    smtp_use_ssl: Optional[bool] = None
     
 
     # 服务器配置 - 双服务架构
