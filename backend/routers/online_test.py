@@ -178,8 +178,8 @@ async def online_test(
 async def call_guardrail_api(api_key: str, messages: List[Dict[str, str]], user_uuid: uuid.UUID, db: Session) -> Dict[str, Any]:
     """调用护栏API"""
     try:
-        # 构建护栏API的URL - 在Docker环境中使用服务名
-        guardrail_url = f"http://detection-service:{settings.detection_port}/v1/guardrails"
+        # 构建护栏API的URL - 根据配置自动适配环境
+        guardrail_url = f"http://{settings.detection_host}:{settings.detection_port}/v1/guardrails"
         
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(

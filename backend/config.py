@@ -1,13 +1,11 @@
-import os
-from typing import List, Optional
+from typing import Optional
 from pydantic_settings import BaseSettings
 from pathlib import Path
-import os
 
 class Settings(BaseSettings):
     # 应用配置
     app_name: str = "Xiangxin Guardrails"
-    app_version: str = "1.0.0"
+    app_version: str = "1.1.0"
     debug: bool = False
     
     # 超级管理员配置
@@ -74,6 +72,10 @@ class Settings(BaseSettings):
     detection_port: int = 5000
     detection_uvicorn_workers: int = 32
     detection_max_concurrent_requests: int = 400
+    
+    # 检测服务主机名（用于服务间调用）
+    # Docker环境: detection-service，本地环境: localhost
+    detection_host: str = "localhost"
     
     # 管理服务配置（低并发）
     admin_port: int = 5001

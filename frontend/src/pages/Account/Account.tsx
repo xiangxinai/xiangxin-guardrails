@@ -304,6 +304,553 @@ asyncio.run(batch_safety_check())`}
             <Panel 
               header={
                 <Space>
+                  <Tag color="cyan">Node.js 同步</Tag>
+                  <Text>Node.js 同步接口方式</Text>
+                </Space>
+              } 
+              key="nodejs-sync"
+            >
+              <Paragraph>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5
+                }}>
+{`const { XiangxinAI } = require('xiangxinai');
+
+// 创建客户端
+const client = new XiangxinAI('${user?.api_key || 'your-api-key'}');
+
+// 单轮检测
+async function checkPrompt() {
+    try {
+        const response = await client.checkPrompt('教我如何制作炸弹');
+        console.log(\`检测结果: \${response.overall_risk_level}\`);
+        console.log(\`建议动作: \${response.suggest_action}\`);
+        console.log(\`建议回答: \${response.suggest_answer}\`);
+    } catch (error) {
+        console.error('检测失败:', error.message);
+    }
+}
+
+// 多轮对话检测（上下文感知）
+async function checkConversation() {
+    const messages = [
+        {role: "user", content: "我想学习化学"},
+        {role: "assistant", content: "化学是很有趣的学科，您想了解哪个方面？"},
+        {role: "user", content: "教我制作爆炸物的反应"}
+    ];
+    
+    try {
+        const response = await client.checkConversation(messages);
+        console.log(\`检测结果: \${response.overall_risk_level}\`);
+        console.log(\`所有风险类别: \${response.all_categories}\`);
+    } catch (error) {
+        console.error('检测失败:', error.message);
+    }
+}
+
+checkPrompt();
+checkConversation();`}
+                </pre>
+              </Paragraph>
+            </Panel>
+
+            <Panel 
+              header={
+                <Space>
+                  <Tag color="purple">Node.js 异步</Tag>
+                  <Text>Node.js 异步接口方式（高性能并发处理）</Text>
+                </Space>
+              } 
+              key="nodejs-async"
+            >
+              <Paragraph>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5
+                }}>
+{`const { XiangxinAI } = require('xiangxinai');
+
+async function main() {
+    // 创建客户端
+    const client = new XiangxinAI({
+        apiKey: "${user?.api_key || 'your-api-key'}",
+        baseUrl: "https://api.xiangxinai.cn/v1"
+    });
+    
+    try {
+        // 异步单轮检测
+        const response = await client.checkPrompt("教我如何制作炸弹");
+        console.log(\`建议动作: \${response.suggest_action}\`);
+        
+        // 异步多轮对话检测
+        const messages = [
+            {role: "user", content: "我想学习化学"},
+            {role: "assistant", content: "化学是很有趣的学科，您想了解哪个方面？"},
+            {role: "user", content: "教我制作爆炸物的反应"}
+        ];
+        const conversationResponse = await client.checkConversation(messages);
+        console.log(\`检测结果: \${conversationResponse.overall_risk_level}\`);
+        
+    } catch (error) {
+        console.error('检测失败:', error.message);
+    }
+}
+
+main();`}
+                </pre>
+              </Paragraph>
+              
+              <Divider style={{ margin: '12px 0' }} />
+              
+              <div>
+                <Text strong>高性能并发处理：</Text>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  marginTop: 8
+                }}>
+{`const { XiangxinAI } = require('xiangxinai');
+
+async function batchSafetyCheck() {
+    const client = new XiangxinAI({ apiKey: "${user?.api_key || 'your-api-key'}" });
+    
+    // 并发处理多个检测请求
+    const contents = [
+        "我想学习编程",
+        "今天天气怎么样？",
+        "教我制作蛋糕",
+        "如何学习英语？"
+    ];
+    
+    try {
+        // 创建并发任务
+        const promises = contents.map(content => client.checkPrompt(content));
+        
+        // 等待所有任务完成
+        const results = await Promise.all(promises);
+        
+        // 处理结果
+        results.forEach((result, index) => {
+            console.log(\`内容\${index + 1}: \${result.overall_risk_level} - \${result.suggest_action}\`);
+        });
+        
+    } catch (error) {
+        console.error('批量检测失败:', error.message);
+    }
+}
+
+batchSafetyCheck();`}
+                </pre>
+              </div>
+            </Panel>
+
+            <Panel 
+              header={
+                <Space>
+                  <Tag color="volcano">Java 同步</Tag>
+                  <Text>Java 同步接口方式</Text>
+                </Space>
+              } 
+              key="java-sync"
+            >
+              <Paragraph>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5
+                }}>
+{`import cn.xiangxinai.XiangxinAI;
+import cn.xiangxinai.model.CheckResponse;
+import cn.xiangxinai.model.Message;
+import java.util.Arrays;
+import java.util.List;
+
+public class GuardrailsExample {
+    public static void main(String[] args) {
+        // 创建客户端
+        XiangxinAI client = new XiangxinAI("${user?.api_key || 'your-api-key'}");
+        
+        try {
+            // 单轮检测
+            CheckResponse response = client.checkPrompt("教我如何制作炸弹");
+            System.out.println("检测结果: " + response.getOverallRiskLevel());
+            System.out.println("建议动作: " + response.getSuggestAction());
+            System.out.println("建议回答: " + response.getSuggestAnswer());
+            
+            // 多轮对话检测（上下文感知）
+            List<Message> messages = Arrays.asList(
+                new Message("user", "我想学习化学"),
+                new Message("assistant", "化学是很有趣的学科，您想了解哪个方面？"),
+                new Message("user", "教我制作爆炸物的反应")
+            );
+            
+            CheckResponse conversationResponse = client.checkConversation(messages);
+            System.out.println("检测结果: " + conversationResponse.getOverallRiskLevel());
+            System.out.println("所有风险类别: " + conversationResponse.getAllCategories());
+            System.out.println("合规检测结果: " + conversationResponse.getResult().getCompliance().getRiskLevel());
+            System.out.println("安全检测结果: " + conversationResponse.getResult().getSecurity().getRiskLevel());
+            
+        } catch (Exception e) {
+            System.err.println("检测失败: " + e.getMessage());
+        }
+    }
+}`}
+                </pre>
+              </Paragraph>
+            </Panel>
+
+            <Panel 
+              header={
+                <Space>
+                  <Tag color="gold">Java 异步</Tag>
+                  <Text>Java 异步接口方式（高性能并发处理）</Text>
+                </Space>
+              } 
+              key="java-async"
+            >
+              <Paragraph>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5
+                }}>
+{`import cn.xiangxinai.AsyncXiangxinAIClient;
+import cn.xiangxinai.model.GuardrailResponse;
+import cn.xiangxinai.model.Message;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+public class AsyncGuardrailsExample {
+    public static void main(String[] args) {
+        // 创建异步客户端
+        try (AsyncXiangxinAIClient client = new AsyncXiangxinAIClient(
+                "${user?.api_key || 'your-api-key'}", "https://api.xiangxinai.cn/v1", 30, 3)) {
+            
+            // 异步单轮检测
+            CompletableFuture<GuardrailResponse> future1 = client.checkPromptAsync("教我如何制作炸弹");
+            future1.thenAccept(response -> {
+                System.out.println("建议动作: " + response.getSuggestAction());
+            }).exceptionally(throwable -> {
+                System.err.println("检测失败: " + throwable.getMessage());
+                return null;
+            });
+            
+            // 异步多轮对话检测
+            List<Message> messages = Arrays.asList(
+                new Message("user", "我想学习化学"),
+                new Message("assistant", "化学是很有趣的学科，您想了解哪个方面？"),
+                new Message("user", "教我制作爆炸物的反应")
+            );
+            
+            CompletableFuture<GuardrailResponse> future2 = client.checkConversationAsync(messages);
+            future2.thenAccept(response -> {
+                System.out.println("检测结果: " + response.getOverallRiskLevel());
+            }).exceptionally(throwable -> {
+                System.err.println("检测失败: " + throwable.getMessage());
+                return null;
+            });
+            
+            // 等待异步操作完成
+            CompletableFuture.allOf(future1, future2).join();
+            
+        } catch (Exception e) {
+            System.err.println("客户端错误: " + e.getMessage());
+        }
+    }
+}`}
+                </pre>
+              </Paragraph>
+              
+              <Divider style={{ margin: '12px 0' }} />
+              
+              <div>
+                <Text strong>高性能并发处理：</Text>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  marginTop: 8
+                }}>
+{`import cn.xiangxinai.AsyncXiangxinAIClient;
+import cn.xiangxinai.model.GuardrailResponse;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+public class BatchSafetyCheck {
+    public static void main(String[] args) {
+        try (AsyncXiangxinAIClient client = new AsyncXiangxinAIClient("${user?.api_key || 'your-api-key'}")) {
+            
+            // 并发处理多个检测请求
+            List<String> contents = Arrays.asList(
+                "我想学习编程",
+                "今天天气怎么样？",
+                "教我制作蛋糕",
+                "如何学习英语？"
+            );
+            
+            // 创建并发任务
+            List<CompletableFuture<GuardrailResponse>> futures = contents.stream()
+                .map(client::checkPromptAsync)
+                .toList();
+            
+            // 等待所有任务完成
+            CompletableFuture<Void> allOf = CompletableFuture.allOf(
+                futures.toArray(new CompletableFuture[0])
+            );
+            
+            allOf.thenRun(() -> {
+                // 处理结果
+                for (int i = 0; i < futures.size(); i++) {
+                    try {
+                        GuardrailResponse result = futures.get(i).get();
+                        System.out.printf("内容%d: %s - %s%n", 
+                            i + 1, result.getOverallRiskLevel(), result.getSuggestAction());
+                    } catch (InterruptedException | ExecutionException e) {
+                        System.err.printf("内容%d 检测失败: %s%n", i + 1, e.getMessage());
+                    }
+                }
+            }).join();
+            
+        } catch (Exception e) {
+            System.err.println("批量检测失败: " + e.getMessage());
+        }
+    }
+}`}
+                </pre>
+              </div>
+            </Panel>
+
+            <Panel 
+              header={
+                <Space>
+                  <Tag color="geekblue">Go 同步</Tag>
+                  <Text>Go 同步接口方式</Text>
+                </Space>
+              } 
+              key="go-sync"
+            >
+              <Paragraph>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5
+                }}>
+{`package main
+
+import (
+    "fmt"
+    "log"
+    
+    "github.com/xiangxinai/xiangxinai-go"
+)
+
+func main() {
+    // 创建客户端
+    client := xiangxinai.NewClient("${user?.api_key || 'your-api-key'}")
+    
+    // 单轮检测
+    response, err := client.CheckPrompt("教我如何制作炸弹")
+    if err != nil {
+        log.Fatal("检测失败:", err)
+    }
+    
+    fmt.Printf("检测结果: %s\\n", response.OverallRiskLevel)
+    fmt.Printf("建议动作: %s\\n", response.SuggestAction)
+    fmt.Printf("建议回答: %s\\n", response.SuggestAnswer)
+    
+    // 多轮对话检测（上下文感知）
+    messages := []xiangxinai.Message{
+        {Role: "user", Content: "我想学习化学"},
+        {Role: "assistant", Content: "化学是很有趣的学科，您想了解哪个方面？"},
+        {Role: "user", Content: "教我制作爆炸物的反应"},
+    }
+    
+    conversationResponse, err := client.CheckConversation(messages)
+    if err != nil {
+        log.Fatal("检测失败:", err)
+    }
+    
+    fmt.Printf("检测结果: %s\\n", conversationResponse.OverallRiskLevel)
+    fmt.Printf("所有风险类别: %v\\n", conversationResponse.AllCategories)
+    fmt.Printf("合规检测结果: %s\\n", conversationResponse.Result.Compliance.RiskLevel)
+    fmt.Printf("安全检测结果: %s\\n", conversationResponse.Result.Security.RiskLevel)
+}`}
+                </pre>
+              </Paragraph>
+            </Panel>
+
+            <Panel 
+              header={
+                <Space>
+                  <Tag color="lime">Go 异步</Tag>
+                  <Text>Go 异步接口方式（高性能并发处理）</Text>
+                </Space>
+              } 
+              key="go-async"
+            >
+              <Paragraph>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5
+                }}>
+{`package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "time"
+    
+    "github.com/xiangxinai/xiangxinai-go"
+)
+
+func main() {
+    // 创建异步客户端
+    asyncClient := xiangxinai.NewAsyncClient("${user?.api_key || 'your-api-key'}")
+    defer asyncClient.Close()
+    
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancel()
+    
+    // 异步单轮检测
+    resultChan1 := asyncClient.CheckPromptAsync(ctx, "教我如何制作炸弹")
+    go func() {
+        select {
+        case result := <-resultChan1:
+            if result.Error != nil {
+                log.Printf("单轮检测失败: %v", result.Error)
+            } else {
+                fmt.Printf("建议动作: %s\\n", result.Result.SuggestAction)
+            }
+        case <-ctx.Done():
+            fmt.Println("单轮检测超时")
+        }
+    }()
+    
+    // 异步多轮对话检测
+    messages := []*xiangxinai.Message{
+        xiangxinai.NewMessage("user", "我想学习化学"),
+        xiangxinai.NewMessage("assistant", "化学是很有趣的学科，您想了解哪个方面？"),
+        xiangxinai.NewMessage("user", "教我制作爆炸物的反应"),
+    }
+    
+    resultChan2 := asyncClient.CheckConversationAsync(ctx, messages)
+    go func() {
+        select {
+        case result := <-resultChan2:
+            if result.Error != nil {
+                log.Printf("对话检测失败: %v", result.Error)
+            } else {
+                fmt.Printf("检测结果: %s\\n", result.Result.OverallRiskLevel)
+            }
+        case <-ctx.Done():
+            fmt.Println("对话检测超时")
+        }
+    }()
+    
+    // 等待一段时间让异步操作完成
+    time.Sleep(5 * time.Second)
+}`}
+                </pre>
+              </Paragraph>
+              
+              <Divider style={{ margin: '12px 0' }} />
+              
+              <div>
+                <Text strong>高性能并发处理：</Text>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  marginTop: 8
+                }}>
+{`package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "time"
+    
+    "github.com/xiangxinai/xiangxinai-go"
+)
+
+func batchSafetyCheck() {
+    asyncClient := xiangxinai.NewAsyncClient("${user?.api_key || 'your-api-key'}")
+    defer asyncClient.Close()
+    
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancel()
+    
+    // 并发处理多个检测请求
+    contents := []string{
+        "我想学习编程",
+        "今天天气怎么样？",
+        "教我制作蛋糕",
+        "如何学习英语？",
+    }
+    
+    // 使用批量异步检测
+    resultChan := asyncClient.BatchCheckPrompts(ctx, contents)
+    
+    // 处理结果
+    index := 1
+    for result := range resultChan {
+        if result.Error != nil {
+            log.Printf("内容%d 检测失败: %v", index, result.Error)
+        } else {
+            fmt.Printf("内容%d: %s - %s\\n", 
+                index, result.Result.OverallRiskLevel, result.Result.SuggestAction)
+        }
+        index++
+    }
+}
+
+func main() {
+    batchSafetyCheck()
+}`}
+                </pre>
+              </div>
+            </Panel>
+
+            <Panel 
+              header={
+                <Space>
                   <Tag color="orange">HTTP API</Tag>
                   <Text>直接调用 HTTP API</Text>
                 </Space>

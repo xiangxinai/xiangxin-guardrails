@@ -115,6 +115,9 @@ services:
       - ADMIN_UVICORN_WORKERS=2
       - ADMIN_MAX_CONCURRENT_REQUESTS=50
       
+      # 检测服务主机配置（Docker环境使用服务名）
+      - DETECTION_HOST=detection-service
+      
     command: ["python3", "start_admin_service.py"]
     volumes:
       - ./data:/app/data
