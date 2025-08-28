@@ -13,7 +13,7 @@ import {
   ExperimentOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../contexts/AuthContext';
-import { adminApi } from '../../services/api';
+import { adminApi, configApi } from '../../services/api';
 
 const { Header, Sider, Content } = AntLayout;
 
@@ -26,6 +26,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [switchModalVisible, setSwitchModalVisible] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [systemVersion, setSystemVersion] = useState<string>('v1.0.0');
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -43,6 +44,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       return () => clearInterval(interval);
     }
   }, [user?.is_super_admin, refreshSwitchStatus]);
+
+  useEffect(() => {
+    // 获取系统版本信息
+    const fetchSystemVersion = async () => {
+      try {
+        const systemInfo = await configApi.getSystemInfo();
+        if (systemInfo.app_version) {
+          setSystemVersion(`v${systemInfo.app_version}`);
+        }
+      } catch (error) {
+        console.error('Failed to fetch system version:', error);
+      }
+    };
+
+    fetchSystemVersion();
+  }, []);
 
   const menuItems = [
     {
@@ -275,7 +292,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               {user?.is_super_admin && <Tag color="red" size="small" style={{ marginLeft: 4 }}>管理员</Tag>}
             </span>
             
-            <span style={{ color: '#666' }}>v1.0.0</span>
+            <span style={{ color: '#666' }}>{systemVersion}</span>
             <Dropdown
               menu={{
                 items: [

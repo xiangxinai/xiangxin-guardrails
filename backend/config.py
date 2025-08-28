@@ -2,10 +2,34 @@ from typing import Optional
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
+def get_version() -> str:
+    """
+    获取版本号，优先级：
+    1. VERSION 文件
+    2. 环境变量 APP_VERSION
+    3. 默认版本
+    """
+    try:
+        # 尝试从 VERSION 文件读取
+        version_file = Path(__file__).parent.parent / "VERSION"
+        if version_file.exists():
+            return version_file.read_text().strip()
+    except Exception:
+        pass
+    
+    # 尝试从环境变量获取
+    import os
+    env_version = os.getenv('APP_VERSION')
+    if env_version:
+        return env_version
+    
+    # 默认版本
+    return "1.1.0"
+
 class Settings(BaseSettings):
     # 应用配置
     app_name: str = "Xiangxin Guardrails"
-    app_version: str = "1.1.0"
+    app_version: str = get_version()
     debug: bool = False
     
     # 超级管理员配置

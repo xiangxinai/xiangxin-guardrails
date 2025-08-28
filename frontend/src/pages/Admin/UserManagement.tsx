@@ -338,7 +338,7 @@ const UserManagement: React.FC = () => {
         {/* 搜索框 */}
         <div style={{ marginBottom: 16 }}>
           <Input.Search
-            placeholder="按 UUID 搜索用户"
+            placeholder="按用户邮箱或 UUID 搜索"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             style={{ width: 300 }}
@@ -349,7 +349,9 @@ const UserManagement: React.FC = () => {
         <Table
           columns={columns}
           dataSource={users.filter(user => 
-            !searchText || user.id.toLowerCase().includes(searchText.toLowerCase())
+            !searchText || 
+            user.email.toLowerCase().includes(searchText.toLowerCase()) ||
+            user.id.toLowerCase().includes(searchText.toLowerCase())
           )}
           rowKey="id"
           loading={loading}
