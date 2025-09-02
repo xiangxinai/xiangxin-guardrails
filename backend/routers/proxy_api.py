@@ -103,11 +103,13 @@ async def _sync_input_detection(model_config, input_messages: list, user_id: str
             logger.warning(f"同步输入检测阻断请求 - request {request_id}")
             logger.warning(f"检测结果: {detection_result}")
             
-            return {
-                'blocked': True,
-                'detection_id': detection_id,
-                'suggest_answer': detection_result.get('suggest_answer', '抱歉，您的请求包含不当内容，无法处理。')
-            }
+            # 返回完整的检测结果，并添加阻断标记
+            result = detection_result.copy()
+            result['blocked'] = True
+            # 确保detection_id字段存在（用于向后兼容）
+            if 'detection_id' not in result:
+                result['detection_id'] = detection_id
+            return result
         
         # 检测通过
         return {
@@ -278,7 +280,7 @@ class StreamChunkDetector:
                 return False
             else:
                 # 串行模式：同步最终检测，并检查是否可以释放最后的chunk
-                should_stop = await self._sync_detection(model_config, input_messages, user_id, request_id, is_final=True)
+                should_stop = await self._sync_final_detection(model_config, input_messages, user_id, request_id)
                 
                 # 在串行模式下，最终检测完成后标记所有chunk都安全
                 if not should_stop:
@@ -369,6 +371,7 @@ class StreamChunkDetector:
                 logger.warning(f"检测结果: {detection_result}")
                 self.risk_detected = True
                 self.should_stop = True
+                self.detection_result = detection_result  # 保存检测结果
                 return True
             
             # 清空buffer为下次检测做准备
@@ -378,6 +381,46 @@ class StreamChunkDetector:
             
         except Exception as e:
             logger.error(f"同步检测失败: {e}")
+            return False
+
+    async def _sync_final_detection(self, model_config, input_messages: list, 
+                                   user_id: str, request_id: str) -> bool:
+        """同步最终检测 - 用于流结束时的检测"""
+        if not self.chunks_buffer:
+            return False
+            
+        try:
+            # 构造检测messages
+            accumulated_content = ''.join(self.chunks_buffer)
+            detection_messages = input_messages.copy()
+            detection_messages.append({
+                "role": "assistant", 
+                "content": accumulated_content
+            })
+            
+            # 同步检测
+            detection_result = await detection_guardrail_service.detect_messages(
+                messages=detection_messages,
+                user_id=user_id,
+                request_id=f"{request_id}_stream_final_{self.chunk_count}"
+            )
+            
+            # 检查风险并决定是否阻断
+            if detection_result.get('suggest_action') in ['阻断', '代答']:
+                logger.warning(f"同步最终检测发现风险并阻断 - chunk {self.chunk_count}, request {request_id}")
+                logger.warning(f"检测结果: {detection_result}")
+                self.risk_detected = True
+                self.should_stop = True
+                self.detection_result = detection_result  # 保存检测结果
+                return True
+            
+            # 清空buffer
+            self.chunks_buffer = []
+            self.chunk_count = 0
+            return False
+            
+        except Exception as e:
+            logger.error(f"同步最终检测失败: {e}")
             return False
     
 

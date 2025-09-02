@@ -6,8 +6,9 @@ import time
 from openai import OpenAI, AsyncOpenAI
 
 # 安全网关配置
-API_KEY = "sk-xxai-CmPLpbIVfbayJO18zBpTkyJQmNwfmaq0Vu16HsQ19ROWrcJAYYr5ZXs0"
-BASE_URL = "http://localhost:5002/v1"  # 必须包含 /v1 前缀
+API_KEY = "your-api-key"
+# BASE_URL = "https://api.xiangxinai.cn/v1/gateway"  # 官方服务必须包含 /v1/gateway 前缀
+BASE_URL = "http://localhost:5002/v1" # 本地服务必须包含 /v1 前缀
 
 # 测试模型 (安全网关只支持这两个代理模型)
 INPUT_BLOCK_MODEL = "Input-Block"
@@ -18,6 +19,61 @@ def print_separator(title):
     print("\n" + "=" * 80)
     print(f"🔒 {title}")
     print("=" * 80)
+
+def print_detection_info(detection_info, block_type="输入"):
+    """统一显示检测信息和代答内容"""
+    if not detection_info:
+        print("⚠️  未获取到详细检测信息")
+        return
+    
+    print(f"🚨 阻断原因: {detection_info.get('suggest_action', '未知')}")
+    print(f"🔍 风险等级: {detection_info.get('overall_risk_level', '未知')}")
+    
+    # 显示合规检测结果
+    if detection_info.get('compliance_result'):
+        comp_result = detection_info['compliance_result']
+        print(f"📋 合规检测: {comp_result.get('risk_level', '未知')} - {comp_result.get('categories', [])}")
+    
+    # 显示安全检测结果  
+    if detection_info.get('security_result'):
+        sec_result = detection_info['security_result']
+        print(f"🔐 安全检测: {sec_result.get('risk_level', '未知')} - {sec_result.get('categories', [])}")
+    
+    # 重点显示代答内容
+    if detection_info.get('suggest_answer'):
+        print("\n" + "─" * 60)
+        print("🤖 安全网关代答内容:")
+        print("┌" + "─" * 58 + "┐")
+        suggest_answer = detection_info['suggest_answer']
+        # 处理长文本，按行显示并自动换行
+        for line in suggest_answer.split('\n'):
+            if len(line) <= 56:
+                print(f"│ {line:<56} │")
+            else:
+                # 长行自动换行
+                words = line.split(' ')
+                current_line = ""
+                for word in words:
+                    if len(current_line + word + " ") <= 56:
+                        current_line += word + " "
+                    else:
+                        print(f"│ {current_line.strip():<56} │")
+                        current_line = word + " "
+                if current_line.strip():
+                    print(f"│ {current_line.strip():<56} │")
+        print("└" + "─" * 58 + "┘")
+        print(f"💡 提示: 这是安全网关根据{block_type}检测结果提供的安全回复")
+    else:
+        print("⚠️  未提供代答内容")
+    
+    print(f"\n🆔 检测ID: {detection_info.get('request_id', '未知')}")
+    
+    # 显示更多检测细节
+    if detection_info.get('detection_details'):
+        print("📊 检测详情:")
+        details = detection_info['detection_details']
+        for key, value in details.items():
+            print(f"   • {key}: {value}")
 
 def test_input_block_streaming():
     """测试输入阻断模型的流式响应 - 演示危险输入被阻断"""
@@ -57,11 +113,17 @@ def test_input_block_streaming():
         if hasattr(chunk, 'choices') and chunk.choices and chunk.choices[0].finish_reason == 'content_filter':
             blocked = True
             print("\n\n🛡️  检测到危险内容，已被安全护栏阻断！")
+            
+            # 尝试从chunk中获取detection_info
+            detection_info = None
             if hasattr(chunk, 'detection_info'):
                 detection_info = chunk.detection_info
-                print(f"🚨 阻断原因: {detection_info.get('suggest_action', '未知')}")
-                if detection_info.get('suggest_answer'):
-                    print(f"🤖 代答内容: {detection_info['suggest_answer']}")
+            else:
+                # 尝试从原始数据中获取
+                chunk_dict = chunk.model_dump()
+                detection_info = chunk_dict.get('detection_info')
+            
+            print_detection_info(detection_info, "输入")
             break
         
         # 获取原始数据来访问reasoning_content
@@ -137,11 +199,17 @@ def test_output_block_streaming():
         if hasattr(chunk, 'choices') and chunk.choices and chunk.choices[0].finish_reason == 'content_filter':
             output_blocked = True
             print("\n\n🛡️  检测到输出内容存在风险，已被安全护栏阻断！")
+            
+            # 尝试从chunk中获取detection_info
+            detection_info = None
             if hasattr(chunk, 'detection_info'):
                 detection_info = chunk.detection_info
-                print(f"🚨 阻断原因: {detection_info.get('suggest_action', '未知')}")
-                if detection_info.get('suggest_answer'):
-                    print(f"🤖 代答内容: {detection_info['suggest_answer']}")
+            else:
+                # 尝试从原始数据中获取
+                chunk_dict = chunk.model_dump()
+                detection_info = chunk_dict.get('detection_info')
+            
+            print_detection_info(detection_info, "输出")
             break
         
         # 获取原始数据来访问reasoning_content
@@ -211,6 +279,7 @@ def test_safe_question():
     reasoning_started = False
     content_started = False
     blocked = False
+    full_content = ""
     
     print("\n📡 安全网关正在处理...")
     
@@ -219,7 +288,18 @@ def test_safe_question():
         # 检查是否被阻断
         if hasattr(chunk, 'choices') and chunk.choices and chunk.choices[0].finish_reason == 'content_filter':
             blocked = True
-            print("\n\n🛡️  内容被安全护栏阻断")
+            print("\n\n🛡️  检测到危险内容，已被安全护栏阻断！")
+            
+            # 尝试从chunk中获取detection_info
+            detection_info = None
+            if hasattr(chunk, 'detection_info'):
+                detection_info = chunk.detection_info
+            else:
+                # 尝试从原始数据中获取
+                chunk_dict = chunk.model_dump()
+                detection_info = chunk_dict.get('detection_info')
+            
+            print_detection_info(detection_info, "安全检测")
             break
         
         # 获取原始数据来访问reasoning_content
@@ -250,13 +330,18 @@ def test_safe_question():
                     print("┌─────────────────────────────────────────────────┐")
                 content_started = True
             # 逐字符输出回复
-            for char in chunk.choices[0].delta.content:
+            content_chunk = chunk.choices[0].delta.content
+            full_content += content_chunk
+            for char in content_chunk:
                 print(char, end="", flush=True)
                 time.sleep(0.02)  # 增加打字机效果
     
     if content_started and not blocked:
         print("\n└─────────────────────────────────────────────────┘")
         print("\n✅ 内容安全，正常回复完成")
+        print(f"📝 回复长度: {len(full_content)} 字符")
+    elif blocked:
+        print(f"📝 回复被阻断前已输出: {len(full_content)} 字符")
     
     print("\n" + "─" * 80)
 

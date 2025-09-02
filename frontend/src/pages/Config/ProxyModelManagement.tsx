@@ -284,15 +284,35 @@ const ProxyModelManagement: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       const token = localStorage.getItem('auth_token');
-      await axios.delete(`/api/v1/proxy/models/${id}`, {
+      const response = await axios.delete(`/api/v1/proxy/models/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      message.success('模型配置已删除');
-      fetchModels();
-    } catch (error) {
+      if (response.data && response.data.success) {
+        message.success('模型配置已删除');
+        fetchModels();
+      } else {
+        const errorMessage = response.data?.error || '删除失败';
+        message.error(errorMessage);
+      }
+    } catch (error: any) {
       console.error('删除失败:', error);
-      message.error('删除失败');
+      
+      // 处理不同类型的错误
+      if (error.response) {
+        const errorMessage = error.response.data?.error || error.response.data?.message || '删除失败';
+        if (error.response.status === 404) {
+          message.error('模型配置不存在或已被删除');
+        } else if (error.response.status === 403) {
+          message.error('无权限删除此模型配置');
+        } else {
+          message.error(`删除失败：${errorMessage}`);
+        }
+      } else if (error.request) {
+        message.error('网络错误，请检查连接');
+      } else {
+        message.error('删除失败，请稍后重试');
+      }
     }
   };
 
@@ -415,6 +435,7 @@ const ProxyModelManagement: React.FC = () => {
           key={formKey}
           form={form}
           layout="vertical"
+          autoComplete="off"
         >
           <Form.Item
             name="config_name"
@@ -437,8 +458,18 @@ const ProxyModelManagement: React.FC = () => {
               { validator: validateApiBaseUrl }
             ]}
           >
-            <Input placeholder="如：https://api.openai.com/v1" />
+            <Input placeholder="如：https://api.openai.com/v1" autoComplete="url" />
           </Form.Item>
+
+          {/* 隐藏的用户名字段，防止浏览器将API Key识别为密码 */}
+          <input 
+            type="text" 
+            name="username" 
+            autoComplete="username" 
+            style={{ position: 'absolute', left: '-9999px', opacity: 0 }} 
+            tabIndex={-1}
+            readOnly
+          />
 
           <Form.Item
             name="api_key"
@@ -449,6 +480,8 @@ const ProxyModelManagement: React.FC = () => {
             <Input.Password 
               placeholder={editingModel ? "留空保持原有API Key不变，或输入新的API Key" : "输入上游API Key"} 
               autoComplete="new-password"
+              data-lpignore="true"
+              data-form-type="other"
               visibilityToggle={false}
             />
           </Form.Item>
