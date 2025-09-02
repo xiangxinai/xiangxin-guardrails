@@ -1,6 +1,6 @@
 import uuid
 import json
-from typing import List, Dict, Tuple, Optional, Union
+from typing import List, Dict, Tuple, Optional, Union, Any
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from services.model_service import model_service
@@ -54,6 +54,73 @@ class DetectionGuardrailService:
     def __init__(self):
         # 不需要数据库连接，只使用缓存
         pass
+    
+    async def detect_content(
+        self,
+        content: str,
+        user_id: str,
+        request_id: str
+    ) -> Dict[str, Any]:
+        """
+        代理服务专用的简化检测方法
+        将单个内容文本包装为GuardrailRequest并调用check_guardrails
+        """
+        from models.requests import GuardrailRequest, Message
+        
+        # 将文本内容包装为消息格式
+        message = Message(role="user", content=content)
+        request = GuardrailRequest(model="detection", messages=[message])
+        
+        # 调用完整的检测方法
+        result = await self.check_guardrails(
+            request=request,
+            user_id=user_id
+        )
+        
+        # 返回与代理API兼容的格式
+        return {
+            "request_id": result.id,
+            "suggest_action": result.suggest_action,
+            "suggest_answer": result.suggest_answer,
+            "overall_risk_level": result.overall_risk_level,
+            "compliance_result": result.result.compliance.__dict__ if result.result.compliance else None,
+            "security_result": result.result.security.__dict__ if result.result.security else None
+        }
+
+    async def detect_messages(
+        self,
+        messages: List[Dict[str, str]],
+        user_id: str,
+        request_id: str
+    ) -> Dict[str, Any]:
+        """
+        上下文感知检测方法 - 支持问答对的messages结构
+        直接使用messages列表进行检测，支持多轮对话上下文
+        """
+        from models.requests import GuardrailRequest, Message
+        
+        # 将字典格式的消息转换为Message对象
+        message_objects = []
+        for msg in messages:
+            message_objects.append(Message(role=msg["role"], content=msg["content"]))
+        
+        request = GuardrailRequest(model="detection", messages=message_objects)
+        
+        # 调用完整的检测方法
+        result = await self.check_guardrails(
+            request=request,
+            user_id=user_id
+        )
+        
+        # 返回与代理API兼容的格式
+        return {
+            "request_id": result.id,
+            "suggest_action": result.suggest_action,
+            "suggest_answer": result.suggest_answer,
+            "overall_risk_level": result.overall_risk_level,
+            "compliance_result": result.result.compliance.__dict__ if result.result.compliance else None,
+            "security_result": result.result.security.__dict__ if result.result.security else None
+        }
     
     async def check_guardrails(
         self, 
@@ -367,3 +434,5 @@ class DetectionGuardrailService:
             suggest_action="通过",
             suggest_answer=None
         )
+# 创建全局实例
+detection_guardrail_service = DetectionGuardrailService()

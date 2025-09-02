@@ -4,6 +4,11 @@
 
 使用Docker Compose是最简单的部署方式，所有服务会自动配置好网络连接。
 
+象信AI安全护栏2.0采用三服务架构：
+- **管理服务** (5000端口)：处理管理平台API 
+- **检测服务** (5001端口)：高并发护栏检测API
+- **代理服务** (5002端口)：安全网关反向代理 🆕
+
 ```bash
 # 启动所有服务
 docker compose up -d
@@ -13,6 +18,11 @@ docker compose ps
 
 # 查看日志
 docker compose logs -f
+
+# 查看特定服务日志
+docker compose logs -f admin-service      # 管理服务
+docker compose logs -f detection-service  # 检测服务
+docker compose logs -f proxy-service      # 代理服务
 ```
 
 ## 本地手动部署
@@ -35,9 +45,10 @@ cp backend/.env.local.example backend/.env
 ### 2. 启动顺序
 
 1. 启动PostgreSQL数据库
-2. 启动detection服务（端口5000）
-3. 启动admin服务（端口5001）
-4. 启动frontend（端口3000）
+2. 启动detection服务（端口5001）
+3. 启动admin服务（端口5000）
+4. 启动proxy服务（端口5002） 🆕
+5. 启动frontend（端口3000）
 
 ### 3. 服务间连接配置
 
@@ -51,8 +62,9 @@ cp backend/.env.local.example backend/.env
 | 变量名 | Docker默认值 | 本地默认值 | 说明 |
 |-------|-------------|-----------|------|
 | `DETECTION_HOST` | `detection-service` | `localhost` | 检测服务主机名 |
-| `DETECTION_PORT` | `5000` | `5000` | 检测服务端口 |
-| `ADMIN_PORT` | `5001` | `5001` | 管理服务端口 |
+| `DETECTION_PORT` | `5001` | `5001` | 检测服务端口 |
+| `ADMIN_PORT` | `5000` | `5000` | 管理服务端口 |
+| `PROXY_PORT` | `5002` | `5002` | 代理服务端口 🆕 |
 
 ## 故障排除
 

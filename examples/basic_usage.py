@@ -21,7 +21,7 @@ def main():
     # 本地服务
     client_local = XiangxinAI(
         api_key="your-api-key",
-        base_url="http://localhost:5000/v1"
+        base_url="http://localhost:5001/v1"
     )
     
     # 使用本地客户端进行演示

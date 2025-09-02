@@ -18,7 +18,7 @@ def main():
     # 初始化客户端（使用本地测试环境）
     client = XiangxinAI(
         api_key="your-api-key",
-        base_url="http://localhost:5000/v1"
+        base_url="http://localhost:5001/v1"
     )
     
     # 演示场景

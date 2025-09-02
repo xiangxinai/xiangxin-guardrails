@@ -1,5 +1,5 @@
 from typing import List, Optional, Union
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, ConfigDict
 
 class Message(BaseModel):
     """消息模型"""
@@ -16,8 +16,8 @@ class Message(BaseModel):
     def validate_content(cls, v):
         if not v or not v.strip():
             raise ValueError('content cannot be empty')
-        if len(v) > 10000:
-            raise ValueError('content too long (max 10000 characters)')
+        if len(v) > 1000000:
+            raise ValueError('content too long (max 1000000 characters)')
         return v.strip()
 
 class GuardrailRequest(BaseModel):
@@ -78,3 +78,34 @@ class ResponseTemplateRequest(BaseModel):
         if v not in ['无风险', '低风险', '中风险', '高风险']:
             raise ValueError('risk_level must be one of: 无风险, 低风险, 中风险, 高风险')
         return v
+
+class ProxyCompletionRequest(BaseModel):
+    """代理完成请求模型"""
+    model: str = Field(..., description="模型名称")
+    messages: List[Message] = Field(..., description="消息列表")
+    temperature: Optional[float] = Field(None, description="温度参数")
+    top_p: Optional[float] = Field(None, description="Top-p参数")
+    n: Optional[int] = Field(1, description="生成数量")
+    stream: Optional[bool] = Field(False, description="是否流式输出")
+    stop: Optional[Union[str, List[str]]] = Field(None, description="停止词")
+    max_tokens: Optional[int] = Field(None, description="最大token数")
+    presence_penalty: Optional[float] = Field(None, description="存在惩罚")
+    frequency_penalty: Optional[float] = Field(None, description="频率惩罚")
+    user: Optional[str] = Field(None, description="用户标识")
+
+class ProxyModelConfig(BaseModel):
+    """代理模型配置模型"""
+    config_name: str = Field(..., description="配置名称")
+    api_base_url: str = Field(..., description="API基础URL")
+    api_key: str = Field(..., description="API密钥")
+    model_name: str = Field(..., description="模型名称")
+    enabled: Optional[bool] = Field(True, description="是否启用")
+    
+    # 允许以 model_ 开头的字段名
+    model_config = ConfigDict(protected_namespaces=())
+    
+    # 安全配置（极简设计）
+    block_on_input_risk: Optional[bool] = Field(False, description="输入风险时是否阻断，默认不阻断")
+    block_on_output_risk: Optional[bool] = Field(False, description="输出风险时是否阻断，默认不阻断") 
+    enable_reasoning_detection: Optional[bool] = Field(True, description="是否检测reasoning内容，默认开启")
+    stream_chunk_size: Optional[int] = Field(50, description="流式检测间隔，每N个chunk检测一次，默认50", ge=1, le=500)

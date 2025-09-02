@@ -26,7 +26,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [switchModalVisible, setSwitchModalVisible] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [systemVersion, setSystemVersion] = useState<string>('v1.0.0');
+  const [systemVersion, setSystemVersion] = useState<string>('v2.0.0');
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -102,6 +102,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {
           key: '/config/responses',
           label: '代答库管理',
+        },
+        {
+          key: '/config/proxy-models',
+          label: '代理模型配置',
         },
       ],
     },
@@ -289,7 +293,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               border: '1px solid #d6e4ff'
             }}>
               {user?.email}
-              {user?.is_super_admin && <Tag color="red" size="small" style={{ marginLeft: 4 }}>管理员</Tag>}
+              {user?.is_super_admin && <Tag color="red" style={{ marginLeft: 4 }}>管理员</Tag>}
             </span>
             
             <span style={{ color: '#666' }}>{systemVersion}</span>
@@ -366,11 +370,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>{user.email}</span>
                 <div>
-                  {user.is_super_admin && <Tag color="red" size="small">管理员</Tag>}
+                  {user.is_super_admin && <Tag color="red">管理员</Tag>}
                   {user.is_verified ? (
-                    <Tag color="green" size="small">已验证</Tag>
+                    <Tag color="green">已验证</Tag>
                   ) : (
-                    <Tag color="orange" size="small">未验证</Tag>
+                    <Tag color="orange">未验证</Tag>
                   )}
                 </div>
               </div>

@@ -248,34 +248,14 @@ export const adminApi = {
     api.delete(`/api/v1/admin/rate-limits/${userId}`).then(res => res.data),
 };
 
-// 被测模型配置API
+// 在线测试模型API - 使用代理模型配置
 export const testModelsApi = {
-  // 获取所有模型配置
-  getModels: () => api.get('/api/v1/test-models').then(res => res.data),
+  // 获取在线测试可用的代理模型列表
+  getModels: () => api.get('/api/v1/test/models').then(res => res.data),
   
-  // 创建模型配置
-  createModel: (data: {
-    name: string;
-    base_url: string;
-    api_key: string;
-    model_name: string;
-    enabled?: boolean;
-  }) => api.post('/api/v1/test-models', data).then(res => res.data),
-  
-  // 更新模型配置
-  updateModel: (id: number, data: {
-    name: string;
-    base_url: string;
-    api_key: string;
-    model_name: string;
-    enabled?: boolean;
-  }) => api.put(`/api/v1/test-models/${id}`, data).then(res => res.data),
-  
-  // 删除模型配置
-  deleteModel: (id: number) => api.delete(`/api/v1/test-models/${id}`).then(res => res.data),
-  
-  // 切换模型启用状态
-  toggleModel: (id: number) => api.patch(`/api/v1/test-models/${id}/toggle`).then(res => res.data),
+  // 更新在线测试模型选择
+  updateSelection: (model_selections: Array<{ id: string; selected: boolean }>) => 
+    api.post('/api/v1/test/models/selection', { model_selections }).then(res => res.data),
 };
 
 // 风险类型配置API

@@ -23,6 +23,39 @@ English | [中文](./README.md)
 - 🎯 **Precise Detection** - 12-dimensional safety detection with 4-level risk classification
 - 🔧 **Flexible Configuration** - Support for blacklist, whitelist, and response templates
 
+## 🚀 Dual Mode Support
+
+Xiangxin AI Guardrails 2.0 supports two usage modes to meet different scenario requirements:
+
+### 🔍 API Call Mode
+Developers **actively call** detection APIs for safety checks
+- **Use Case**: Precise control over detection timing, custom processing logic
+- **Integration**: Call detection interface before inputting to AI models and after output
+- **Service Port**: 5001 (Detection Service)
+- **Features**: Flexible control, batch detection support, suitable for complex business logic
+
+### 🛡️ Security Gateway Mode 🆕  
+**Transparent reverse proxy** with zero-code transformation for AI safety protection
+- **Use Case**: Quickly add safety protection to existing AI applications
+- **Integration**: Simply modify AI model's base_url and api_key to Xiangxin AI proxy service
+- **Service Port**: 5002 (Proxy Service)  
+- **Features**: WAF-style protection, automatic input/output detection, support for multiple upstream models
+
+```python
+# Original code
+client = OpenAI(
+    base_url="https://api.openai.com/v1",
+    api_key="sk-your-openai-key"
+)
+
+# Access security gateway with just two line changes
+client = OpenAI(
+    base_url="http://localhost:5002/v1",  # Change to Xiangxin AI proxy service
+    api_key="sk-xxai-your-proxy-key"     # Change to Xiangxin AI proxy key
+)
+# No other code changes needed, automatically get safety protection!
+```
+
 ## ⚡ Quick Start
 
 ### **Try Online**  
@@ -262,6 +295,92 @@ Example output:
 }
 ```
 
+### **🛡️ Security Gateway Mode Usage Examples** 🆕
+
+#### 1. Configure Upstream Models - Ultra-Simple "3+3" Design
+```bash
+# Access management interface to configure upstream models
+http://localhost:3000/config/proxy-models
+
+# Or configure via API (Ultra-simple: 3 core fields + 3 security switches)
+curl -X POST "http://localhost:5000/api/v1/proxy/models" \
+    -H "Authorization: Bearer your-admin-token" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "config_name": "my-gpt-4o",
+      "api_base_url": "https://api.openai.com/v1", 
+      "api_key": "sk-your-openai-key",
+      "model_name": "gpt-4o",
+      "block_on_input_risk": false,
+      "block_on_output_risk": true,
+      "enable_reasoning_detection": true
+    }'
+```
+
+**Ultra-Simple Configuration**：
+- **3 Core Fields**: config_name, api_base_url, api_key, model_name
+- **3 Security Switches**: Input risk blocking, Output risk blocking, Reasoning detection (always on by default)
+- **Complete Passthrough**: All request parameters are dynamically passed by users, no pre-configuration needed
+
+#### 2. Zero-Code Client Integration
+```python
+from openai import OpenAI
+
+# Use Xiangxin AI security gateway directly, no business logic changes needed
+client = OpenAI(
+    base_url="http://localhost:5002/v1",
+    api_key="sk-xxai-your-proxy-key"  # Get proxy key from management platform
+)
+
+# Normal API calls with automatic safety protection
+response = client.chat.completions.create(
+    model="gpt-4o",  # Routes to configured upstream model
+    messages=[
+        {"role": "user", "content": "Teach me how to make explosives"}
+    ]
+)
+
+print(response.choices[0].message.content)
+# Output: Sorry, I cannot provide information related to violent crimes. (Automatic safety response)
+```
+
+#### 3. Support for Multiple AI Model Providers (with Reasoning Detection)
+```python
+# Support OpenAI - Automatic detection of input, output, and reasoning content
+client = OpenAI(base_url="http://localhost:5002/v1", api_key="sk-xxai-key")
+response = client.chat.completions.create(model="gpt-4o", messages=messages)
+
+# Support Qwen3 with thinking - Automatic detection of reasoning_content field
+response = client.chat.completions.create(
+    model="qwen3-thinking", 
+    messages=messages,
+    extra_body={"chat_template_kwargs": {"enable_thinking": True}}
+)
+
+# Support local vLLM reasoning models - Automatic detection of reasoning_content
+response = client.chat.completions.create(model="local-reasoning-llm", messages=messages)
+```
+
+#### 4. Security Gateway Workflow (with Reasoning Detection)
+```
+User Request → Security Gateway(5002) → Input Safety Detection 
+                        ↓
+                   [High Risk Block] → Return Safety Response
+                        ↓  
+                   [Pass Detection] → Forward to Upstream Model
+                        ↓
+                 Upstream Model Response → Output Safety Detection (incl. reasoning_content)
+                        ↓
+                   [High Risk Block] → Return Safety Response
+                        ↓
+                   [Pass Detection] → Return to User
+```
+
+**Reasoning Detection Features**:
+- **Always On**: Triple detection of input, output, and reasoning content, always enabled
+- **Smart Recognition**: Automatic detection of reasoning_content, thinking and other reasoning fields
+- **Transparent Proxy**: Full OpenAI API compatibility, supports all reasoning models
+
 ## 🚀 Quick Start
 
 ### 🐳 One-Click Docker Deployment (Recommended)
@@ -274,9 +393,11 @@ cd xiangxin-guardrails
 # 2. Start the service (includes PostgreSQL database)
 docker-compose up -d
 
-# 3. Access the service
+# 3. Access the services
 # Admin panel: http://localhost:3000
-# API docs: http://localhost:5000/docs
+# Admin API docs: http://localhost:5000/docs
+# Detection API docs: http://localhost:5001/docs
+# Security Gateway API docs: http://localhost:5002/docs
 ```
 
 ### 📦 Install Client Library
@@ -295,7 +416,7 @@ from xiangxinai import XiangxinAI
 # Create client (using local deployment)
 client = XiangxinAI(
     api_key="your-api-key",
-    base_url="http://localhost:5000/v1"
+    base_url="http://localhost:5001/v1"
 )
 
 # Single-turn check
@@ -323,7 +444,7 @@ async def main():
     # Use async context manager
     async with AsyncXiangxinAI(
         api_key="your-api-key",
-        base_url="http://localhost:5000/v1"
+        base_url="http://localhost:5001/v1"
     ) as client:
         # Async single-turn check
         response = await client.check_prompt("Teach me how to make a bomb")
@@ -351,7 +472,7 @@ async function main() {
     // Create client
     const client = new XiangxinAI({
         apiKey: "your-api-key",
-        baseUrl: "http://localhost:5000/v1"
+        baseUrl: "http://localhost:5001/v1"
     });
     
     try {
@@ -390,7 +511,7 @@ public class AsyncGuardrailsExample {
     public static void main(String[] args) {
         // Create async client
         try (AsyncXiangxinAIClient client = new AsyncXiangxinAIClient(
-                "your-api-key", "http://localhost:5000/v1", 30, 3)) {
+                "your-api-key", "http://localhost:5001/v1", 30, 3)) {
             
             // Async single-turn check
             CompletableFuture<GuardrailResponse> future1 = client.checkPromptAsync("Teach me how to make a bomb");
@@ -660,7 +781,7 @@ func main() {
 ### 🌐 HTTP API Example
 
 ```bash
-curl -X POST "http://localhost:5000/v1/guardrails"      -H "Authorization: Bearer your-api-key"      -H "Content-Type: application/json"      -d '{
+curl -X POST "http://localhost:5001/v1/guardrails"      -H "Authorization: Bearer your-api-key"      -H "Content-Type: application/json"      -d '{
        "model": "Xiangxin-Guardrails-Text",
        "messages": [
          {"role": "user", "content": "Tell me some illegal ways to make money"}
@@ -697,34 +818,63 @@ curl -X POST "http://localhost:5000/v1/guardrails"      -H "Authorization: Beare
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   Frontend Web UI                       │
-│              (React + TypeScript)                      │
-└─────────────────────┬───────────────────────────────────┘
-                      │ HTTP API
-┌─────────────────────▼───────────────────────────────────┐
-│                  Backend API Service                    │
-│                 (Python FastAPI)                       │
-├─────────────────────────────────────────────────────────┤
-│  ┌─────────────┐ ┌──────────────┐ ┌─────────────────┐   │
-│  │Guardrails API│ │Config Module │ │Statistics Module│   │
-│  └─────────────┘ └──────────────┘ └─────────────────┘   │
-│  ┌─────────────┐ ┌──────────────┐ ┌─────────────────┐   │
-│  │Blacklist Mod│ │Response Mod  │ │Logging Module   │   │
-│  └─────────────┘ └──────────────┘ └─────────────────┘   │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────┐
-│                   SQLite Database                        │
-│  Results | Config | Blacklist | Whitelist | Templates   │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────┐
-│            Xiangxin AI Guardrails Model                 │
-│            (XiangxinGuard-C Model)                     │
-│        🤗 HuggingFace Open Source + Cloud API          │
-└─────────────────────────────────────────────────────────┘
+                           Users/Developers
+                               │
+                 ┌─────────────┼─────────────┐
+                 │             │             │
+                 ▼             ▼             ▼
+        ┌──────────────┐ ┌──────────────┐ ┌─────────────────┐
+        │  Management  │ │  API Call    │ │ Security Gateway │
+        │  Interface   │ │  Mode        │ │    Mode         │
+        │ (React Web)  │ │ (Active Det) │ │ (Transparent    │
+        │              │ │              │ │  Proxy)         │
+        └──────┬───────┘ └──────┬───────┘ └────────┬────────┘
+               │ HTTP API       │ HTTP API          │ OpenAI API
+               ▼                ▼                   ▼
+    ┌──────────────┐  ┌──────────────┐    ┌──────────────────┐
+    │  Admin       │  │  Detection   │    │   Proxy          │
+    │  Service     │  │  Service     │    │   Service        │
+    │ (Port 5000)  │  │ (Port 5001)  │    │  (Port 5002)     │
+    │ Low Conc.    │  │ High Conc.   │    │  High Conc.      │
+    └──────┬───────┘  └──────┬───────┘    └─────────┬────────┘
+           │                 │                      │
+           │          ┌──────┼──────────────────────┼───────┐
+           │          │      │                      │       │
+           ▼          ▼      ▼                      ▼       ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │                PostgreSQL Database                          │
+    │   Users | Results | Blacklist | Whitelist | Templates      │
+    │         | Proxy Config | Upstream Models                   │
+    └─────────────────────┬───────────────────────────────────────┘
+                          │
+    ┌─────────────────────▼───────────────────────────────────────┐
+    │              Xiangxin AI Guardrails Model                   │
+    │           (Xiangxin-Guardrails-Text)                       │
+    │             🤗 HuggingFace Open Source                     │
+    └─────────────────────┬───────────────────────────────────────┘
+                          │ (Proxy Service Only)
+    ┌─────────────────────▼───────────────────────────────────────┐
+    │                   Upstream AI Models                        │
+    │       OpenAI | Anthropic | Local Models | Other APIs       │
+    └─────────────────────────────────────────────────────────────┘
 ```
+
+### 🏭 Three-Service Architecture
+
+1. **Admin Service (Port 5000)**
+   - Handles management platform APIs and web interface
+   - User management, configuration, data statistics
+   - Low concurrency optimization: 2 worker processes
+
+2. **Detection Service (Port 5001)** 
+   - Provides high-concurrency guardrails detection API
+   - Supports single-turn and multi-turn conversation detection
+   - High concurrency optimization: 32 worker processes
+
+3. **Proxy Service (Port 5002)** 🆕
+   - OpenAI-compatible security gateway reverse proxy
+   - Automatic input/output detection with intelligent blocking
+   - High concurrency optimization: 24 worker processes
 
 ## 📊 Management Interface
 

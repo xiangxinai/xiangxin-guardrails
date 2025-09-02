@@ -20,7 +20,7 @@ def main():
     # 创建客户端，像OpenAI一样
     client = XiangxinAI(
         api_key="your-api-key",
-        base_url="http://localhost:5000/v1"  # 本地测试环境
+        base_url="http://localhost:5001/v1"  # 本地测试环境
     )
     
     # 演示场景

@@ -10,96 +10,110 @@ All notable changes to Xiangxin AI Guardrails platform are documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [未发布 Unreleased]
+## [2.0.0] - 2025-01-01
+
+### 🚀 重大更新 Major Updates
+- 🛡️ **全新安全网关模式** 
+  - 新增反向代理服务(proxy-service)，支持OpenAI兼容的透明代理
+  - 实现WAF风格的AI安全防护，自动检测输入和输出
+  - 支持上游模型管理，一键配置保护目标模型
+  - 零代码改造接入，只需修改base_url和api_key
+
+- 🏗️ **三服务架构重构**
+  - **管理服务**(5000端口)：处理管理平台API，低并发优化
+  - **检测服务**(5001端口)：高并发护栏检测API
+  - **代理服务**(5002端口)：高并发安全网关反向代理
+  - 架构优化：数据库连接数从4,800降至176（减少96%）
 
 ### 新增 Added
-- 🏗️ **双服务架构重构**
-  - 拆分为检测服务(detection_service.py)和管理服务(admin_service.py)
-  - 检测服务专注高并发处理，只做认证和写日志文件
-  - 管理服务负责完整管理功能和日志导入数据库
-  - 数据库连接数优化：从4,800降至176（减少96%）
+- 🔌 **双模式支持**
+  - **API调用模式**：开发者主动调用检测API进行安全检测
+  - **安全网关模式**：透明反向代理，自动拦截和检测AI交互
+
+- 🎯 **上游模型管理**
+  - Web界面配置上游模型（OpenAI、Claude、本地模型等）
+  - API密钥管理和安全存储
+  - 请求转发和响应代理
+  - 用户级别的模型访问控制
+
+- 🚦 **智能代理策略**
+  - 输入检测：用户请求预处理和安全过滤
+  - 输出检测：AI回复内容安全审查
+  - 自动阻断：高风险内容智能拦截
+  - 代答功能：安全回复模板自动替换
 
 - 🐳 **Docker部署架构优化**
-  - Docker Compose支持双服务架构
-  - 独立的检测服务容器(detection-service)和管理服务容器(admin-service)
-  - Nginx反向代理自动路由到对应服务
+  - Docker Compose支持三服务架构
+  - 独立的检测、管理、代理服务容器
   - 统一的数据目录挂载和日志管理
+  - 自动健康检查和服务发现
+
+- 📁 **新增文件**
+  - `backend/proxy_service.py` - 安全网关反向代理服务入口
+  - `backend/start_proxy_service.py` - 代理服务启动脚本
+  - `backend/start_all_services.sh` - 三服务启动脚本
+  - `backend/stop_all_services.sh` - 三服务停止脚本
+  - `backend/services/proxy_service.py` - 代理服务核心逻辑
+  - `backend/routers/proxy_api.py` - 代理API路由
+  - `backend/routers/proxy_management.py` - 代理管理API路由
+  - `frontend/src/pages/Config/ProxyModelManagement.tsx` - 上游模型管理界面
+  - `examples/proxy_usage_demo.py` - 代理服务使用示例
 
 - 🔌 **私有化集成模式** 🆕
   - 支持与客户现有用户系统深度集成
   - 新增 `STORE_DETECTION_RESULTS` 配置开关，控制检测结果存储方式
   - 客户可通过API管理用户级别的黑白名单和代答模板
   - JWT认证确保用户数据完全隔离
-  - 数据库仅存储配置信息，检测数据可选择性存储
-
-- 🚀 **性能优化**
-  - 检测服务连接池优化：从150连接/worker降至5连接/worker
-  - 新增轻量级DetectionGuardrailService，移除不必要的数据库写入
-  - 异步日志导入服务(LogToDbService)，定期将日志文件导入数据库
-  - 检测API响应速度显著提升
-
-- 📁 **新增文件**
-  - `backend/detection_service.py` - 高并发检测服务入口
-  - `backend/admin_service.py` - 低并发管理服务入口
-  - `backend/services/detection_guardrail_service.py` - 轻量级检测服务
-  - `backend/services/log_to_db_service.py` - 日志导入数据库服务
-  - `backend/routers/detection_guardrails.py` - 检测专用路由
-  - `backend/start_detection_service.py` - 检测服务启动脚本
-  - `backend/start_admin_service.py` - 管理服务启动脚本
-  - `backend/start_both_services.sh` - 双服务启动脚本
-  - `backend/stop_both_services.sh` - 双服务停止脚本
-  - `backend/README_DUAL_SERVICES.md` - 双服务架构说明文档
-
-- 📖 **私有化集成文档和SDK** 🆕
-  - `backend/docs/客户集成指南.md` - 详细的客户系统集成说明
-  - `backend/docs/API接口文档.md` - 完整的API接口文档
-  - `backend/docs/私有化部署指南.md` - Docker和源码部署指导
-  - `backend/client-sdk/python/guardrails_client.py` - Python客户端SDK
-  - `backend/client-sdk/nodejs/guardrails-client.js` - Node.js客户端SDK
 
 ### 变更 Changed
 - 🔄 **架构重构**
-  - 将单一服务拆分为双服务架构，显著提升性能
-  - 检测服务工作进程从单一服务的复杂配置改为32个高并发进程
-  - 管理服务工作进程优化为2个轻量级进程
+  - 将单一服务重构为三服务架构，显著提升性能和可扩展性
+  - 检测服务：32个高并发进程，专注API检测
+  - 管理服务：2个轻量级进程，处理管理功能
+  - 代理服务：24个高并发进程，处理安全网关
   - 日志目录配置统一使用DATA_DIR环境变量
 
 - 🌐 **API路由更新**
-  - 检测API路径保持 `/v1/guardrails` 不变
-  - 管理API路径保持 `/api/v1/*` 不变
-  - Nginx代理规则更新支持双服务自动路由
-  - 新增健康检查端点分别对应两个服务
+  - 检测API：`/v1/guardrails` (5001端口)
+  - 管理API：`/api/v1/*` (5000端口) 
+  - 代理API：OpenAI兼容格式 (5002端口)
+  - 新增代理管理API：`/api/v1/proxy/*`
+  - 健康检查端点分别对应三个服务
 
 - 📦 **部署配置更新**
-  - Docker Compose配置支持独立的检测和管理服务容器
-  - 环境变量配置增加双服务相关参数
-  - 脚本文件从配置文件获取数据目录，不再硬编码
+  - Docker Compose支持三服务容器独立部署
+  - 环境变量新增代理服务相关配置
+  - 统一的数据目录挂载策略
+  - 自动化服务启动和停止脚本
 
 - 🔧 **配置优化**
-  - 更新.env配置支持双服务端口配置
-  - 新增检测服务配置：DETECTION_PORT、DETECTION_UVICORN_WORKERS
-  - 新增管理服务配置：ADMIN_PORT、ADMIN_UVICORN_WORKERS
-  - 数据库连接池分离配置
-  - 新增 `STORE_DETECTION_RESULTS` 环境变量控制检测结果存储策略
+  - 新增代理服务配置：`PROXY_PORT`、`PROXY_UVICORN_WORKERS`
+  - 优化数据库连接池分离配置
+  - 新增上游模型配置管理
+  - 支持多种AI模型提供商接入
 
 - 📊 **数据流架构重设计**
   ```
-  # SaaS模式 (STORE_DETECTION_RESULTS=true)
-  检测API → 检测服务 → 认证缓存 + 写日志文件
-  日志文件 → 管理服务 → 日志导入器 → 数据库
-  管理API → 管理服务 → 数据库查询
+  # API调用模式
+  客户端 → 检测服务(5001) → 护栏检测 → 返回结果
   
-  # 私有化集成模式 (STORE_DETECTION_RESULTS=false)
-  检测API → 检测服务 → 认证缓存 + 写日志文件
-  配置API → 管理服务 → 数据库（仅配置数据）
-  客户中控台 → 通过JWT管理用户配置
+  # 安全网关模式  
+  客户端 → 代理服务(5002) → 输入检测 → 上游模型 → 输出检测 → 返回结果
+  
+  # 管理模式
+  管理界面 → 管理服务(5000) → 配置管理 → 数据库
   ```
 
 ### 修复 Fixed
 - 🐛 **数据库连接池问题**
-  - 解决32个worker×150连接=4,800连接的资源浪费问题
-  - 修复高并发下数据库连接耗尽的风险
-  - 优化内存使用，避免不必要的数据库操作
+  - 解决高并发下数据库连接耗尽的风险
+  - 优化三服务架构的连接池分配
+  - 减少不必要的数据库操作，提升响应速度
+
+### 技术债务 Technical Debt
+- 移除了过时的单一服务启动方式
+- 优化了Docker镜像构建策略
+- 统一了配置文件管理方式
 
 ### 计划中 Planned
 - [ ] 多模态内容检测支持（图像、音频）

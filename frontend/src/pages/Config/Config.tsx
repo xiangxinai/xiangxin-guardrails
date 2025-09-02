@@ -6,6 +6,7 @@ import BlacklistManagement from './BlacklistManagement';
 import WhitelistManagement from './WhitelistManagement';
 import ResponseTemplateManagement from './ResponseTemplateManagement';
 import RiskTypeManagement from './RiskTypeManagement';
+import ProxyModelManagement from './ProxyModelManagement';
 
 const Config: React.FC = () => {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ const Config: React.FC = () => {
     if (path.includes('/whitelist')) return 'whitelist';
     if (path.includes('/responses')) return 'responses';
     if (path.includes('/risk-types')) return 'risk-types';
+    if (path.includes('/proxy-models')) return 'proxy-models';
     return 'risk-types';
   };
 
@@ -45,6 +47,11 @@ const Config: React.FC = () => {
       key: 'responses',
       label: '代答库管理',
       children: <ResponseTemplateManagement />,
+    },
+    {
+      key: 'proxy-models',
+      label: '代理模型配置',
+      children: <ProxyModelManagement />,
     },
   ];
 

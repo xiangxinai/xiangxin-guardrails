@@ -6,12 +6,13 @@ import asyncio
 import uuid
 import httpx
 from sqlalchemy.orm import Session
-from database.connection import get_db
+from database.connection import get_db, get_admin_db_session
 from services.guardrail_service import GuardrailService
 from models.requests import GuardrailRequest, Message
 from utils.logger import setup_logger
 from openai import AsyncOpenAI
 from config import settings
+from services.proxy_service import proxy_service
 
 logger = setup_logger()
 router = APIRouter(tags=["Online Test"])
@@ -42,6 +43,158 @@ class ModelResponse(BaseModel):
 class OnlineTestResponse(BaseModel):
     guardrail: Dict[str, Any]
     models: Dict[str, ModelResponse] = {}
+    original_responses: Dict[str, ModelResponse] = {}
+
+class OnlineTestModelInfo(BaseModel):
+    id: str
+    config_name: str
+    api_base_url: str
+    model_name: str
+    enabled: bool
+    selected: bool = False  # 是否被选中用于在线测试
+    
+    # 允许以 model_ 开头的字段名
+    model_config = ConfigDict(protected_namespaces=())
+
+class UpdateModelSelectionRequest(BaseModel):
+    model_selections: List[Dict[str, Any]]  # [{"id": "model_id", "selected": True/False}]
+    
+    # 允许以 model_ 开头的字段名
+    model_config = ConfigDict(protected_namespaces=())
+
+@router.get("/test/models", response_model=List[OnlineTestModelInfo])
+async def get_online_test_models(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """获取在线测试可用的代理模型列表"""
+    try:
+        # 获取用户上下文
+        auth_context = getattr(request.state, 'auth_context', None)
+        user_id = None
+        if auth_context:
+            user_id = str(auth_context['data'].get('user_id'))
+        
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User ID not found in auth context")
+        
+        # 获取用户UUID
+        try:
+            user_uuid = uuid.UUID(user_id)
+        except ValueError:
+            logger.error(f"Invalid user_id format: {user_id}")
+            raise HTTPException(status_code=400, detail="无效的用户ID格式")
+        
+        # 获取用户的代理模型配置
+        from database.models import ProxyModelConfig, OnlineTestModelSelection
+        proxy_models = db.query(ProxyModelConfig).filter(
+            ProxyModelConfig.user_id == user_uuid,
+            ProxyModelConfig.enabled == True
+        ).all()
+        
+        # 获取用户的在线测试模型选择
+        selections = db.query(OnlineTestModelSelection).filter(
+            OnlineTestModelSelection.user_id == user_uuid
+        ).all()
+        
+        # 创建选择映射
+        selection_map = {str(sel.proxy_model_id): sel.selected for sel in selections}
+        
+        # 构造返回数据
+        result = []
+        for model in proxy_models:
+            model_info = OnlineTestModelInfo(
+                id=str(model.id),
+                config_name=model.config_name,
+                api_base_url=model.api_base_url,
+                model_name=model.model_name,
+                enabled=model.enabled,
+                selected=selection_map.get(str(model.id), False)
+            )
+            result.append(model_info)
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get online test models error: {e}")
+        raise HTTPException(status_code=500, detail=f"获取模型列表失败: {str(e)}")
+
+@router.post("/test/models/selection")
+async def update_model_selection(
+    request_data: UpdateModelSelectionRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """更新在线测试模型选择"""
+    try:
+        # 获取用户上下文
+        auth_context = getattr(request.state, 'auth_context', None)
+        user_id = None
+        if auth_context:
+            user_id = str(auth_context['data'].get('user_id'))
+        
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User ID not found in auth context")
+        
+        # 获取用户UUID
+        try:
+            user_uuid = uuid.UUID(user_id)
+        except ValueError:
+            logger.error(f"Invalid user_id format: {user_id}")
+            raise HTTPException(status_code=400, detail="无效的用户ID格式")
+        
+        from database.models import OnlineTestModelSelection, ProxyModelConfig
+        
+        # 更新每个模型的选择状态
+        for selection in request_data.model_selections:
+            model_id = selection['id']
+            selected = selection['selected']
+            
+            # 验证模型ID格式
+            try:
+                proxy_model_uuid = uuid.UUID(model_id)
+            except ValueError:
+                logger.error(f"Invalid model_id format: {model_id}")
+                continue
+            
+            # 验证模型是否属于该用户
+            proxy_model = db.query(ProxyModelConfig).filter(
+                ProxyModelConfig.id == proxy_model_uuid,
+                ProxyModelConfig.user_id == user_uuid
+            ).first()
+            
+            if not proxy_model:
+                continue  # 跳过不属于该用户的模型
+            
+            # 查找现有的选择记录
+            existing_selection = db.query(OnlineTestModelSelection).filter(
+                OnlineTestModelSelection.user_id == user_uuid,
+                OnlineTestModelSelection.proxy_model_id == proxy_model_uuid
+            ).first()
+            
+            if existing_selection:
+                # 更新现有记录
+                existing_selection.selected = selected
+            else:
+                # 创建新记录
+                new_selection = OnlineTestModelSelection(
+                    user_id=user_uuid,
+                    proxy_model_id=proxy_model_uuid,
+                    selected=selected
+                )
+                db.add(new_selection)
+        
+        db.commit()
+        return {"message": "模型选择已更新"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Update model selection error: {e}")
+        raise HTTPException(status_code=500, detail=f"更新模型选择失败: {str(e)}")
 
 @router.post("/test/online", response_model=OnlineTestResponse)
 async def online_test(
@@ -113,46 +266,103 @@ async def online_test(
         # 使用用户API key调用护栏API
         guardrail_dict = await call_guardrail_api(user_api_key, messages, user_uuid, db)
         
-        # 如果是问题类型且配置了模型，从数据库获取完整配置并调用模型API
+        # 如果是问题类型，获取用户选择的代理模型进行测试
         model_results = {}
-        if request_data.input_type == 'question' and request_data.models:
-            enabled_model_ids = [m.id for m in request_data.models if m.enabled]
-            logger.info(f"Testing {len(enabled_model_ids)} enabled models: {enabled_model_ids}")
+        original_responses = {}
+        if request_data.input_type == 'question':
+            # 从数据库获取用户选择的代理模型配置
+            from database.models import ProxyModelConfig, OnlineTestModelSelection
             
-            # 从数据库获取完整的模型配置（包括API key）
-            from database.models import TestModelConfig
-            db_models = db.query(TestModelConfig).filter(
-                TestModelConfig.id.in_(enabled_model_ids),
-                TestModelConfig.user_id == user_uuid,
-                TestModelConfig.enabled == True
-            ).all()
+            # 如果请求中指定了模型，使用指定的模型，否则使用用户之前选择的模型
+            if request_data.models:
+                # 兼容原有的请求格式，但现在使用proxy_model_configs
+                enabled_model_ids = [m.id for m in request_data.models if m.enabled]
+                logger.info(f"Testing specific models: {enabled_model_ids}")
+                
+                db_models = db.query(ProxyModelConfig).filter(
+                    ProxyModelConfig.id.in_(enabled_model_ids),
+                    ProxyModelConfig.user_id == user_uuid,
+                    ProxyModelConfig.enabled == True
+                ).all()
+            else:
+                # 获取用户选择的代理模型
+                selected_models_query = db.query(ProxyModelConfig).join(
+                    OnlineTestModelSelection,
+                    ProxyModelConfig.id == OnlineTestModelSelection.proxy_model_id
+                ).filter(
+                    ProxyModelConfig.user_id == user_uuid,
+                    ProxyModelConfig.enabled == True,
+                    OnlineTestModelSelection.selected == True
+                )
+                
+                db_models = selected_models_query.all()
             
             logger.info(f"Found {len(db_models)} models in database")
             
-            # 并行调用所有启用的模型
-            tasks = []
+            # 并行调用所有启用的模型获取原始响应（不经过护栏）
+            original_tasks = []
+            protected_tasks = []
             for db_model in db_models:
+                # 解密API key
+                try:
+                    decrypted_api_key = proxy_service._decrypt_api_key(db_model.api_key_encrypted)
+                except Exception as e:
+                    logger.error(f"Failed to decrypt API key for model {db_model.id}: {e}")
+                    continue
+                
                 # 创建ModelConfig对象
                 model_config = ModelConfig(
                     id=str(db_model.id),
-                    name=db_model.name,
-                    base_url=db_model.base_url,
-                    api_key=db_model.api_key,
+                    name=db_model.config_name,
+                    base_url=db_model.api_base_url,
+                    api_key=decrypted_api_key,
                     model_name=db_model.model_name,
                     enabled=db_model.enabled
                 )
-                task = test_model_api(model_config, messages)
-                tasks.append((str(db_model.id), task))
+                # 直接调用模型获取原始响应
+                original_task = test_model_api(model_config, messages)
+                original_tasks.append((str(db_model.id), original_task))
+                
+                # 同时获取代理模型的响应（基于护栏结果决定是否阻断）
+                if (guardrail_dict.get('suggest_action', '') == '通过' or 
+                    guardrail_dict.get('overall_risk_level', '') in ['无风险', 'safe']):
+                    # 如果护栏通过，则返回模型的正常响应
+                    protected_task = test_model_api(model_config, messages)
+                    protected_tasks.append((str(db_model.id), protected_task))
+                else:
+                    # 如果护栏阻断，使用建议回答或阻断消息
+                    suggest_answer = guardrail_dict.get('suggest_answer', '')
+                    if suggest_answer:
+                        protected_tasks.append((str(db_model.id), create_blocked_response(suggest_answer)))
+                    else:
+                        protected_tasks.append((str(db_model.id), create_blocked_response("抱歉，我无法回答这个问题，因为它可能违反了安全准则。")))
             
-            # 等待所有模型响应
-            if tasks:
-                results = await asyncio.gather(
-                    *[task for _, task in tasks], 
+            # 等待所有模型的原始响应
+            if original_tasks:
+                original_results = await asyncio.gather(
+                    *[task for _, task in original_tasks], 
                     return_exceptions=True
                 )
                 
-                for i, (model_id, _) in enumerate(tasks):
-                    result = results[i]
+                for i, (model_id, _) in enumerate(original_tasks):
+                    result = original_results[i]
+                    if isinstance(result, Exception):
+                        original_responses[model_id] = ModelResponse(
+                            content=None,
+                            error=f"请求失败: {str(result)}"
+                        )
+                    else:
+                        original_responses[model_id] = result
+            
+            # 等待所有代理模型的响应
+            if protected_tasks:
+                protected_results = await asyncio.gather(
+                    *[task for _, task in protected_tasks], 
+                    return_exceptions=True
+                )
+                
+                for i, (model_id, _) in enumerate(protected_tasks):
+                    result = protected_results[i]
                     if isinstance(result, Exception):
                         model_results[model_id] = ModelResponse(
                             content=None,
@@ -163,7 +373,8 @@ async def online_test(
         
         return OnlineTestResponse(
             guardrail=guardrail_dict,
-            models=model_results
+            models=model_results,
+            original_responses=original_responses
         )
         
     except HTTPException:
@@ -181,7 +392,7 @@ async def call_guardrail_api(api_key: str, messages: List[Dict[str, str]], user_
         # 构建护栏API的URL - 根据配置自动适配环境
         guardrail_url = f"http://{settings.detection_host}:{settings.detection_port}/v1/guardrails"
         
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=180.0) as client:  # 增加护栏API超时到3分钟
             response = await client.post(
                 guardrail_url,
                 headers={
@@ -277,14 +488,18 @@ async def call_guardrail_api(api_key: str, messages: List[Dict[str, str]], user_
             "suggest_answer": f"护栏检测系统出现错误: {str(e)}"
         }
 
+async def create_blocked_response(message: str) -> ModelResponse:
+    """创建被阻断的响应"""
+    return ModelResponse(content=message)
+
 async def test_model_api(model: ModelConfig, messages: List[Dict[str, str]]) -> ModelResponse:
     """使用OpenAI SDK测试单个模型API"""
     try:
-        # 创建OpenAI客户端
+        # 创建OpenAI客户端，使用更长的超时时间以支持代理模型
         client = AsyncOpenAI(
             api_key=model.api_key,
             base_url=model.base_url.rstrip('/'),
-            timeout=120.0
+            timeout=300.0  # 10分钟超时
         )
         
         # 调用模型API

@@ -27,12 +27,24 @@ admin_engine = create_engine(
     echo=False
 )
 
+# 代理服务引擎 - 中等并发优化
+proxy_engine = create_engine(
+    settings.database_url,
+    pool_size=5,  # 代理服务连接池
+    max_overflow=10,  # 代理服务溢出连接
+    pool_pre_ping=True,
+    pool_recycle=1800,
+    pool_timeout=30,
+    echo=False
+)
+
 # 默认引擎（向后兼容）
 engine = detection_engine
 
 # 创建会话 - 分离服务
 DetectionSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=detection_engine)
 AdminSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=admin_engine)
+ProxySessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=proxy_engine)
 
 # 默认会话（向后兼容）
 SessionLocal = DetectionSessionLocal
@@ -64,6 +76,10 @@ def get_admin_db_session():
     """获取管理服务数据库会话"""
     return AdminSessionLocal()
 
+def get_proxy_db_session():
+    """获取代理服务数据库会话"""
+    return ProxySessionLocal()
+
 def create_detection_engine():
     """创建检测服务引擎"""
     return detection_engine
@@ -71,6 +87,10 @@ def create_detection_engine():
 def create_admin_engine():
     """创建管理服务引擎"""
     return admin_engine
+
+def create_proxy_engine():
+    """创建代理服务引擎"""
+    return proxy_engine
 
 async def init_db(minimal=False):
     """初始化数据库（使用PostgreSQL咨询锁，避免多进程并发初始化；锁与业务事务使用不同连接）
@@ -92,8 +112,21 @@ async def init_db(minimal=False):
             # 2) 在全新的事务中执行DDL与初始化，避免与锁连接产生事务状态干扰
             with init_engine.begin() as tx_conn:
                 if settings.reset_database_on_startup:
-                    Base.metadata.drop_all(bind=tx_conn)
-                # checkfirst=True（默认），仅创建缺失表
+                    # 安全地级联删除所有表，保持与旧数据格式兼容
+                    try:
+                        # 先尝试删除有外键依赖的表
+                        tx_conn.execute(text("DROP TABLE IF EXISTS proxy_configs CASCADE"))
+                        tx_conn.execute(text("DROP TABLE IF EXISTS email_verifications CASCADE"))
+                        tx_conn.execute(text("DROP TABLE IF EXISTS user_switches CASCADE"))
+                        # 然后删除其他表
+                        Base.metadata.drop_all(bind=tx_conn)
+                    except Exception as e:
+                        # 如果还是有问题，使用级联删除
+                        tx_conn.execute(text("DROP SCHEMA public CASCADE"))
+                        tx_conn.execute(text("CREATE SCHEMA public"))
+                        tx_conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
+                
+                # checkfirst=True（默认），仅创建缺失表，保持向后兼容
                 Base.metadata.create_all(bind=tx_conn)
 
                 # 使用相同连接进行幂等初始化

@@ -21,57 +21,6 @@ services:
     networks:
       - xiangxin-network
 
-  # 后端检测服务（高并发处理检测API）
-  detection-service:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: xiangxin-guardrails-detection
-    restart: unless-stopped
-    ports:
-      - "5000:5000"
-    environment:
-      # 数据库配置
-      - DATABASE_URL=postgresql://xiangxin:your_password@postgres:5432/xiangxin_guardrails
-      
-      # 应用配置
-      - DEBUG=false
-      - JWT_SECRET_KEY=your-secret-key-change-in-production
-      - DEPLOYMENT_MODE=local
-      
-      # 模型API配置（请根据实际情况修改）
-      - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
-      - GUARDRAILS_MODEL_API_KEY=your-model-api-key
-      
-      # 数据目录配置
-      - DATA_DIR=/app/data
-      - LOG_LEVEL=INFO
-      
-      # CORS配置
-      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-      
-      # 双服务配置
-      - DETECTION_PORT=5000
-      - DETECTION_UVICORN_WORKERS=32
-      - DETECTION_MAX_CONCURRENT_REQUESTS=400
-      
-    command: ["python3", "start_detection_service.py"]
-    volumes:
-      - ./data:/app/data
-      - ./backend/config:/app/config:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - xiangxin-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   # 后端管理服务（处理管理平台API）
   admin-service:
     build:
@@ -80,7 +29,7 @@ services:
     container_name: xiangxin-guardrails-admin
     restart: unless-stopped
     ports:
-      - "5001:5001"
+      - "5000:5000"
     environment:
       # 数据库配置
       - DATABASE_URL=postgresql://xiangxin:your_password@postgres:5432/xiangxin_guardrails
@@ -111,7 +60,7 @@ services:
       - SMTP_USE_SSL=false
       
       # 双服务配置
-      - ADMIN_PORT=5001
+      - ADMIN_PORT=5000
       - ADMIN_UVICORN_WORKERS=2
       - ADMIN_MAX_CONCURRENT_REQUESTS=50
       
@@ -130,7 +79,112 @@ services:
     networks:
       - xiangxin-network
     healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      
+  # 后端检测服务（高并发处理检测API）
+  detection-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: xiangxin-guardrails-detection
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      # 数据库配置
+      - DATABASE_URL=postgresql://xiangxin:your_password@postgres:5432/xiangxin_guardrails
+      
+      # 应用配置
+      - DEBUG=false
+      - JWT_SECRET_KEY=your-secret-key-change-in-production
+      - DEPLOYMENT_MODE=local
+      
+      # 模型API配置（请根据实际情况修改）
+      - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
+      - GUARDRAILS_MODEL_API_KEY=your-model-api-key
+      
+      # 数据目录配置
+      - DATA_DIR=/app/data
+      - LOG_LEVEL=INFO
+      
+      # CORS配置
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      
+      # 双服务配置
+      - DETECTION_PORT=5001
+      - DETECTION_UVICORN_WORKERS=32
+      - DETECTION_MAX_CONCURRENT_REQUESTS=400
+      
+    command: ["python3", "start_detection_service.py"]
+    volumes:
+      - ./data:/app/data
+      - ./backend/config:/app/config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - xiangxin-network
+    healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 后端代理服务（OpenAI兼容的反向代理）
+  proxy-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: xiangxin-guardrails-proxy
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
+    environment:
+      # 数据库配置
+      - DATABASE_URL=postgresql://xiangxin:your_password@postgres:5432/xiangxin_guardrails
+      
+      # 应用配置
+      - DEBUG=false
+      - JWT_SECRET_KEY=your-secret-key-change-in-production
+      - DEPLOYMENT_MODE=local
+      
+      # 模型API配置（请根据实际情况修改）
+      - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
+      - GUARDRAILS_MODEL_API_KEY=your-model-api-key
+      
+      # 数据目录配置
+      - DATA_DIR=/app/data
+      - LOG_LEVEL=INFO
+      
+      # CORS配置
+      - CORS_ORIGINS=*
+      
+      # 代理服务配置（高并发）
+      - PROXY_PORT=5002
+      - PROXY_UVICORN_WORKERS=24
+      - PROXY_MAX_CONCURRENT_REQUESTS=300
+      
+      # 检测服务主机配置（Docker环境使用服务名）
+      - DETECTION_HOST=detection-service
+      
+    command: ["python3", "start_proxy_service.py"]
+    volumes:
+      - ./data:/app/data
+      - ./backend/config:/app/config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - xiangxin-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -151,6 +205,7 @@ services:
     depends_on:
       - detection-service
       - admin-service
+      - proxy-service
     networks:
       - xiangxin-network
 

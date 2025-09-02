@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, JSON, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from sqlalchemy.sql import func
@@ -200,7 +200,7 @@ class UserRateLimitCounter(Base):
     user = relationship("User")
 
 class TestModelConfig(Base):
-    """被保护模型配置表"""
+    """代理模型配置表"""
     __tablename__ = "test_model_configs"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -215,3 +215,84 @@ class TestModelConfig(Base):
     
     # 关联关系
     user = relationship("User", back_populates="test_models")
+
+class ProxyModelConfig(Base):
+    """反向代理模型配置表"""
+    __tablename__ = "proxy_model_configs"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    config_name = Column(String(100), nullable=False, index=True)  # 代理模型名称，用于model参数匹配
+    api_base_url = Column(String(512), nullable=False)  # 上游API基础URL
+    api_key_encrypted = Column(Text, nullable=False)  # 加密的上游API密钥
+    model_name = Column(String(255), nullable=False)  # 上游API模型名称
+    enabled = Column(Boolean, default=True, index=True)  # 是否启用
+    
+    # 安全配置（极简设计）
+    block_on_input_risk = Column(Boolean, default=False)  # 输入风险时是否阻断，默认不阻断
+    block_on_output_risk = Column(Boolean, default=False)  # 输出风险时是否阻断，默认不阻断
+    enable_reasoning_detection = Column(Boolean, default=True)  # 是否检测reasoning内容，默认开启
+    stream_chunk_size = Column(Integer, default=50)  # 流式检测间隔，每N个chunk检测一次，默认50
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # 关联关系
+    user = relationship("User")
+
+class ProxyRequestLog(Base):
+    """反向代理请求日志表"""
+    __tablename__ = "proxy_request_logs"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    request_id = Column(String(64), unique=True, nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    proxy_config_id = Column(UUID(as_uuid=True), ForeignKey("proxy_model_configs.id"), nullable=False)
+    
+    # 请求信息
+    model_requested = Column(String(255), nullable=False)  # 用户请求的模型名
+    model_used = Column(String(255), nullable=False)  # 实际使用的模型名
+    provider = Column(String(50), nullable=False)  # 提供商
+    
+    # 检测结果
+    input_detection_id = Column(String(64), index=True)  # 输入检测请求ID
+    output_detection_id = Column(String(64), index=True)  # 输出检测请求ID
+    input_blocked = Column(Boolean, default=False)  # 输入是否被阻断
+    output_blocked = Column(Boolean, default=False)  # 输出是否被阻断
+    
+    # 统计信息
+    request_tokens = Column(Integer)  # 请求token数
+    response_tokens = Column(Integer)  # 响应token数
+    total_tokens = Column(Integer)  # 总token数
+    response_time_ms = Column(Integer)  # 响应时间(毫秒)
+    
+    # 状态
+    status = Column(String(20), nullable=False)  # success, blocked, error
+    error_message = Column(Text)  # 错误信息
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    
+    # 关联关系
+    user = relationship("User")
+    proxy_config = relationship("ProxyModelConfig")
+
+class OnlineTestModelSelection(Base):
+    """在线测试模型选择表 - 记录用户在在线测试中选择的代理模型"""
+    __tablename__ = "online_test_model_selections"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    proxy_model_id = Column(UUID(as_uuid=True), ForeignKey("proxy_model_configs.id"), nullable=False, index=True)
+    selected = Column(Boolean, default=False, nullable=False)  # 是否被选中用于在线测试
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # 关联关系
+    user = relationship("User")
+    proxy_model = relationship("ProxyModelConfig")
+    
+    # 添加唯一约束，确保每个用户对每个代理模型只有一条记录
+    __table_args__ = (
+        UniqueConstraint('user_id', 'proxy_model_id', name='_user_proxy_model_selection_uc'),
+    )

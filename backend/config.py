@@ -73,7 +73,6 @@ class Settings(BaseSettings):
     # HuggingFace模型
     huggingface_model: str = "xiangxinai/Xiangxin-Guardrails-Text"
     
-    
     # JWT配置
     # 警告：请生成安全的随机密钥！使用: openssl rand -base64 64
     jwt_secret_key: str = "GENERATE-A-SECURE-RANDOM-JWT-KEY-IN-PRODUCTION"
@@ -92,19 +91,24 @@ class Settings(BaseSettings):
     # 服务器配置 - 双服务架构
     host: str = "0.0.0.0"
     
-    # 检测服务配置（高并发）
-    detection_port: int = 5000
-    detection_uvicorn_workers: int = 32
-    detection_max_concurrent_requests: int = 400
-    
     # 检测服务主机名（用于服务间调用）
     # Docker环境: detection-service，本地环境: localhost
     detection_host: str = "localhost"
     
     # 管理服务配置（低并发）
-    admin_port: int = 5001
+    admin_port: int = 5000
     admin_uvicorn_workers: int = 2
     admin_max_concurrent_requests: int = 50
+
+    # 检测服务配置（高并发）
+    detection_port: int = 5001
+    detection_uvicorn_workers: int = 32
+    detection_max_concurrent_requests: int = 400
+
+    # 反向代理服务配置（高并发）
+    proxy_port: int = 5002
+    proxy_uvicorn_workers: int = 24
+    proxy_max_concurrent_requests: int = 300
 
     # 开发运维：是否在启动时重置数据库（删除并重建所有表）
     reset_database_on_startup: bool = False

@@ -15,13 +15,13 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // API代理到后端服务
         '/api': {
-          target: 'http://localhost:5001',
+          target: 'http://localhost:5000',
           changeOrigin: true,
           secure: false
         },
         // 护栏检测代理到后端服务
         '/v1': {
-          target: 'http://localhost:5000',
+          target: 'http://localhost:5001',
           changeOrigin: true,
           secure: false
         }

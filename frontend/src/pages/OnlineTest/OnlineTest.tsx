@@ -11,20 +11,16 @@ import {
   Row,
   Col,
   Tag,
-  Form,
-  Modal,
-  Table,
-  message,
+  Select,
   Switch,
-  Select
+  message
 } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import api, { testModelsApi } from '../../services/api';
 import {
   PlayCircleOutlined,
   ClearOutlined,
-  SettingOutlined,
-  DeleteOutlined,
-  EditOutlined
+  SettingOutlined
 } from '@ant-design/icons';
 
 const { TextArea } = Input;
@@ -32,12 +28,12 @@ const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 
 interface TestModel {
-  id: number;
-  name: string;
-  base_url: string;
-  api_key?: string;  // 从API获取时不包含
+  id: string;
+  config_name: string;
+  api_base_url: string;
   model_name: string;
   enabled: boolean;
+  selected: boolean;  // 是否被选中用于在线测试
 }
 
 interface TestCase {
@@ -72,17 +68,17 @@ interface ModelResponse {
 interface TestResult {
   guardrail: GuardrailResult;
   models: Record<string, ModelResponse>;
+  original_responses: Record<string, ModelResponse>;
 }
 
 const OnlineTest: React.FC = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [testInput, setTestInput] = useState('');
   const [inputType, setInputType] = useState<'question' | 'qa_pair'>('question');
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [models, setModels] = useState<TestModel[]>([]);
-  const [modelModalVisible, setModelModalVisible] = useState(false);
-  const [editingModel, setEditingModel] = useState<TestModel | null>(null);
-  const [form] = Form.useForm();
+  const [modelSelectionChanged, setModelSelectionChanged] = useState(false);
 
   // 加载模型配置
   const loadModels = async () => {
@@ -91,6 +87,33 @@ const OnlineTest: React.FC = () => {
       setModels(modelsData);
     } catch (error) {
       console.error('Failed to load models:', error);
+      message.error('加载代理模型列表失败');
+    }
+  };
+
+  // 更新模型选择
+  const updateModelSelection = async (modelId: string, selected: boolean) => {
+    try {
+      const newModels = models.map(model => 
+        model.id === modelId ? { ...model, selected } : model
+      );
+      setModels(newModels);
+      setModelSelectionChanged(true);
+      
+      // 保存到后端
+      const selections = newModels.map(model => ({
+        id: model.id,
+        selected: model.selected
+      }));
+      
+      await testModelsApi.updateSelection(selections);
+      message.success('模型选择已保存');
+      setModelSelectionChanged(false);
+    } catch (error) {
+      console.error('Failed to update model selection:', error);
+      message.error('保存模型选择失败');
+      // 回滚本地状态
+      loadModels();
     }
   };
 
@@ -181,22 +204,25 @@ const OnlineTest: React.FC = () => {
         ];
       }
 
-      // 调用在线测试API - 只发送启用的模型ID，后端会从数据库获取完整配置
-      const enabledModelIds = models.filter(m => m.enabled).map(m => ({
-        id: m.id,
-        enabled: true
-      }));
+      // 检查是否有选中的模型（仅用于模型对比功能提示，不阻止护栏测试）
+      const selectedModels = models.filter(m => m.selected);
+      if (inputType === 'question' && selectedModels.length === 0) {
+        // 提示用户可以配置代理模型进行对比测试，但不阻止护栏检测
+        message.info('提示：您可以在下方配置代理模型来对比测试模型响应与护栏保护效果');
+      }
+
+      // 调用在线测试API - 不再发送models参数，后端会使用用户选择的模型
       const requestData = {
         content: testInput,
-        input_type: inputType,
-        models: enabledModelIds
+        input_type: inputType
       };
       
       const response = await api.post('/api/v1/test/online', requestData);
       
       setTestResult({
         guardrail: response.data.guardrail,
-        models: response.data.models || {}
+        models: response.data.models || {},
+        original_responses: response.data.original_responses || {}
       });
 
     } catch (error: any) {
@@ -227,7 +253,8 @@ const OnlineTest: React.FC = () => {
             suggest_answer: '',
             error: displayMessage
           },
-          models: {}
+          models: {},
+          original_responses: {}
         });
       } else {
         // 其他错误（如网络错误）仍然使用弹窗提示
@@ -251,62 +278,6 @@ const OnlineTest: React.FC = () => {
     message.success(`已加载测试用例: ${testCase.name}`);
   };
 
-  // 添加/编辑模型
-  const handleModelSubmit = async (values: any) => {
-    try {
-      if (editingModel) {
-        // 编辑现有模型
-        await testModelsApi.updateModel(editingModel.id, {
-          ...values,
-          base_url: values.baseUrl,
-          api_key: values.apiKey,
-          model_name: values.modelName
-        });
-        message.success('模型配置已更新');
-      } else {
-        // 添加新模型
-        await testModelsApi.createModel({
-          ...values,
-          base_url: values.baseUrl,
-          api_key: values.apiKey,
-          model_name: values.modelName,
-          enabled: true
-        });
-        message.success('模型配置已添加');
-      }
-      
-      await loadModels(); // 重新加载配置
-      setModelModalVisible(false);
-      setEditingModel(null);
-      form.resetFields();
-    } catch (error) {
-      console.error('Model operation failed:', error);
-      message.error('操作失败');
-    }
-  };
-
-  // 删除模型
-  const deleteModel = async (id: number) => {
-    try {
-      await testModelsApi.deleteModel(id);
-      await loadModels();
-      message.success('模型配置已删除');
-    } catch (error) {
-      console.error('Delete model failed:', error);
-      message.error('删除失败');
-    }
-  };
-
-  // 切换模型启用状态
-  const toggleModel = async (id: number) => {
-    try {
-      await testModelsApi.toggleModel(id);
-      await loadModels();
-    } catch (error) {
-      console.error('Toggle model failed:', error);
-      message.error('切换状态失败');
-    }
-  };
 
   const getRiskColor = (level: string) => {
     switch (level) {
@@ -339,7 +310,7 @@ const OnlineTest: React.FC = () => {
     <div>
       <Title level={2}>在线测试</Title>
       <Paragraph>
-        测试AI安全护栏的检测能力，支持单独测试提示词安全性或同时测试被保护模型的响应。
+        测试象信AI安全护栏的检测能力。<Text strong>护栏检测功能完全独立，无需配置代理模型即可使用</Text>。对于<Text strong>单个问题</Text>，您可以选择配置代理模型来对比原始响应与护栏保护效果；对于<Text strong>问答对</Text>，仅进行护栏检测。
       </Paragraph>
 
       <Row gutter={[24, 24]}>
@@ -353,9 +324,9 @@ const OnlineTest: React.FC = () => {
               </Select>
               <Button 
                 icon={<SettingOutlined />} 
-                onClick={() => setModelModalVisible(true)}
+                onClick={() => navigate('/config/proxy-models')}
               >
-                被保护模型配置
+                管理代理模型
               </Button>
             </Space>
           }>
@@ -372,6 +343,73 @@ const OnlineTest: React.FC = () => {
                   rows={6}
                 />
               </div>
+
+              {/* 代理模型选择 - 只在单个问题类型时显示 */}
+              {inputType === 'question' && (
+                <div>
+                  <Title level={5} style={{ marginBottom: 12 }}>选择测试的代理模型（可选）：</Title>
+                  {models.length === 0 ? (
+                    <Alert
+                      message="暂无可用的代理模型"
+                      description={
+                        <span>
+                          如需对比测试，请先在 
+                          <Button 
+                            type="link" 
+                            size="small" 
+                            onClick={() => navigate('/config/proxy-models')}
+                            style={{ padding: 0, margin: '0 4px' }}
+                          >
+                            防护配置
+                          </Button> 
+                          中添加代理模型配置。不影响护栏检测功能的使用。
+                        </span>
+                      }
+                      type="info"
+                      showIcon
+                      style={{ marginBottom: 16 }}
+                    />
+                  ) : (
+                    <div style={{ 
+                      border: '1px solid #d9d9d9',
+                      borderRadius: 6,
+                      padding: 12,
+                      backgroundColor: '#fafafa',
+                      maxHeight: 120,
+                      overflowY: 'auto'
+                    }}>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        {models.map((model) => (
+                          <div key={model.id} style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '4px 0'
+                          }}>
+                            <div style={{ flex: 1 }}>
+                              <span style={{ fontWeight: 500 }}>{model.config_name}</span>
+                              <br />
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                {model.model_name} - {model.api_base_url}
+                              </Text>
+                            </div>
+                            <Switch
+                              checked={model.selected}
+                              onChange={(checked) => updateModelSelection(model.id, checked)}
+                              size="small"
+                            />
+                          </div>
+                        ))}
+                      </Space>
+                    </div>
+                  )}
+                  {models.filter(m => m.selected).length > 0 && (
+                    <Text style={{ fontSize: '12px', color: '#1890ff' }}>
+                      已选择 {models.filter(m => m.selected).length} 个代理模型进行测试
+                    </Text>
+                  )}
+                </div>
+              )}
               
               <Space>
                 <Button 
@@ -491,14 +529,54 @@ const OnlineTest: React.FC = () => {
                     )}
                   </div>
 
+                  {/* 代理模型原始响应结果 - 只在单个问题类型时显示 */}
+                  {inputType === 'question' && Object.keys(testResult.original_responses).length > 0 && (
+                    <div>
+                      <Title level={4}>🔓 代理模型原始响应</Title>
+                      <Alert 
+                        message="以下是代理模型在没有护栏阻断情况下的直接响应，仅用于对比测试" 
+                        type="info" 
+                        style={{ marginBottom: 16 }}
+                        showIcon
+                      />
+                      {Object.entries(testResult.original_responses).map(([modelId, response]) => {
+                        const model = models.find(m => m.id === modelId);
+                        return (
+                          <Card key={modelId} size="small" title={model?.config_name || `模型 ${modelId}`} style={{ marginBottom: 8 }}>
+                            {response.error ? (
+                              <Alert message={response.error} type="error" />
+                            ) : response.content ? (
+                              <div>
+                                <Text strong>原始响应：</Text>
+                                <br />
+                                <div style={{ 
+                                  backgroundColor: '#f8f9fa',
+                                  padding: '12px',
+                                  borderRadius: '6px',
+                                  marginTop: '8px',
+                                  border: '1px solid #e9ecef',
+                                  whiteSpace: 'pre-wrap'
+                                }}>
+                                  <Text>{response.content}</Text>
+                                </div>
+                              </div>
+                            ) : (
+                              <Text type="secondary">模型返回了空响应</Text>
+                            )}
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {/* 模型响应结果 */}
                   {Object.keys(testResult.models).length > 0 && (
                     <div>
-                      <Title level={4}>🤖 被保护模型响应</Title>
+                      <Title level={4}>🤖 代理模型护栏保护响应</Title>
                       {Object.entries(testResult.models).map(([modelId, response]) => {
-                        const model = models.find(m => m.id.toString() === modelId);
+                        const model = models.find(m => m.id === modelId);
                         return (
-                          <Card key={modelId} size="small" title={model?.name || `模型 ${modelId}`} style={{ marginBottom: 8 }}>
+                          <Card key={modelId} size="small" title={model?.config_name || `模型 ${modelId}`} style={{ marginBottom: 8 }}>
                             {response.error ? (
                               <Alert message={response.error} type="error" />
                             ) : response.content ? (
@@ -569,134 +647,6 @@ const OnlineTest: React.FC = () => {
         </Col>
       </Row>
 
-      {/* 模型配置Modal */}
-      <Modal
-        title={editingModel ? "编辑被保护模型配置" : "添加被保护模型配置"}
-        open={modelModalVisible}
-        onCancel={() => {
-          setModelModalVisible(false);
-          setEditingModel(null);
-          form.resetFields();
-        }}
-        footer={null}
-        width={800}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <Title level={5}>当前配置的被保护模型</Title>
-          <Table
-            size="small"
-            dataSource={models}
-            pagination={false}
-            columns={[
-              { 
-                title: '名称', 
-                dataIndex: 'name', 
-                key: 'name' 
-              },
-              { 
-                title: '模型', 
-                dataIndex: 'modelName', 
-                key: 'modelName' 
-              },
-              { 
-                title: '状态', 
-                key: 'enabled',
-                render: (_, record) => (
-                  <Switch
-                    checked={record.enabled}
-                    onChange={() => toggleModel(record.id)}
-                    checkedChildren="启用"
-                    unCheckedChildren="禁用"
-                  />
-                )
-              },
-              {
-                title: '操作',
-                key: 'actions',
-                render: (_, record) => (
-                  <Space>
-                    <Button
-                      size="small"
-                      icon={<EditOutlined />}
-                      onClick={() => {
-                        setEditingModel(record);
-                        form.setFieldsValue({
-                          name: record.name,
-                          baseUrl: record.base_url,
-                          apiKey: '', // API key不会从数据库返回
-                          modelName: record.model_name
-                        });
-                      }}
-                    />
-                    <Button
-                      size="small"
-                      danger
-                      icon={<DeleteOutlined />}
-                      onClick={() => deleteModel(record.id)}
-                    />
-                  </Space>
-                )
-              }
-            ]}
-          />
-        </div>
-
-        <Divider />
-
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleModelSubmit}
-          autoComplete="off"
-        >
-          <Form.Item
-            name="name"
-            label="模型名称"
-            rules={[{ required: true, message: '请输入模型名称' }]}
-          >
-            <Input placeholder="例如：GPT-4" />
-          </Form.Item>
-          
-          <Form.Item
-            name="baseUrl"
-            label="API Base URL"
-            rules={[{ required: true, message: '请输入API Base URL' }]}
-          >
-            <Input placeholder="例如：https://api.openai.com/v1" />
-          </Form.Item>
-          
-          <Form.Item
-            name="apiKey"
-            label="API Key"
-            rules={[{ required: true, message: '请输入API Key' }]}
-          >
-            <Input 
-              placeholder="请输入API Key" 
-              autoComplete="off"
-              data-testid="api-key-input"
-            />
-          </Form.Item>
-          
-          <Form.Item
-            name="modelName"
-            label="Model Name"
-            rules={[{ required: true, message: '请输入模型名称' }]}
-          >
-            <Input placeholder="例如：gpt-4" />
-          </Form.Item>
-          
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit">
-                {editingModel ? '更新' : '添加'}
-              </Button>
-              <Button onClick={() => form.resetFields()}>
-                重置
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 };

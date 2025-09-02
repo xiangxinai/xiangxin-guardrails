@@ -97,3 +97,17 @@ class ApiResponse(BaseModel):
     success: bool
     message: str
     data: Optional[Any] = None
+
+class ProxyCompletionResponse(BaseModel):
+    """代理完成响应模型"""
+    id: str
+    object: str = "chat.completion"
+    created: int
+    model: str
+    choices: List[Dict[str, Any]]
+    usage: Optional[Dict[str, int]] = None
+
+class ProxyModelListResponse(BaseModel):
+    """代理模型列表响应"""
+    object: str = "list"
+    data: List[Dict[str, Any]]

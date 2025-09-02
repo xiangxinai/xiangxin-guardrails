@@ -17,8 +17,8 @@ class MessageValidator(BaseModel):
     def validate_content(cls, v):
         if not v or not v.strip():
             raise ValueError('content cannot be empty')
-        if len(v) > 10000:  # 限制内容长度
-            raise ValueError('content too long (max 10000 characters)')
+        if len(v) > 1000000:  # 限制内容长度
+            raise ValueError('content too long (max 1000000 characters)')
         return v.strip()
 
 def validate_api_key(api_key: str) -> bool:

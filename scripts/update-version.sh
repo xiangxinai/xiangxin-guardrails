@@ -49,8 +49,18 @@ fi
 # 2. 后端配置现在通过 VERSION 文件动态读取，无需修改
 echo "✓ 后端版本将自动从 VERSION 文件读取"
 
-# 3. 前端版本现在通过 API 动态获取，无需修改硬编码
-echo "✓ 前端版本将通过 API 自动获取"
+# 3. 更新前端 Layout.tsx 中的初始版本号
+LAYOUT_TSX="$ROOT_DIR/frontend/src/components/Layout/Layout.tsx"
+if [ -f "$LAYOUT_TSX" ]; then
+    echo "更新前端 Layout.tsx 中的初始版本号..."
+    sed -i "s/const \[systemVersion, setSystemVersion\] = useState<string>('v[^']*')/const [systemVersion, setSystemVersion] = useState<string>('v$VERSION')/" "$LAYOUT_TSX"
+    echo "✓ 已更新 frontend/src/components/Layout/Layout.tsx"
+else
+    echo "⚠ 警告: 未找到 frontend/src/components/Layout/Layout.tsx"
+fi
+
+# 4. 前端版本现在通过 API 动态获取，但初始状态也已同步
+echo "✓ 前端版本将通过 API 自动获取，初始状态已同步"
 
 echo ""
 echo "🎉 版本更新完成！"
@@ -59,6 +69,7 @@ echo ""
 echo "更新的文件："
 echo "  - VERSION (主版本文件)"
 echo "  - frontend/package.json"
+echo "  - frontend/src/components/Layout/Layout.tsx"
 echo ""
 echo "版本号读取方式："
 echo "  - 后端: VERSION 文件 → 环境变量 APP_VERSION → 默认值"
