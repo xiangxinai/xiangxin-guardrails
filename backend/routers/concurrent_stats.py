@@ -6,7 +6,7 @@ from typing import Dict, Any
 import asyncio
 
 from middleware.concurrent_limit_middleware import ConcurrentLimitMiddleware
-from utils.auth import get_current_admin
+from routers.auth import get_current_admin
 from utils.logger import setup_logger
 
 router = APIRouter(prefix="/api/v1/concurrent", tags=["并发统计"])
