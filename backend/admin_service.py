@@ -16,13 +16,16 @@ from pathlib import Path
 
 from config import settings
 from database.connection import init_db, create_admin_engine
-from routers import dashboard, config_api, results, auth, user, sync, admin, online_test, test_models, risk_config_api, proxy_management
+from routers import dashboard, config_api, results, auth, user, sync, admin, online_test, test_models, risk_config_api, proxy_management, concurrent_stats
 from services.data_sync_service import data_sync_service
 from utils.logger import setup_logger
 from services.admin_service import admin_service
 
 # 设置安全验证
 security = HTTPBearer()
+
+# 导入并发控制中间件
+from middleware.concurrent_limit_middleware import ConcurrentLimitMiddleware
 
 class AuthContextMiddleware(BaseHTTPMiddleware):
     """认证上下文中间件 - 管理服务版本（完整版）"""
@@ -207,6 +210,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# 添加并发控制中间件（优先级最高，最后添加）
+app.add_middleware(ConcurrentLimitMiddleware, service_type="admin", max_concurrent=settings.admin_max_concurrent_requests)
+
 # 添加认证上下文中间件
 app.add_middleware(AuthContextMiddleware)
 
@@ -317,6 +323,7 @@ app.include_router(online_test.router, prefix="/api/v1", dependencies=[Depends(v
 app.include_router(test_models.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
 app.include_router(risk_config_api.router, dependencies=[Depends(verify_user_auth)])
 app.include_router(proxy_management.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
+app.include_router(concurrent_stats.router, dependencies=[Depends(verify_user_auth)])
 
 # 全局异常处理
 @app.exception_handler(Exception)

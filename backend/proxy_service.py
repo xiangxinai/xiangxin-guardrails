@@ -25,6 +25,9 @@ from utils.logger import setup_logger
 # 设置安全验证
 security = HTTPBearer()
 
+# 导入并发控制中间件
+from middleware.concurrent_limit_middleware import ConcurrentLimitMiddleware
+
 class AuthContextMiddleware(BaseHTTPMiddleware):
     """认证上下文中间件 - 代理服务版本"""
     
@@ -146,6 +149,9 @@ app = FastAPI(
     redoc_url="/redoc" if settings.debug else None,
     lifespan=lifespan,
 )
+
+# 添加并发控制中间件（优先级最高，最后添加）
+app.add_middleware(ConcurrentLimitMiddleware, service_type="proxy", max_concurrent=settings.proxy_max_concurrent_requests)
 
 # 性能优化中间件
 app.add_middleware(GZipMiddleware, minimum_size=1000)

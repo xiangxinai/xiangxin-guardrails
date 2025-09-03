@@ -26,7 +26,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [switchModalVisible, setSwitchModalVisible] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [systemVersion, setSystemVersion] = useState<string>('v2.0.0');
+  const [systemVersion, setSystemVersion] = useState<string>('');
   
   const navigate = useNavigate();
   const location = useLocation();

@@ -1026,7 +1026,7 @@ docker-compose down -v
 - **管理服务** (5000端口)：处理管理平台API `/api/v1/*`
 - **检测服务** (5001端口)：处理高并发检测API `/v1/guardrails`
 - **代理服务** (5002端口)：OpenAI兼容的安全网关 `/v1/*` 🆕
-- **性能优化**：数据库连接数从4800降至176，减少96%
+- **并发性能**：并发配置 `PROXY_MAX_CONCURRENT_REQUESTS`和`DETECTION_MAX_CONCURRENT_REQUESTS`，每个worker能承受500-1000个并发。
 
 #### 私有化集成模式
 ```bash

@@ -24,7 +24,7 @@ def get_version() -> str:
         return env_version
     
     # 默认版本
-    return "1.1.0"
+    return "1.0.0"
 
 class Settings(BaseSettings):
     # 应用配置
