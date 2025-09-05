@@ -20,20 +20,23 @@ interface RiskTypeConfig {
   s12_enabled: boolean;
 }
 
-// 风险类型定义
+// 风险类型定义 - 按风险等级排序（高风险 > 中风险 > 低风险）
 const RISK_TYPES = [
-  { key: 's1_enabled', label: 'S1 - 一般政治话题', level: '中风险', color: '#fa8c16' },
-  { key: 's2_enabled', label: 'S2 - 敏感政治话题', level: '高风险', color: '#f5222d' },
-  { key: 's3_enabled', label: 'S3 - 损害国家形象', level: '高风险', color: '#f5222d' },
-  { key: 's4_enabled', label: 'S4 - 伤害未成年人', level: '中风险', color: '#fa8c16' },
-  { key: 's5_enabled', label: 'S5 - 暴力犯罪', level: '高风险', color: '#f5222d' },
-  { key: 's6_enabled', label: 'S6 - 违法犯罪', level: '中风险', color: '#fa8c16' },
-  { key: 's7_enabled', label: 'S7 - 色情', level: '中风险', color: '#fa8c16' },
-  { key: 's8_enabled', label: 'S8 - 歧视内容', level: '低风险', color: '#52c41a' },
-  { key: 's9_enabled', label: 'S9 - 提示词攻击', level: '高风险', color: '#f5222d' },
-  { key: 's10_enabled', label: 'S10 - 辱骂', level: '低风险', color: '#52c41a' },
-  { key: 's11_enabled', label: 'S11 - 侵犯个人隐私', level: '低风险', color: '#52c41a' },
-  { key: 's12_enabled', label: 'S12 - 商业违法违规', level: '低风险', color: '#52c41a' },
+  // 高风险
+  { key: 's2_enabled', label: 'S2 - 敏感政治话题', level: '高风险', color: '#f5222d', priority: 1 },
+  { key: 's3_enabled', label: 'S3 - 损害国家形象', level: '高风险', color: '#f5222d', priority: 1 },
+  { key: 's5_enabled', label: 'S5 - 暴力犯罪', level: '高风险', color: '#f5222d', priority: 1 },
+  { key: 's9_enabled', label: 'S9 - 提示词攻击', level: '高风险', color: '#f5222d', priority: 1 },
+  // 中风险
+  { key: 's1_enabled', label: 'S1 - 一般政治话题', level: '中风险', color: '#fa8c16', priority: 2 },
+  { key: 's4_enabled', label: 'S4 - 伤害未成年人', level: '中风险', color: '#fa8c16', priority: 2 },
+  { key: 's6_enabled', label: 'S6 - 违法犯罪', level: '中风险', color: '#fa8c16', priority: 2 },
+  { key: 's7_enabled', label: 'S7 - 色情', level: '中风险', color: '#fa8c16', priority: 2 },
+  // 低风险
+  { key: 's8_enabled', label: 'S8 - 歧视内容', level: '低风险', color: '#52c41a', priority: 3 },
+  { key: 's10_enabled', label: 'S10 - 辱骂', level: '低风险', color: '#52c41a', priority: 3 },
+  { key: 's11_enabled', label: 'S11 - 侵犯个人隐私', level: '低风险', color: '#52c41a', priority: 3 },
+  { key: 's12_enabled', label: 'S12 - 商业违法违规', level: '低风险', color: '#52c41a', priority: 3 },
 ];
 
 const RiskTypeManagement: React.FC = () => {
@@ -111,55 +114,80 @@ const RiskTypeManagement: React.FC = () => {
 
           <Divider />
 
-          <Row gutter={[16, 16]}>
-            {RISK_TYPES.map((riskType) => (
-              <Col xs={24} sm={12} md={8} lg={6} key={riskType.key}>
-                <Card 
-                  size="small" 
+          {/* 按风险等级分组显示 */}
+          {[
+            { level: '高风险', priority: 1, bgColor: '#fff2f0', borderColor: '#ffccc7' },
+            { level: '中风险', priority: 2, bgColor: '#fff7e6', borderColor: '#ffd591' },
+            { level: '低风险', priority: 3, bgColor: '#f6ffed', borderColor: '#d9f7be' }
+          ].map((group) => {
+            const groupRiskTypes = RISK_TYPES.filter(type => type.priority === group.priority);
+            return (
+              <div key={group.level} style={{ marginBottom: '24px' }}>
+                <div 
                   style={{ 
-                    borderColor: config[riskType.key as keyof RiskTypeConfig] ? riskType.color : '#d9d9d9',
-                    backgroundColor: config[riskType.key as keyof RiskTypeConfig] ? '#fafafa' : '#f5f5f5'
+                    padding: '12px 16px',
+                    backgroundColor: group.bgColor,
+                    border: `1px solid ${group.borderColor}`,
+                    borderRadius: '8px',
+                    marginBottom: '16px'
                   }}
                 >
-                  <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text strong style={{ fontSize: '14px' }}>
-                        {riskType.label.split(' - ')[0]}
-                      </Text>
-                      <Switch
-                        checked={config[riskType.key as keyof RiskTypeConfig]}
-                        onChange={(checked) => handleToggle(riskType.key as keyof RiskTypeConfig, checked)}
-                        loading={saving}
-                        size="small"
-                      />
-                    </div>
-                    <Text style={{ fontSize: '12px', color: '#666' }}>
-                      {riskType.label.split(' - ')[1]}
-                    </Text>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text 
+                  <Text strong style={{ fontSize: '16px', color: '#262626' }}>
+                    {group.level} ({groupRiskTypes.length}项)
+                  </Text>
+                </div>
+                <Row gutter={[16, 16]}>
+                  {groupRiskTypes.map((riskType) => (
+                    <Col xs={24} sm={12} md={8} lg={6} key={riskType.key}>
+                      <Card 
+                        size="small" 
                         style={{ 
-                          fontSize: '11px', 
-                          color: riskType.color, 
-                          fontWeight: 'bold' 
+                          borderColor: config[riskType.key as keyof RiskTypeConfig] ? riskType.color : '#d9d9d9',
+                          backgroundColor: config[riskType.key as keyof RiskTypeConfig] ? '#fafafa' : '#f5f5f5'
                         }}
                       >
-                        {riskType.level}
-                      </Text>
-                      <Text 
-                        style={{ 
-                          fontSize: '11px', 
-                          color: config[riskType.key as keyof RiskTypeConfig] ? '#52c41a' : '#ff4d4f' 
-                        }}
-                      >
-                        {config[riskType.key as keyof RiskTypeConfig] ? '启用' : '禁用'}
-                      </Text>
-                    </div>
-                  </Space>
-                </Card>
-              </Col>
-            ))}
-          </Row>
+                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text strong style={{ fontSize: '14px' }}>
+                              {riskType.label.split(' - ')[1]}
+                            </Text>
+                            <Switch
+                              checked={config[riskType.key as keyof RiskTypeConfig]}
+                              onChange={(checked) => handleToggle(riskType.key as keyof RiskTypeConfig, checked)}
+                              loading={saving}
+                              size="small"
+                            />
+                          </div>
+                          <Text style={{ fontSize: '12px', color: '#666' }}>
+                            {riskType.label.split(' - ')[0]}
+                          </Text>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text 
+                              style={{ 
+                                fontSize: '11px', 
+                                color: riskType.color, 
+                                fontWeight: 'bold' 
+                              }}
+                            >
+                              {riskType.level}
+                            </Text>
+                            <Text 
+                              style={{ 
+                                fontSize: '11px', 
+                                color: config[riskType.key as keyof RiskTypeConfig] ? '#52c41a' : '#ff4d4f' 
+                              }}
+                            >
+                              {config[riskType.key as keyof RiskTypeConfig] ? '启用' : '禁用'}
+                            </Text>
+                          </div>
+                        </Space>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              </div>
+            );
+          })}
 
           <Divider />
 
