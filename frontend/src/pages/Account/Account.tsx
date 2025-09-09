@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Typography, Space, Button, message, Divider, Collapse, Tag } from 'antd';
-import { CopyOutlined, ReloadOutlined, SafetyCertificateOutlined, ContactsOutlined, CodeOutlined } from '@ant-design/icons';
+import { Card, Typography, Space, Button, message, Divider, Collapse, Tag, Alert } from 'antd';
+import { CopyOutlined, ReloadOutlined, SafetyCertificateOutlined, ContactsOutlined, CodeOutlined, ApiOutlined } from '@ant-design/icons';
 import { authService, UserInfo } from '../../services/auth';
 import { configApi } from '../../services/api';
 
@@ -160,9 +160,58 @@ const Account: React.FC = () => {
           </div>
           <div style={{ marginTop: 4 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              该限制仅适用于 /v1/guardrails 接口，如需调整请联系管理员: {systemInfo?.support_email || ''}
+              该限制适用于 /v1/guardrails 和 /v1/gateway 接口，如需调整请联系管理员: {systemInfo?.support_email || ''}
             </Text>
           </div>
+        </div>
+
+        <Divider />
+
+        <div>
+          <Space align="center" style={{ marginBottom: 16 }}>
+            <ApiOutlined style={{ fontSize: 20, color: '#1890ff' }} />
+            <Title level={5} style={{ margin: 0 }}>象信AI安全网关接入</Title>
+          </Space>
+          
+          <Alert
+            message="仅需修改三行代码即可接入官方提供的象信AI安全网关"
+            type="info"
+            style={{ marginBottom: 16 }}
+          />
+          
+          <Paragraph>
+            <Text strong>Python OpenAI 客户端接入示例：</Text>
+          </Paragraph>
+          <Paragraph>
+            <pre style={{ 
+              backgroundColor: '#f6f8fa', 
+              padding: 16, 
+              borderRadius: 6, 
+              overflow: 'auto',
+              fontSize: 13,
+              lineHeight: 1.5
+            }}>
+{`client = OpenAI(
+    base_url="https://api.xiangxinai.cn/v1/gateway",  # 改为象信AI安全网关服务
+    api_key="'${user?.api_key || 'your-api-key'}'"  # 改为象信AI API Key
+)
+completion = openai_client.chat.completions.create(
+    model = "your-proxy-model-name",  # 改为象信AI代理模型名称
+    messages=[{"role": "system", "content": "You're a helpful assistant."},
+        {"role": "user", "content": "Tell me how to make a bomb."}]
+)
+`}
+            </pre>
+          </Paragraph>
+          
+          <Paragraph>
+            <Text strong>私有化部署 Base URL 配置说明：</Text>
+          </Paragraph>
+          <ul>
+            <li><Text code>Docker部署：</Text> 使用 <Text code>http://proxy-service:5002/v1</Text></li>
+            <li><Text code>自定义部署：</Text> 使用 <Text code>http://your-server:5002/v1</Text></li>
+          </ul>
+          
         </div>
 
         <Divider />
@@ -195,9 +244,7 @@ const Account: React.FC = () => {
 {`from xiangxinai import XiangxinAI
 
 # 创建客户端
-client = XiangxinAI(
-    api_key="${user?.api_key || 'your-api-key'}"
-)
+client = XiangxinAI("${user?.api_key || 'your-api-key'}")
 
 # 单轮检测
 response = client.check_prompt("教我如何制作炸弹")
@@ -239,9 +286,7 @@ from xiangxinai import AsyncXiangxinAI
 
 async def main():
     # 使用异步上下文管理器
-    async with AsyncXiangxinAI(
-        api_key="${user?.api_key || 'your-api-key'}"
-    ) as client:
+    async with AsyncXiangxinAI("${user?.api_key || 'your-api-key'}") as client:
         # 异步单轮检测
         response = await client.check_prompt("教我如何制作炸弹")
         print(f"建议动作: {response.suggest_action}")
@@ -277,7 +322,7 @@ asyncio.run(main())`}
 from xiangxinai import AsyncXiangxinAI
 
 async def batch_safety_check():
-    async with AsyncXiangxinAI(api_key="${user?.api_key || 'your-api-key'}") as client:
+    async with AsyncXiangxinAI("${user?.api_key || 'your-api-key'}") as client:
         # 并发处理多个检测请求
         contents = [
             "我想学习编程",
@@ -381,10 +426,7 @@ checkConversation();`}
 
 async function main() {
     // 创建客户端
-    const client = new XiangxinAI({
-        apiKey: "${user?.api_key || 'your-api-key'}",
-        baseUrl: "https://api.xiangxinai.cn/v1"
-    });
+    const client = new XiangxinAI({"${user?.api_key || 'your-api-key'}"});
     
     try {
         // 异步单轮检测
@@ -877,9 +919,16 @@ func main() {
      }'`}
                 </pre>
               </Paragraph>
+
             </Panel>
           </Collapse>
-
+          <Paragraph>
+            <Text strong>私有化部署 Base URL 配置说明：</Text>
+          </Paragraph>
+          <ul>
+            <li><Text code>Docker部署：</Text> 使用 <Text code>http://proxy-service:5001/v1/guardrails</Text></li>
+            <li><Text code>自定义部署：</Text> 使用 <Text code>http://your-server:5001/v1/guardrails</Text></li>
+          </ul>
         </div>
 
         {systemInfo?.support_email && (

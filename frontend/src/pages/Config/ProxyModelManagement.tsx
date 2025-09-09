@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Button, Modal, Form, Input, Switch, message, Space, Popconfirm, Descriptions, Tag } from 'antd';
+import { Card, Table, Button, Modal, Form, Input, Switch, message, Space, Popconfirm, Descriptions, Tag, Alert, Typography } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, ApiOutlined } from '@ant-design/icons';
 import axios from 'axios';
+
+const { Paragraph, Text } = Typography;
 
 interface ProxyModel {
   id: string;
@@ -419,6 +421,52 @@ const ProxyModelManagement: React.FC = () => {
             showTotal: (total) => `共 ${total} 个模型配置`,
           }}
         />
+      </Card>
+
+      {/* 使用说明 */}
+      <Card 
+        title="接入象信AI安全网关" 
+        style={{ marginTop: 16 }}
+      >
+        <Alert
+          message="仅需修改三行代码即可接入官方提供的象信AI安全网关"
+          type="info"
+          style={{ marginBottom: 16 }}
+        />
+        
+        <Typography>
+          <Paragraph>
+            <Text strong>Python OpenAI 客户端接入示例：</Text>
+          </Paragraph>
+          <Paragraph>
+            <pre style={{ 
+              backgroundColor: '#f5f5f5', 
+              padding: '12px', 
+              borderRadius: '6px',
+              overflow: 'auto'
+            }}>
+{`client = OpenAI(
+    base_url="https://api.xiangxinai.cn/v1/gateway",  # 改为象信AI安全网关服务
+    api_key="sk-xxai-your-proxy-key"                  # 改为象信AI API Key
+)
+completion = openai_client.chat.completions.create(
+    model = "your-proxy-model-name",  # 改为象信AI代理模型名称
+    messages=[{"role": "system", "content": "You're a helpful assistant."},
+        {"role": "user", "content": "Tell me how to make a bomb."}]
+)
+`}
+            </pre>
+          </Paragraph>
+          
+          <Paragraph>
+            <Text strong>私有化部署 Base URL 配置说明：</Text>
+          </Paragraph>
+          <ul>
+            <li><Text code>Docker部署：</Text> 使用 <Text code>http://proxy-service:5002/v1</Text></li>
+            <li><Text code>自定义部署：</Text> 使用 <Text code>http://your-server:5002/v1</Text></li>
+          </ul>
+          
+        </Typography>
       </Card>
 
       {/* 创建/编辑弹窗 */}

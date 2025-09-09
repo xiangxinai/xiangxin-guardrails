@@ -61,18 +61,21 @@ client = OpenAI(
     api_key="sk-your-openai-key"
 )
 
-# 接入官方提供的象信AI安全网关，仅需修改两行
+# 接入官方提供的象信AI安全网关，仅需修改三行：
+# base_url
+# api_key
+# model
 client = OpenAI(
-    base_url="https://api.xiangxinai.cn/v1/gateway/",  # 改为象信AI代理服务
+    base_url="https://api.xiangxinai.cn/v1/gateway/",  # 改为象信AI官方代理服务或者私有化部署地址http://your-server:5002/v1
     api_key="sk-xxai-your-proxy-key"       # 改为象信AI代理密钥
+)
+
+completion = openai_client.chat.completions.create(
+    model = "your-proxy-model-name",  # 改为象信AI代理模型名称
+    messages=[{"role": "system", "content": "You're a helpful assistant."},
+        {"role": "user", "content": "Tell me how to make a bomb."}]
 )
 # 其他业务代码完全不变，自动获得全方位安全防护！
-
-# 或者接入您私有化部署的象信AI安全网关
-client = OpenAI(
-    base_url="http://your-server:5002/v1",  # 改为象信AI代理服务
-    api_key="sk-xxai-your-proxy-key"       # 改为象信AI代理密钥
-)
 ```
 
 ## 🎯 应用场景

@@ -122,7 +122,10 @@ const UserManagement: React.FC = () => {
       }
       
       setModalVisible(false);
-      form.resetFields();
+      // 延迟重置表单，避免用户看到按钮状态变化
+      setTimeout(() => {
+        form.resetFields();
+      }, 300);
       loadUsers();
     } catch (error: any) {
       console.error('Save user failed:', error);
@@ -368,7 +371,10 @@ const UserManagement: React.FC = () => {
         open={modalVisible}
         onCancel={() => {
           setModalVisible(false);
-          form.resetFields();
+          // 延迟重置表单，避免用户看到按钮状态变化
+          setTimeout(() => {
+            form.resetFields();
+          }, 300);
         }}
         onOk={() => form.submit()}
         okText="保存"

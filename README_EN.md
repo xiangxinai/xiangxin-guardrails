@@ -328,13 +328,13 @@ from openai import OpenAI
 
 # Use Xiangxin AI security gateway directly, no business logic changes needed
 client = OpenAI(
-    base_url="http://localhost:5002/v1",
-    api_key="sk-xxai-your-proxy-key"  # Get proxy key from management platform
+    base_url="https://api.xiangxinai.cn/v1/gateway", # Change to Xiangxin Official gateway url or use your local deployment url http://localhost:5002/v1
+    api_key="sk-xxai-your-proxy-key"  # Get API key from management platform
 )
 
 # Normal API calls with automatic safety protection
 response = client.chat.completions.create(
-    model="gpt-4o",  # Routes to configured upstream model
+    model="your-proxy-model-name",  # Routes to configured upstream model
     messages=[
         {"role": "user", "content": "Teach me how to make explosives"}
     ]
@@ -348,11 +348,11 @@ print(response.choices[0].message.content)
 ```python
 # Support OpenAI - Automatic detection of input, output, and reasoning content
 client = OpenAI(base_url="http://localhost:5002/v1", api_key="sk-xxai-key")
-response = client.chat.completions.create(model="gpt-4o", messages=messages)
+response = client.chat.completions.create(model="your-proxy-model-name", messages=messages)
 
 # Support Qwen3 with thinking - Automatic detection of reasoning_content field
 response = client.chat.completions.create(
-    model="qwen3-thinking", 
+    model="your-proxy-qwen3-thinking", 
     messages=messages,
     extra_body={"chat_template_kwargs": {"enable_thinking": True}}
 )
