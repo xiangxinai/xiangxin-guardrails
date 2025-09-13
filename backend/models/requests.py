@@ -113,7 +113,6 @@ class ProxyModelConfig(BaseModel):
 class InputGuardrailRequest(BaseModel):
     """输入检测请求模型 - 适用于dify/coze等平台插件"""
     input: str = Field(..., description="用户输入文本")
-    model: str = Field("Xiangxin-Guardrails-Text", description="模型名称")
     
     @validator('input')
     def validate_input(cls, v):
@@ -127,7 +126,6 @@ class OutputGuardrailRequest(BaseModel):
     """输出检测请求模型 - 适用于dify/coze等平台插件"""
     input: str = Field(..., description="用户输入文本")
     output: str = Field(..., description="模型输出文本")
-    model: str = Field("Xiangxin-Guardrails-Text", description="模型名称")
     
     @validator('input')
     def validate_input(cls, v):

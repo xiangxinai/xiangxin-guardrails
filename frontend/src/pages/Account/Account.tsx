@@ -283,8 +283,7 @@ Content-Type: application/json`}
                   marginTop: 8
                 }}>
 {`{
-  "input": "用户输入的文本内容",
-  "model": "Xiangxin-Guardrails-Text"  // 可选，默认值
+  "input": "用户输入的文本内容"
 }`}
                 </pre>
               </div>
@@ -327,7 +326,7 @@ print(f"建议回答: {result['suggest_answer']}")`}
                   <li>请求方法：POST</li>
                   <li>URL：<Text code>https://api.xiangxinai.cn/v1/guardrails/input</Text></li>
                   <li>请求头：添加 <Text code>Authorization: Bearer {user?.api_key || 'your-api-key'}</Text></li>
-                  <li>请求体：使用变量 <Text code>{"{"}"input": "{{input}}"{"}"}</Text></li>
+                  <li>请求体：使用变量 <Text code>{`{"input": "{{input}}"}`}</Text></li>
                 </ul>
               </div>
             </Panel>
@@ -386,9 +385,8 @@ Content-Type: application/json`}
                   marginTop: 8
                 }}>
 {`{
-  "input": "用户输入的文本内容",
-  "output": "模型输出的文本内容",
-  "model": "Xiangxin-Guardrails-Text"  // 可选，默认值
+  "input": "用户输入的文本内容，用于让护栏理解上下文语意",
+  "output": "模型输出的文本内容，实际检测对象"
 }`}
                 </pre>
               </div>
@@ -433,7 +431,7 @@ if result['suggest_action'] == 'block':
                   <li>请求方法：POST</li>
                   <li>URL：<Text code>https://api.xiangxinai.cn/v1/guardrails/output</Text></li>
                   <li>请求头：添加 <Text code>Authorization: Bearer {user?.api_key || 'your-api-key'}</Text></li>
-                  <li>请求体：<Text code>{"{"}"input": "{{user_input}}", "output": "{{ai_output}}"{"}"}</Text></li>
+                  <li>请求体：<Text code>{`{"input": "{{user_input}}", "output": "{{ai_output}}"}`}</Text></li>
                 </ul>
               </div>
             </Panel>

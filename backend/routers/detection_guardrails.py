@@ -89,7 +89,7 @@ async def check_input_guardrails(
         
         # 构造标准的GuardrailRequest
         guardrail_request = GuardrailRequest(
-            model=request_data.model,
+            model="Xiangxin-Guardrails-Text",
             messages=messages
         )
         
@@ -142,7 +142,7 @@ async def check_output_guardrails(
         
         # 构造标准的GuardrailRequest
         guardrail_request = GuardrailRequest(
-            model=request_data.model,
+            model="Xiangxin-Guardrails-Text",
             messages=messages
         )
         
