@@ -152,10 +152,10 @@ async def check_output_guardrails(
             Message(role="user", content=request_data.input),
             Message(role="assistant", content=request_data.output)
         ]
-        
+
         # 构造标准的GuardrailRequest
         guardrail_request = GuardrailRequest(
-            model=request_data.model,
+            model="Xiangxin-Guardrails-Text",
             messages=messages
         )
         
