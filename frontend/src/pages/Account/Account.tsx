@@ -218,6 +218,271 @@ completion = openai_client.chat.completions.create(
 
         <div>
           <Space align="center" style={{ marginBottom: 16 }}>
+            <CodeOutlined style={{ fontSize: 20, color: '#52c41a' }} />
+            <Title level={5} style={{ margin: 0 }}>Dify/Coze 插件接口</Title>
+          </Space>
+          
+          <Alert
+            message="专为Dify、Coze等智能体开发平台设计的简化接口"
+            type="success"
+            style={{ marginBottom: 16 }}
+          />
+          
+          <Collapse ghost>
+            <Panel 
+              header={
+                <Space>
+                  <Tag color="green">输入检测接口</Tag>
+                  <Text>/v1/guardrails/input - 检测用户输入内容</Text>
+                </Space>
+              } 
+              key="input-api"
+            >
+              <div style={{ marginBottom: 16 }}>
+                <Text strong>接口地址：</Text>
+                <div style={{
+                  padding: '8px 12px',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '6px',
+                  backgroundColor: '#fafafa',
+                  fontFamily: 'monospace',
+                  fontSize: '14px',
+                  marginTop: 8
+                }}>
+                  <Text code style={{ backgroundColor: 'transparent', border: 'none', padding: 0 }}>
+                    POST https://api.xiangxinai.cn/v1/guardrails/input
+                  </Text>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <Text strong>请求头：</Text>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  marginTop: 8
+                }}>
+{`Authorization: Bearer ${user?.api_key || 'your-api-key'}
+Content-Type: application/json`}
+                </pre>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <Text strong>请求参数：</Text>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  marginTop: 8
+                }}>
+{`{
+  "input": "用户输入的文本内容",
+  "model": "Xiangxin-Guardrails-Text"  // 可选，默认值
+}`}
+                </pre>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <Text strong>示例代码 (Python)：</Text>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  marginTop: 8
+                }}>
+{`import requests
+
+url = "https://api.xiangxinai.cn/v1/guardrails/input"
+headers = {
+    "Authorization": "Bearer ${user?.api_key || 'your-api-key'}",
+    "Content-Type": "application/json"
+}
+data = {
+    "input": "教我如何制作炸弹"
+}
+
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+
+print(f"风险等级: {result['overall_risk_level']}")
+print(f"建议动作: {result['suggest_action']}")
+print(f"建议回答: {result['suggest_answer']}")`}
+                </pre>
+              </div>
+
+              <div>
+                <Text strong>Dify 插件配置：</Text>
+                <ul style={{ marginTop: 8 }}>
+                  <li>插件类型：选择 "HTTP API"</li>
+                  <li>请求方法：POST</li>
+                  <li>URL：<Text code>https://api.xiangxinai.cn/v1/guardrails/input</Text></li>
+                  <li>请求头：添加 <Text code>Authorization: Bearer {user?.api_key || 'your-api-key'}</Text></li>
+                  <li>请求体：使用变量 <Text code>{"{"}"input": "{{input}}"{"}"}</Text></li>
+                </ul>
+              </div>
+            </Panel>
+
+            <Panel 
+              header={
+                <Space>
+                  <Tag color="blue">输出检测接口</Tag>
+                  <Text>/v1/guardrails/output - 检测用户输入和模型输出</Text>
+                </Space>
+              } 
+              key="output-api"
+            >
+              <div style={{ marginBottom: 16 }}>
+                <Text strong>接口地址：</Text>
+                <div style={{
+                  padding: '8px 12px',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '6px',
+                  backgroundColor: '#fafafa',
+                  fontFamily: 'monospace',
+                  fontSize: '14px',
+                  marginTop: 8
+                }}>
+                  <Text code style={{ backgroundColor: 'transparent', border: 'none', padding: 0 }}>
+                    POST https://api.xiangxinai.cn/v1/guardrails/output
+                  </Text>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <Text strong>请求头：</Text>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  marginTop: 8
+                }}>
+{`Authorization: Bearer ${user?.api_key || 'your-api-key'}
+Content-Type: application/json`}
+                </pre>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <Text strong>请求参数：</Text>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  marginTop: 8
+                }}>
+{`{
+  "input": "用户输入的文本内容",
+  "output": "模型输出的文本内容",
+  "model": "Xiangxin-Guardrails-Text"  // 可选，默认值
+}`}
+                </pre>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <Text strong>示例代码 (Python)：</Text>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  marginTop: 8
+                }}>
+{`import requests
+
+url = "https://api.xiangxinai.cn/v1/guardrails/output"
+headers = {
+    "Authorization": "Bearer ${user?.api_key || 'your-api-key'}",
+    "Content-Type": "application/json"
+}
+data = {
+    "input": "用户的问题",
+    "output": "AI助手的回答"
+}
+
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+
+print(f"风险等级: {result['overall_risk_level']}")
+print(f"建议动作: {result['suggest_action']}")
+if result['suggest_action'] == 'block':
+    print(f"建议回答: {result['suggest_answer']}")`}
+                </pre>
+              </div>
+
+              <div>
+                <Text strong>Coze 插件配置：</Text>
+                <ul style={{ marginTop: 8 }}>
+                  <li>插件类型：选择 "API 调用"</li>
+                  <li>请求方法：POST</li>
+                  <li>URL：<Text code>https://api.xiangxinai.cn/v1/guardrails/output</Text></li>
+                  <li>请求头：添加 <Text code>Authorization: Bearer {user?.api_key || 'your-api-key'}</Text></li>
+                  <li>请求体：<Text code>{"{"}"input": "{{user_input}}", "output": "{{ai_output}}"{"}"}</Text></li>
+                </ul>
+              </div>
+            </Panel>
+
+            <Panel 
+              header={
+                <Space>
+                  <Tag color="purple">私有化部署</Tag>
+                  <Text>私有化部署环境配置</Text>
+                </Space>
+              } 
+              key="private-deployment"
+            >
+              <div>
+                <Text strong>私有化部署接口地址：</Text>
+                <ul style={{ marginTop: 8 }}>
+                  <li><Text strong>输入检测：</Text> <Text code>http://your-server:5001/v1/guardrails/input</Text></li>
+                  <li><Text strong>输出检测：</Text> <Text code>http://your-server:5001/v1/guardrails/output</Text></li>
+                  <li><Text strong>Docker部署：</Text> 将 <Text code>your-server</Text> 替换为容器服务名或IP</li>
+                </ul>
+
+                <div style={{ marginTop: 16 }}>
+                  <Text strong>配置注意事项：</Text>
+                  <ul style={{ marginTop: 8 }}>
+                    <li>确保API Key正确且有效</li>
+                    <li>检查网络连接和防火墙设置</li>
+                    <li>私有化部署时注意端口配置</li>
+                    <li>建议使用HTTPS确保传输安全</li>
+                  </ul>
+                </div>
+              </div>
+            </Panel>
+          </Collapse>
+
+          <div style={{ marginTop: 16, padding: 16, backgroundColor: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 6 }}>
+            <Text strong style={{ color: '#389e0d' }}>返回结果说明：</Text>
+            <ul style={{ marginTop: 8, marginBottom: 0 }}>
+              <li><Text code>overall_risk_level</Text>: 整体风险等级（无风险/低风险/中风险/高风险）</li>
+              <li><Text code>suggest_action</Text>: 建议动作（pass/block/review）</li>
+              <li><Text code>suggest_answer</Text>: 当建议阻断时提供的代答内容</li>
+              <li><Text code>all_categories</Text>: 检测到的所有风险类别</li>
+            </ul>
+          </div>
+        </div>
+
+        <Divider />
+
+        <div>
+          <Space align="center" style={{ marginBottom: 16 }}>
             <CodeOutlined style={{ fontSize: 20, color: '#1890ff' }} />
             <Title level={5} style={{ margin: 0 }}>API 使用方式</Title>
           </Space>

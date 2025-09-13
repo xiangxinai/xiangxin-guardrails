@@ -109,3 +109,38 @@ class ProxyModelConfig(BaseModel):
     block_on_output_risk: Optional[bool] = Field(False, description="输出风险时是否阻断，默认不阻断") 
     enable_reasoning_detection: Optional[bool] = Field(True, description="是否检测reasoning内容，默认开启")
     stream_chunk_size: Optional[int] = Field(50, description="流式检测间隔，每N个chunk检测一次，默认50", ge=1, le=500)
+
+class InputGuardrailRequest(BaseModel):
+    """输入检测请求模型 - 适用于dify/coze等平台插件"""
+    input: str = Field(..., description="用户输入文本")
+    model: str = Field("Xiangxin-Guardrails-Text", description="模型名称")
+    
+    @validator('input')
+    def validate_input(cls, v):
+        if not v or not v.strip():
+            raise ValueError('input cannot be empty')
+        if len(v) > 1000000:
+            raise ValueError('input too long (max 1000000 characters)')
+        return v.strip()
+
+class OutputGuardrailRequest(BaseModel):
+    """输出检测请求模型 - 适用于dify/coze等平台插件"""
+    input: str = Field(..., description="用户输入文本")
+    output: str = Field(..., description="模型输出文本")
+    model: str = Field("Xiangxin-Guardrails-Text", description="模型名称")
+    
+    @validator('input')
+    def validate_input(cls, v):
+        if not v or not v.strip():
+            raise ValueError('input cannot be empty')
+        if len(v) > 1000000:
+            raise ValueError('input too long (max 1000000 characters)')
+        return v.strip()
+    
+    @validator('output')
+    def validate_output(cls, v):
+        if not v or not v.strip():
+            raise ValueError('output cannot be empty')
+        if len(v) > 1000000:
+            raise ValueError('output too long (max 1000000 characters)')
+        return v.strip()
