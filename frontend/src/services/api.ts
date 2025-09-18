@@ -24,7 +24,7 @@ const getBaseURL = () => {
 
 const api = axios.create({
   baseURL: getBaseURL(),
-  timeout: 30000,
+  timeout: 300000, // 增加到5分钟超时
 });
 
 // 请求拦截器

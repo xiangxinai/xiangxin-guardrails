@@ -56,7 +56,7 @@ class ProxyService:
         # 超时配置 - 为代理模型增加更长的超时时间
         timeout = httpx.Timeout(
             connect=15.0,    # 连接超时
-            read=300.0,      # 读取超时增加到5分钟
+            read=600.0,      # 读取超时增加到10分钟
             write=15.0,      # 写入超时
             pool=10.0        # 连接池超时
         )

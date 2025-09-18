@@ -301,7 +301,6 @@ async def online_test(
             
             # 并行调用所有启用的模型获取原始响应（不经过护栏）
             original_tasks = []
-            protected_tasks = []
             for db_model in db_models:
                 # 解密API key
                 try:
@@ -322,20 +321,6 @@ async def online_test(
                 # 直接调用模型获取原始响应
                 original_task = test_model_api(model_config, messages)
                 original_tasks.append((str(db_model.id), original_task))
-                
-                # 同时获取代理模型的响应（基于护栏结果决定是否阻断）
-                if (guardrail_dict.get('suggest_action', '') == '通过' or 
-                    guardrail_dict.get('overall_risk_level', '') in ['无风险', 'safe']):
-                    # 如果护栏通过，则返回模型的正常响应
-                    protected_task = test_model_api(model_config, messages)
-                    protected_tasks.append((str(db_model.id), protected_task))
-                else:
-                    # 如果护栏阻断，使用建议回答或阻断消息
-                    suggest_answer = guardrail_dict.get('suggest_answer', '')
-                    if suggest_answer:
-                        protected_tasks.append((str(db_model.id), create_blocked_response(suggest_answer)))
-                    else:
-                        protected_tasks.append((str(db_model.id), create_blocked_response("抱歉，我无法回答这个问题，因为它可能违反了安全准则。")))
             
             # 等待所有模型的原始响应
             if original_tasks:
@@ -354,22 +339,19 @@ async def online_test(
                     else:
                         original_responses[model_id] = result
             
-            # 等待所有代理模型的响应
-            if protected_tasks:
-                protected_results = await asyncio.gather(
-                    *[task for _, task in protected_tasks], 
-                    return_exceptions=True
-                )
-                
-                for i, (model_id, _) in enumerate(protected_tasks):
-                    result = protected_results[i]
-                    if isinstance(result, Exception):
-                        model_results[model_id] = ModelResponse(
-                            content=None,
-                            error=f"请求失败: {str(result)}"
-                        )
+            # 基于护栏结果生成护栏保护响应
+            for model_id in original_responses:
+                if (guardrail_dict.get('suggest_action', '') == '通过' or 
+                    guardrail_dict.get('overall_risk_level', '') in ['无风险', 'safe']):
+                    # 如果护栏通过，护栏保护响应直接使用原始响应
+                    model_results[model_id] = original_responses[model_id]
+                else:
+                    # 如果护栏阻断，使用建议回答或阻断消息
+                    suggest_answer = guardrail_dict.get('suggest_answer', '')
+                    if suggest_answer:
+                        model_results[model_id] = ModelResponse(content=suggest_answer)
                     else:
-                        model_results[model_id] = result
+                        model_results[model_id] = ModelResponse(content="抱歉，我无法回答这个问题，因为它可能违反了安全准则。")
         
         return OnlineTestResponse(
             guardrail=guardrail_dict,
@@ -384,7 +366,16 @@ async def online_test(
         import traceback
         error_msg = f"Online test error: {e}\nTraceback: {traceback.format_exc()}"
         logger.error(error_msg)
-        raise HTTPException(status_code=500, detail=f"测试执行失败: {str(e)}")
+        
+        # 改进超时错误处理
+        error_str = str(e).lower()
+        if "timeout" in error_str or "timed out" in error_str:
+            raise HTTPException(
+                status_code=408, 
+                detail="测试执行超时，这可能是由于模型响应时间过长导致的。请稍后重试，或联系管理员检查模型配置。"
+            )
+        else:
+            raise HTTPException(status_code=500, detail=f"测试执行失败: {str(e)}")
 
 async def call_guardrail_api(api_key: str, messages: List[Dict[str, str]], user_uuid: uuid.UUID, db: Session) -> Dict[str, Any]:
     """调用护栏API"""
@@ -488,10 +479,6 @@ async def call_guardrail_api(api_key: str, messages: List[Dict[str, str]], user_
             "suggest_answer": f"护栏检测系统出现错误: {str(e)}"
         }
 
-async def create_blocked_response(message: str) -> ModelResponse:
-    """创建被阻断的响应"""
-    return ModelResponse(content=message)
-
 async def test_model_api(model: ModelConfig, messages: List[Dict[str, str]]) -> ModelResponse:
     """使用OpenAI SDK测试单个模型API"""
     try:
@@ -499,7 +486,7 @@ async def test_model_api(model: ModelConfig, messages: List[Dict[str, str]]) -> 
         client = AsyncOpenAI(
             api_key=model.api_key,
             base_url=model.base_url.rstrip('/'),
-            timeout=300.0  # 10分钟超时
+            timeout=600.0  # 10分钟超时
         )
         
         # 调用模型API
@@ -510,7 +497,17 @@ async def test_model_api(model: ModelConfig, messages: List[Dict[str, str]]) -> 
         )
         
         # 提取响应内容
-        content = response.choices[0].message.content if response.choices else '无响应'
+        # 如果有reasoning_content,则返回reasoning_content
+        reasoning_content = None
+        if response.choices[0].message.reasoning_content:
+            reasoning_content = response.choices[0].message.reasoning_content
+        
+        answer_content = response.choices[0].message.content if response.choices else '无响应'
+        if reasoning_content:
+            content = f"<think>\n{reasoning_content}\n</think>\n\n{answer_content}"
+        else:
+            content = answer_content
+        
         return ModelResponse(content=content)
         
     except Exception as e:
@@ -519,8 +516,8 @@ async def test_model_api(model: ModelConfig, messages: List[Dict[str, str]]) -> 
             error_message = "API Key无效或未授权"
         elif "404" in error_message or "Not Found" in error_message:
             error_message = "API端点未找到或模型不存在"
-        elif "timeout" in error_message.lower():
-            error_message = "请求超时"
+        elif "timeout" in error_message.lower() or "timed out" in error_message.lower():
+            error_message = "请求超时，模型响应时间过长，请稍后重试或联系管理员"
         elif "rate limit" in error_message.lower():
             error_message = "API调用频率限制"
         else:

@@ -231,12 +231,15 @@ const OnlineTest: React.FC = () => {
       const status = error?.response?.status;
       
       // 对于特定的HTTP错误，在护栏结果中显示
-      if (status === 429 || status === 401 || status === 500) {
+      if (status === 408 || status === 429 || status === 401 || status === 500) {
         let displayMessage = errorMessage;
         
         // 为特定错误状态添加更友好的描述
         if (status === 401) {
           displayMessage = 'API认证失败，请检查您的API Key是否正确';
+        } else if (status === 408) {
+          // 408是超时错误，显示具体的超时信息
+          displayMessage = errorMessage;
         } else if (status === 429) {
           // 429是限速错误，不要覆盖后端返回的具体限速信息
           displayMessage = errorMessage;
@@ -258,7 +261,12 @@ const OnlineTest: React.FC = () => {
         });
       } else {
         // 其他错误（如网络错误）仍然使用弹窗提示
-        message.error(`测试执行失败: ${errorMessage}`);
+        // 检查是否是axios超时错误
+        if (error.code === 'ECONNABORTED' || errorMessage.includes('timeout')) {
+          message.error('请求超时，请检查网络连接或稍后重试');
+        } else {
+          message.error(`测试执行失败: ${errorMessage}`);
+        }
       }
     } finally {
       setLoading(false);
@@ -583,7 +591,16 @@ const OnlineTest: React.FC = () => {
                               <div>
                                 <Text strong>模型响应：</Text>
                                 <br />
-                                <Text>{response.content}</Text>
+                                <div style={{ 
+                                  backgroundColor: '#f8f9fa',
+                                  padding: '12px',
+                                  borderRadius: '6px',
+                                  marginTop: '8px',
+                                  border: '1px solid #e9ecef',
+                                  whiteSpace: 'pre-wrap'
+                                }}>
+                                  <Text>{response.content}</Text>
+                                </div>
                               </div>
                             ) : (
                               <Text type="secondary">模型返回了空响应</Text>
