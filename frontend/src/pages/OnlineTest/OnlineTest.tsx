@@ -304,7 +304,7 @@ const OnlineTest: React.FC = () => {
 
   const getActionColor = (action: string) => {
     switch (action) {
-      case '阻断': return 'red';
+      case '拒答': return 'red';
       case '代答': return 'orange';
       case '通过': return 'green';
       case '测试失败':

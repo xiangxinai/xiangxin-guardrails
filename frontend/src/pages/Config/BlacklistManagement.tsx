@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Switch, Space, message, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { configApi } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import type { Blacklist } from '../../types';
 
 const { TextArea } = Input;
@@ -12,10 +13,19 @@ const BlacklistManagement: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<Blacklist | null>(null);
   const [form] = Form.useForm();
+  const { onUserSwitch } = useAuth();
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // 监听用户切换事件，自动刷新数据
+  useEffect(() => {
+    const unsubscribe = onUserSwitch(() => {
+      fetchData();
+    });
+    return unsubscribe;
+  }, [onUserSwitch]);
 
   const fetchData = async () => {
     try {

@@ -80,7 +80,7 @@ async def _background_input_detection(input_messages: list, user_id: str, reques
         )
         
         # 记录检测结果但不阻断
-        if detection_result.get('suggest_action') in ['阻断', '代答']:
+        if detection_result.get('suggest_action') in ['拒答', '代答']:
             logger.info(f"异步输入检测发现风险但未阻断 - request {request_id}")
             logger.info(f"检测结果: {detection_result}")
             
@@ -99,7 +99,7 @@ async def _sync_input_detection(model_config, input_messages: list, user_id: str
         detection_id = detection_result.get('request_id')
         
         # 检查是否需要阻断
-        if model_config.block_on_input_risk and detection_result.get('suggest_action') in ['阻断', '代答']:
+        if model_config.block_on_input_risk and detection_result.get('suggest_action') in ['拒答', '代答']:
             logger.warning(f"同步输入检测阻断请求 - request {request_id}")
             logger.warning(f"检测结果: {detection_result}")
             
@@ -168,7 +168,7 @@ async def _background_output_detection(input_messages: list, response_content: s
         )
         
         # 记录检测结果但不阻断
-        if detection_result.get('suggest_action') in ['阻断', '代答']:
+        if detection_result.get('suggest_action') in ['拒答', '代答']:
             logger.info(f"异步输出检测发现风险但未阻断 - request {request_id}")
             logger.info(f"检测结果: {detection_result}")
             
@@ -194,7 +194,7 @@ async def _sync_output_detection(model_config, input_messages: list, response_co
         detection_id = detection_result.get('request_id')
         
         # 检查是否需要阻断输出
-        if model_config.block_on_output_risk and detection_result.get('suggest_action') in ['阻断', '代答']:
+        if model_config.block_on_output_risk and detection_result.get('suggest_action') in ['拒答', '代答']:
             logger.warning(f"同步输出检测阻断响应 - request {request_id}")
             logger.warning(f"检测结果: {detection_result}")
             
@@ -332,7 +332,7 @@ class StreamChunkDetector:
             )
             
             # 记录检测结果但不采取阻断行动
-            if detection_result.get('suggest_action') in ['阻断', '代答']:
+            if detection_result.get('suggest_action') in ['拒答', '代答']:
                 logger.info(f"异步检测发现风险但未阻断 - chunk {self.chunk_count}, request {request_id}")
                 logger.info(f"检测结果: {detection_result}")
             
@@ -366,7 +366,7 @@ class StreamChunkDetector:
             )
             
             # 检查风险并决定是否阻断
-            if detection_result.get('suggest_action') in ['阻断', '代答']:
+            if detection_result.get('suggest_action') in ['拒答', '代答']:
                 logger.warning(f"同步检测发现风险并阻断 - chunk {self.chunk_count}, request {request_id}")
                 logger.warning(f"检测结果: {detection_result}")
                 self.risk_detected = True
@@ -406,7 +406,7 @@ class StreamChunkDetector:
             )
             
             # 检查风险并决定是否阻断
-            if detection_result.get('suggest_action') in ['阻断', '代答']:
+            if detection_result.get('suggest_action') in ['拒答', '代答']:
                 logger.warning(f"同步最终检测发现风险并阻断 - chunk {self.chunk_count}, request {request_id}")
                 logger.warning(f"检测结果: {detection_result}")
                 self.risk_detected = True
@@ -595,7 +595,7 @@ def _create_stop_chunk(request_id: str, detection_result: dict = None) -> dict:
         }
     else:
         chunk["detection_info"] = {
-            "suggest_action": "阻断",
+            "suggest_action": "拒答",
             "suggest_answer": "抱歉，无法回答您的问题。",
             "overall_risk_level": "高风险",
             "compliance_result": None,

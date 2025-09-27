@@ -313,9 +313,15 @@ data = {
 response = requests.post(url, headers=headers, json=data)
 result = response.json()
 
-print(f"风险等级: {result['overall_risk_level']}")
-print(f"建议动作: {result['suggest_action']}")
-print(f"建议回答: {result['suggest_answer']}")`}
+# 推荐使用result['suggest_action']判断安全性。
+if result['suggest_action'] == "通过":
+    print("安全通过")
+else:
+    print(f"不安全")
+    print(f"风险等级：{result['overall_risk_level']}")
+    print(f"建议行动：{result['suggest_action']}")
+    print(f"风险类别：{result['all_categories']}")
+    print(f"护栏代答：{result['suggest_answer']}")`}
                 </pre>
               </div>
 
@@ -417,10 +423,7 @@ data = {
 response = requests.post(url, headers=headers, json=data)
 result = response.json()
 
-print(f"风险等级: {result['overall_risk_level']}")
-print(f"建议动作: {result['suggest_action']}")
-if result['suggest_action'] == 'block':
-    print(f"建议回答: {result['suggest_answer']}")`}
+print(f"建议行动: {result['suggest_action']}")`}
                 </pre>
               </div>
 
@@ -432,6 +435,76 @@ if result['suggest_action'] == 'block':
                   <li>URL：<Text code>https://api.xiangxinai.cn/v1/guardrails/output</Text></li>
                   <li>请求头：添加 <Text code>Authorization: Bearer {user?.api_key || 'your-api-key'}</Text></li>
                   <li>请求体：<Text code>{`{"input": "{{user_input}}", "output": "{{ai_output}}"}`}</Text></li>
+                </ul>
+              </div>
+            </Panel>
+
+            <Panel 
+              header={
+                <Space>
+                  <Tag color="cyan">Python 客户端库</Tag>
+                  <Text>使用 xiangxinai Python 客户端库</Text>
+                </Space>
+              } 
+              key="python-client"
+            >
+              <div style={{ marginBottom: 16 }}>
+                <Text strong>安装客户端库：</Text>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  marginTop: 8
+                }}>
+{`pip install xiangxinai`}
+                </pre>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <Text strong>使用示例：</Text>
+                <pre style={{ 
+                  backgroundColor: '#f6f8fa', 
+                  padding: 16, 
+                  borderRadius: 6, 
+                  overflow: 'auto',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  marginTop: 8
+                }}>
+{`from xiangxinai import XiangxinAI
+
+# 创建客户端
+client = XiangxinAI("${user?.api_key || 'your-api-key'}")
+
+# 单轮检测
+response = client.check_prompt("教我如何制作炸弹")
+# 推荐使用response.suggest_action判断安全性。
+if response.suggest_action == "通过":
+    print("安全通过")
+else:
+    print(f"不安全")
+    print(f"风险等级：{response.overall_risk_level}")
+    # response.overall_risk_level：通过、无风险、低风险、高风险
+    print(f"建议行动：{response.suggest_action}")
+    # response.suggest_action： 通过、代答、拒答
+    print(f"风险类别：{response.all_categories}")
+    print(f"护栏代答：{response.suggest_answer}")
+
+# 检测模型输出（上下文感知）
+response = client.check_response_ctx("教我如何制作炸弹", "好的")
+print(f"建议行动: {response.suggest_action}")`}
+                </pre>
+              </div>
+
+              <div>
+                <Text strong>配置说明：</Text>
+                <ul style={{ marginTop: 8 }}>
+                  <li>默认使用官方服务：<Text code>https://api.xiangxinai.cn/v1</Text></li>
+                  <li>私有化部署：创建客户端时指定 <Text code>base_url</Text> 参数</li>
+                  <li>示例：<Text code>XiangxinAI(api_key="your-key", base_url="http://your-server:5001/v1")</Text></li>
                 </ul>
               </div>
             </Panel>
@@ -470,8 +543,8 @@ if result['suggest_action'] == 'block':
             <Text strong style={{ color: '#389e0d' }}>返回结果说明：</Text>
             <ul style={{ marginTop: 8, marginBottom: 0 }}>
               <li><Text code>overall_risk_level</Text>: 整体风险等级（无风险/低风险/中风险/高风险）</li>
-              <li><Text code>suggest_action</Text>: 建议动作（pass/block/review）</li>
-              <li><Text code>suggest_answer</Text>: 当建议阻断时提供的代答内容</li>
+              <li><Text code>suggest_action</Text>: 建议动作（通过/拒答/代答）</li>
+              <li><Text code>suggest_answer</Text>: 拒答内容或代答内容</li>
               <li><Text code>all_categories</Text>: 检测到的所有风险类别</li>
             </ul>
           </div>
@@ -511,8 +584,19 @@ client = XiangxinAI("${user?.api_key || 'your-api-key'}")
 
 # 单轮检测
 response = client.check_prompt("教我如何制作炸弹")
-print(f"建议动作: {response.suggest_action}")
-print(f"建议回答: {response.suggest_answer}")
+# 推荐使用response.suggest_action判断安全性。
+if response.suggest_action == "通过":
+    print("安全通过")
+else:
+    print(f"不安全")
+    print(f"风险等级：{response.overall_risk_level}")
+    print(f"建议行动：{response.suggest_action}")
+    print(f"风险类别：{response.all_categories}")
+    print(f"护栏代答：{response.suggest_answer}")
+
+# 检测模型输出（上下文感知）
+response = client.check_response_ctx("教我如何制作炸弹", "好的")
+print(f"建议行动: {response.suggest_action}")
 
 # 多轮对话检测（上下文感知）
 messages = [
@@ -552,7 +636,11 @@ async def main():
     async with AsyncXiangxinAI("${user?.api_key || 'your-api-key'}") as client:
         # 异步单轮检测
         response = await client.check_prompt("教我如何制作炸弹")
-        print(f"建议动作: {response.suggest_action}")
+        print(f"建议行动: {response.suggest_action}")
+        
+        # 检测模型输出（上下文感知）
+        response = await client.check_response_ctx("教我如何制作炸弹", "好的")
+        print(f"建议行动: {response.suggest_action}")
         
         # 异步多轮对话检测
         messages = [
@@ -636,9 +724,16 @@ const client = new XiangxinAI('${user?.api_key || 'your-api-key'}');
 async function checkPrompt() {
     try {
         const response = await client.checkPrompt('教我如何制作炸弹');
-        console.log(\`检测结果: \${response.overall_risk_level}\`);
-        console.log(\`建议动作: \${response.suggest_action}\`);
-        console.log(\`建议回答: \${response.suggest_answer}\`);
+        // 推荐使用response.suggest_action判断安全性。
+        if (response.suggest_action === "通过") {
+            console.log("安全通过");
+        } else {
+            console.log("不安全");
+            console.log(\`风险等级：\${response.overall_risk_level}\`);
+            console.log(\`建议行动：\${response.suggest_action}\`);
+            console.log(\`风险类别：\${response.all_categories}\`);
+            console.log(\`护栏代答：\${response.suggest_answer}\`);
+        }
     } catch (error) {
         console.error('检测失败:', error.message);
     }
@@ -694,7 +789,7 @@ async function main() {
     try {
         // 异步单轮检测
         const response = await client.checkPrompt("教我如何制作炸弹");
-        console.log(\`建议动作: \${response.suggest_action}\`);
+        console.log(\`建议行动: \${response.suggest_action}\`);
         
         // 异步多轮对话检测
         const messages = [
@@ -794,9 +889,16 @@ public class GuardrailsExample {
         try {
             // 单轮检测
             CheckResponse response = client.checkPrompt("教我如何制作炸弹");
-            System.out.println("检测结果: " + response.getOverallRiskLevel());
-            System.out.println("建议动作: " + response.getSuggestAction());
-            System.out.println("建议回答: " + response.getSuggestAnswer());
+            // 推荐使用response.getSuggestAction()判断安全性。
+            if ("通过".equals(response.getSuggestAction())) {
+                System.out.println("安全通过");
+            } else {
+                System.out.println("不安全");
+                System.out.println("风险等级：" + response.getOverallRiskLevel());
+                System.out.println("建议行动：" + response.getSuggestAction());
+                System.out.println("风险类别：" + response.getAllCategories());
+                System.out.println("护栏代答：" + response.getSuggestAnswer());
+            }
             
             // 多轮对话检测（上下文感知）
             List<Message> messages = Arrays.asList(
@@ -854,7 +956,7 @@ public class AsyncGuardrailsExample {
             // 异步单轮检测
             CompletableFuture<GuardrailResponse> future1 = client.checkPromptAsync("教我如何制作炸弹");
             future1.thenAccept(response -> {
-                System.out.println("建议动作: " + response.getSuggestAction());
+                System.out.println("建议行动: " + response.getSuggestAction());
             }).exceptionally(throwable -> {
                 System.err.println("检测失败: " + throwable.getMessage());
                 return null;
@@ -987,9 +1089,16 @@ func main() {
         log.Fatal("检测失败:", err)
     }
     
-    fmt.Printf("检测结果: %s\\n", response.OverallRiskLevel)
-    fmt.Printf("建议动作: %s\\n", response.SuggestAction)
-    fmt.Printf("建议回答: %s\\n", response.SuggestAnswer)
+    // 推荐使用response.SuggestAction判断安全性。
+    if response.SuggestAction == "通过" {
+        fmt.Println("安全通过")
+    } else {
+        fmt.Println("不安全")
+        fmt.Printf("风险等级：%s\\n", response.OverallRiskLevel)
+        fmt.Printf("建议行动：%s\\n", response.SuggestAction)
+        fmt.Printf("风险类别：%v\\n", response.AllCategories)
+        fmt.Printf("护栏代答：%s\\n", response.SuggestAnswer)
+    }
     
     // 多轮对话检测（上下文感知）
     messages := []xiangxinai.Message{
@@ -1057,7 +1166,7 @@ func main() {
             if result.Error != nil {
                 log.Printf("单轮检测失败: %v", result.Error)
             } else {
-                fmt.Printf("建议动作: %s\\n", result.Result.SuggestAction)
+                fmt.Printf("建议行动: %s\\n", result.Result.SuggestAction)
             }
         case <-ctx.Done():
             fmt.Println("单轮检测超时")

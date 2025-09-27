@@ -290,7 +290,7 @@ class DetectionGuardrailService:
             return overall_risk_level, "通过", None
         elif overall_risk_level == "高风险":
             suggest_answer = await self._get_suggest_answer(risk_categories, user_id)
-            return overall_risk_level, "阻断", suggest_answer
+            return overall_risk_level, "拒答", suggest_answer
         elif overall_risk_level == "中风险":
             suggest_answer = await self._get_suggest_answer(risk_categories, user_id)
             return overall_risk_level, "代答", suggest_answer
@@ -313,7 +313,7 @@ class DetectionGuardrailService:
             "request_id": request_id,
             "user_id": user_id,
             "content": content,
-            "suggest_action": "阻断",
+            "suggest_action": "拒答",
             "suggest_answer": f"很抱歉，我不能提供涉及{list_name}的内容。",
             "hit_keywords": json.dumps(keywords),
             "model_response": "blacklist_hit",
@@ -334,7 +334,7 @@ class DetectionGuardrailService:
                 security=SecurityResult(risk_level="无风险", categories=[])
             ),
             overall_risk_level="高风险",
-            suggest_action="阻断",
+            suggest_action="拒答",
             suggest_answer=f"很抱歉，我不能提供涉及{list_name}的内容。"
         )
     

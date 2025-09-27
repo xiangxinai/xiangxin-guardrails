@@ -346,7 +346,7 @@ async def online_test(
                     # 如果护栏通过，护栏保护响应直接使用原始响应
                     model_results[model_id] = original_responses[model_id]
                 else:
-                    # 如果护栏阻断，使用建议回答或阻断消息
+                    # 如果护栏阻断，使用建议回答或拒答消息
                     suggest_answer = guardrail_dict.get('suggest_answer', '')
                     if suggest_answer:
                         model_results[model_id] = ModelResponse(content=suggest_answer)

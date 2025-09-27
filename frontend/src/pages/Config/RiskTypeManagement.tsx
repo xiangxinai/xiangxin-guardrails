@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Switch, message, Spin, Typography, Divider, Space, Row, Col } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { getRiskConfig, updateRiskConfig } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { Title, Text } = Typography;
 
@@ -43,10 +44,19 @@ const RiskTypeManagement: React.FC = () => {
   const [config, setConfig] = useState<RiskTypeConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { onUserSwitch } = useAuth();
 
   useEffect(() => {
     loadRiskConfig();
   }, []);
+
+  // 监听用户切换事件，自动刷新配置
+  useEffect(() => {
+    const unsubscribe = onUserSwitch(() => {
+      loadRiskConfig();
+    });
+    return unsubscribe;
+  }, [onUserSwitch]);
 
   const loadRiskConfig = async () => {
     try {

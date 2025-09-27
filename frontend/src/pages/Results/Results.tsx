@@ -235,7 +235,7 @@ const Results: React.FC = () => {
       key: 'suggest_action',
       width: 90,
       render: (action: string) => {
-        const color = action === '通过' ? 'green' : action === '阻断' ? 'red' : 'orange';
+        const color = action === '通过' ? 'green' : action === '拒答' ? 'red' : 'orange';
         return <Tag color={color} style={{ fontSize: '12px' }}>{action}</Tag>;
       },
     },
@@ -411,7 +411,7 @@ const Results: React.FC = () => {
                 <Text strong>建议动作:</Text>
               </Col>
               <Col span={16}>
-                <Tag color={selectedResult.suggest_action === '通过' ? 'green' : selectedResult.suggest_action === '阻断' ? 'red' : 'orange'}>
+                <Tag color={selectedResult.suggest_action === '通过' ? 'green' : selectedResult.suggest_action === '拒答' ? 'red' : 'orange'}>
                   {selectedResult.suggest_action}
                 </Tag>
               </Col>

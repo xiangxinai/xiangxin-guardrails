@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Button, Modal, Form, Input, Switch, message, Space, Popconfirm, Descriptions, Tag, Alert, Typography } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, ApiOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import { proxyModelsApi } from '../../services/api';
+import { authService } from '../../services/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { Paragraph, Text } = Typography;
 
@@ -36,9 +38,9 @@ const ProxyModelManagement: React.FC = () => {
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
   const [editingModel, setEditingModel] = useState<ProxyModel | null>(null);
   const [viewingModel, setViewingModel] = useState<ProxyModel | null>(null);
-  const [advancedVisible, setAdvancedVisible] = useState(false);
   const [formKey, setFormKey] = useState(0); // 用于强制重新渲染表单
   const [form] = Form.useForm();
+  const { onUserSwitch } = useAuth();
   
   // 直接管理开关状态（极简配置）
   const [switchStates, setSwitchStates] = useState({
@@ -49,18 +51,14 @@ const ProxyModelManagement: React.FC = () => {
     stream_chunk_size: 50, // 默认每50个chunk检测一次
   });
 
-
   // 获取模型列表
   const fetchModels = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get('/api/v1/proxy/models', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await proxyModelsApi.list();
       
-      if (response.data.success) {
-        setModels(response.data.data);
+      if (response.success) {
+        setModels(response.data);
       } else {
         message.error('获取模型配置失败');
       }
@@ -76,16 +74,21 @@ const ProxyModelManagement: React.FC = () => {
     fetchModels();
   }, []);
 
+  // 监听用户切换事件，自动刷新数据
+  useEffect(() => {
+    const unsubscribe = onUserSwitch(() => {
+      fetchModels();
+    });
+    return unsubscribe;
+  }, [onUserSwitch]);
+
   // 获取模型详细信息（用于编辑）
   const fetchModelDetail = async (modelId: string) => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get(`/api/v1/proxy/models/${modelId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await proxyModelsApi.get(modelId);
       
-      if (response.data.success) {
-        return response.data.data;
+      if (response.success) {
+        return response.data;
       } else {
         message.error('获取模型详情失败');
         return null;
@@ -221,6 +224,7 @@ const ProxyModelManagement: React.FC = () => {
       const formData: ProxyModelFormData = {
         config_name: values.config_name,
         api_base_url: values.api_base_url,
+        api_key: values.api_key,
         model_name: values.model_name,
         enabled: switchStates.enabled,
         block_on_input_risk: switchStates.block_on_input_risk,
@@ -240,16 +244,13 @@ const ProxyModelManagement: React.FC = () => {
       console.log('block_on_output_risk:', formData.block_on_output_risk, typeof formData.block_on_output_risk);
       console.log('enable_reasoning_detection:', formData.enable_reasoning_detection, typeof formData.enable_reasoning_detection);
 
-      const token = localStorage.getItem('auth_token');
-      const headers = { Authorization: `Bearer ${token}` };
-
       if (editingModel) {
         // 编辑现有配置
-        await axios.put(`/api/v1/proxy/models/${editingModel.id}`, formData, { headers });
+        await proxyModelsApi.update(editingModel.id, formData);
         message.success('模型配置已更新');
       } else {
         // 创建新配置
-        await axios.post('/api/v1/proxy/models', formData, { headers });
+        await proxyModelsApi.create(formData);
         message.success('模型配置已创建');
       }
 
@@ -285,16 +286,13 @@ const ProxyModelManagement: React.FC = () => {
   // 删除模型配置
   const handleDelete = async (id: string) => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.delete(`/api/v1/proxy/models/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await proxyModelsApi.delete(id);
       
-      if (response.data && response.data.success) {
+      if (response.success) {
         message.success('模型配置已删除');
         fetchModels();
       } else {
-        const errorMessage = response.data?.error || '删除失败';
+        const errorMessage = response.message || '删除失败';
         message.error(errorMessage);
       }
     } catch (error: any) {
@@ -447,12 +445,13 @@ const ProxyModelManagement: React.FC = () => {
             }}>
 {`client = OpenAI(
     base_url="https://api.xiangxinai.cn/v1/gateway",  # 改为象信AI安全网关服务
-    api_key="sk-xxai-your-proxy-key"                  # 改为象信AI API Key
+    api_key="sk-xxai-your-proxy-key" # 改为您的象信AI API Key
 )
 completion = openai_client.chat.completions.create(
-    model = "your-proxy-model-name",  # 改为象信AI代理模型名称
+    model = "your-proxy-model-name",  # 改为您配置的代理模型名称
     messages=[{"role": "system", "content": "You're a helpful assistant."},
         {"role": "user", "content": "Tell me how to make a bomb."}]
+    # 其他参数与原使用方法一致
 )
 `}
             </pre>

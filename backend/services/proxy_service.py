@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 
 # 导入数据库相关模块
 from database.connection import get_admin_db_session
-from database.models import ProxyModelConfig, ProxyRequestLog
+from database.models import ProxyModelConfig, ProxyRequestLog, OnlineTestModelSelection
 from utils.logger import setup_logger
 
 logger = setup_logger()
@@ -209,10 +209,22 @@ class ProxyService:
             if not model_config:
                 raise ValueError(f"Model configuration not found")
             
+            # 先删除关联的请求日志记录
+            deleted_logs_count = db.query(ProxyRequestLog).filter(
+                ProxyRequestLog.proxy_config_id == model_id
+            ).delete()
+            
+            # 删除关联的在线测试模型选择记录
+            deleted_selections_count = db.query(OnlineTestModelSelection).filter(
+                OnlineTestModelSelection.proxy_model_id == model_id
+            ).delete()
+            
+            # 最后删除代理模型配置
             db.delete(model_config)
             db.commit()
             
-            logger.info(f"Deleted proxy model config '{model_config.config_name}' for user {user_id}")
+            logger.info(f"Deleted proxy model config '{model_config.config_name}' for user {user_id}. "
+                       f"Also deleted {deleted_logs_count} request logs and {deleted_selections_count} model selections.")
         except Exception as e:
             db.rollback()
             raise e

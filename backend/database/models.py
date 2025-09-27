@@ -46,7 +46,7 @@ class DetectionResult(Base):
     request_id = Column(String(64), unique=True, nullable=False, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)  # 关联用户
     content = Column(Text, nullable=False)
-    suggest_action = Column(String(20))  # '通过', '阻断', '代答'
+    suggest_action = Column(String(20))  # '通过', '拒答', '代答'
     suggest_answer = Column(Text)  # 建议回答内容
     hit_keywords = Column(Text)  # 命中的关键词(黑白名单)
     model_response = Column(Text)  # 原始模型响应

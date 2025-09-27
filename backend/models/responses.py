@@ -22,7 +22,7 @@ class GuardrailResponse(BaseModel):
     id: str
     result: GuardrailResult
     overall_risk_level: str  # 综合风险等级：无风险/低风险/中风险/高风险
-    suggest_action: str  # 通过，阻断，代答
+    suggest_action: str  # 通过，拒答，代答
     suggest_answer: Optional[str] = None
 
 class DetectionResultResponse(BaseModel):

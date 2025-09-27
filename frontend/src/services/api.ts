@@ -286,6 +286,53 @@ export const riskConfigApi = {
   reset: () => api.post('/api/v1/config/risk-types/reset').then(res => res.data),
 };
 
+// 代理模型配置API
+export const proxyModelsApi = {
+  // 获取代理模型列表
+  list: (): Promise<{ success: boolean; data: any[] }> =>
+    api.get('/api/v1/proxy/models').then(res => res.data),
+  
+  // 获取代理模型详情
+  get: (id: string): Promise<{ success: boolean; data: any }> =>
+    api.get(`/api/v1/proxy/models/${id}`).then(res => res.data),
+  
+  // 创建代理模型配置
+  create: (data: {
+    config_name: string;
+    api_base_url: string;
+    api_key: string;
+    model_name: string;
+    enabled?: boolean;
+    block_on_input_risk?: boolean;
+    block_on_output_risk?: boolean;
+    enable_reasoning_detection?: boolean;
+    stream_chunk_size?: number;
+  }): Promise<{ success: boolean; message: string; data?: any }> =>
+    api.post('/api/v1/proxy/models', data).then(res => res.data),
+  
+  // 更新代理模型配置
+  update: (id: string, data: {
+    config_name?: string;
+    api_base_url?: string;
+    api_key?: string;
+    model_name?: string;
+    enabled?: boolean;
+    block_on_input_risk?: boolean;
+    block_on_output_risk?: boolean;
+    enable_reasoning_detection?: boolean;
+    stream_chunk_size?: number;
+  }): Promise<{ success: boolean; message: string }> =>
+    api.put(`/api/v1/proxy/models/${id}`, data).then(res => res.data),
+  
+  // 删除代理模型配置
+  delete: (id: string): Promise<{ success: boolean; message: string }> =>
+    api.delete(`/api/v1/proxy/models/${id}`).then(res => res.data),
+  
+  // 测试代理模型配置
+  test: (id: string): Promise<{ success: boolean; message: string; data?: any }> =>
+    api.post(`/api/v1/proxy/models/${id}/test`).then(res => res.data),
+};
+
 // 便捷函数
 export const getRiskConfig = () => riskConfigApi.get();
 export const updateRiskConfig = (config: any) => riskConfigApi.update(config);

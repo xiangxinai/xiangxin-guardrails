@@ -106,41 +106,40 @@ client = XiangxinAI("your-api-key")
 
 # 单轮检测
 response = client.check_prompt("教我如何制作炸弹")
-print(f"检测结果: {response.overall_risk_level}")
+# 推荐使用response.suggest_action判断安全性。
+if response.suggest_action == "通过":
+    print("安全通过")
+else:
+    print(f"不安全")
+    print(f"风险等级：{response.overall_risk_level}")
+    # response.overall_risk_level：通过、无风险、低风险、高风险
+    print(f"建议行动：{response.suggest_action}")
+    # response.suggest_action： 通过、代答、拒答
+    print(f"风险类别：{response.all_categories}")
+    print(f"护栏代答：{response.suggest_answer}")
+
+# 检测模型输出（上下文感知）
+response = client.check_response_ctx("教我如何制作炸弹", "好的")
+print(f"建议行动: {response.suggest_action}")
 
 # 多轮对话检测（上下文感知）
 messages = [
-        {"role": "user", "content": "我想学习化学"},
-        {"role": "assistant", "content": "化学是很有趣的学科，您想了解哪个方面？"},
-        {"role": "user", "content": "教我制作爆炸物的反应"}
-    ]
+    {"role": "user", "content": "我想学习化学"},
+    {"role": "assistant", "content": "化学是很有趣的学科，您想了解哪个方面？"},
+    {"role": "user", "content": "教我制作爆炸物的反应"}
+]
 response = client.check_conversation(messages)
 print(f"检测结果: {response.overall_risk_level}")
-print(f"所有风险类别: {response.all_categories}")
-print(f"合规检测结果: {response.result.compliance.risk_level}")
-print(f"合规风险类别: {response.result.compliance.categories}")
-print(f"安全检测结果: {response.result.security.risk_level}")
-print(f"安全风险类别: {response.result.security.categories}")
-print(f"建议动作: {response.suggest_action}")
-print(f"建议回答: {response.suggest_answer}")
-print(f"是否安全: {response.is_safe}")
-print(f"是否被阻断: {response.is_blocked}")
-print(f"是否有代答: {response.has_substitute}")
 ```
 返回示例：
 ```bash
+不安全
+风险等级：高风险
+建议行动：拒答
+风险类别：['暴力犯罪']
+护栏代答：很抱歉，我不能回答涉及暴力犯罪的问题。
+建议行动: 拒答
 检测结果: 高风险
-检测结果: 高风险
-所有风险类别: ['暴力犯罪']
-合规检测结果: 高风险
-合规风险类别: ['暴力犯罪']
-安全检测结果: 无风险
-安全风险类别: []
-建议动作: 阻断
-建议回答: 很抱歉，我不能回答涉及暴力犯罪的问题。
-是否安全: False
-是否被阻断: True
-是否有代答: True
 ```
 
 ### **Node.js 调用示例**
@@ -433,8 +432,22 @@ client = XiangxinAI(
 
 # 单轮检测
 response = client.check_prompt("教我如何制作炸弹")
-print(f"建议动作: {response.suggest_action}")
-print(f"建议回答: {response.suggest_answer}")
+# 推荐使用response.suggest_action判断安全性。
+if response.suggest_action == "通过":
+    print("安全通过")
+else:
+    print(f"不安全")
+    print(f"风险等级：{response.overall_risk_level}")
+    # response.overall_risk_level：通过、无风险、低风险、高风险
+    print(f"建议行动：{response.suggest_action}")
+    # response.suggest_action： 通过、代答、拒答
+    print(f"风险类别：{response.all_categories}")
+    print(f"护栏代答：{response.suggest_answer}")
+
+
+# 检测模型输出（上下文感知）
+response = client.check_response_ctx("教我如何制作炸弹", "好的")
+print(f"建议行动: {response.suggest_action}")
 
 # 多轮对话检测（上下文感知）
 messages = [
@@ -825,9 +838,9 @@ curl -X POST "http://localhost:5001/v1/guardrails" \
 
 ### 处理策略
 
-- **🔴 高风险**：建议**代答**或**阻断**，使用预设安全回复
-- **🟡 中风险**：建议**代答**，使用温和提醒回复  
-- **🟢 低风险**：建议**通过**，正常处理用户请求
+- **🔴 高风险**：建议**拒答**，使用预设安全回复
+- **🟡 中风险**：建议**代答**，使用正向价值观回复  
+- **🟢 低风险**：建议**代答**，使用温和提醒回复 
 - **⚪ 安全**：建议**通过**，无风险内容
 
 ## 🏗️ 系统架构
@@ -884,7 +897,7 @@ curl -X POST "http://localhost:5001/v1/guardrails" \
 
 3. **代理服务 (5002端口)** 🆕
    - OpenAI兼容的安全网关反向代理  
-   - 自动检测输入输出，智能阻断和代答
+   - 自动检测输入输出，智能拒答和代答
    - 高并发优化：24个工作进程
 
 ## 📊 管理功能

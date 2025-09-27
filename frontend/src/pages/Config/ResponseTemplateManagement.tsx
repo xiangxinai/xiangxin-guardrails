@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Switch, Space, message, Tag, Select } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { configApi } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import type { ResponseTemplate } from '../../types';
 
 const { TextArea } = Input;
@@ -13,6 +14,7 @@ const ResponseTemplateManagement: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<ResponseTemplate | null>(null);
   const [form] = Form.useForm();
+  const { onUserSwitch } = useAuth();
 
   const categories = [
     { value: 'S1', label: 'S1 - 一般政治话题' },
@@ -40,6 +42,14 @@ const ResponseTemplateManagement: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // 监听用户切换事件，自动刷新数据
+  useEffect(() => {
+    const unsubscribe = onUserSwitch(() => {
+      fetchData();
+    });
+    return unsubscribe;
+  }, [onUserSwitch]);
 
   const fetchData = async () => {
     try {

@@ -18,6 +18,8 @@ interface AuthContextType {
   switchToUser: (userId: string) => Promise<void>;
   exitSwitch: () => Promise<void>;
   refreshSwitchStatus: () => Promise<void>;
+  // 用户切换事件监听
+  onUserSwitch: (callback: () => void) => () => void; // 返回取消监听的函数
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,6 +33,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [switchInfo, setSwitchInfo] = useState<SwitchInfo>({ is_switched: false });
+  const [switchCallbacks, setSwitchCallbacks] = useState<Set<() => void>>(new Set());
 
   useEffect(() => {
     checkAuthStatus();
@@ -109,6 +112,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await adminApi.switchToUser(userId);
       localStorage.setItem('switch_session_token', response.switch_session_token);
       await refreshSwitchStatus();
+      // 通知所有监听器用户切换了
+      switchCallbacks.forEach(callback => callback());
     } catch (error) {
       console.error('Switch user failed:', error);
       throw error;
@@ -120,10 +125,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await adminApi.exitSwitch();
       localStorage.removeItem('switch_session_token');
       await refreshSwitchStatus();
+      // 通知所有监听器退出了用户切换
+      switchCallbacks.forEach(callback => callback());
     } catch (error) {
       console.error('Exit switch failed:', error);
       throw error;
     }
+  };
+
+  const onUserSwitch = (callback: () => void) => {
+    setSwitchCallbacks(prev => new Set(prev).add(callback));
+    // 返回取消监听的函数
+    return () => {
+      setSwitchCallbacks(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(callback);
+        return newSet;
+      });
+    };
   };
 
   const value = {
@@ -136,6 +155,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     switchToUser,
     exitSwitch,
     refreshSwitchStatus,
+    onUserSwitch,
   };
 
   return (
