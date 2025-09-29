@@ -574,11 +574,11 @@ completion = openai_client.chat.completions.create(
             </div>
           </div>
 
-          <Form.Item 
-            label="流式检测间隔" 
+          <Form.Item
+            label="流式检测间隔"
             tooltip="流式输出时，每N个chunk检测一次，范围1-500，默认50"
           >
-            <Input 
+            <Input
               type="number"
               min={1}
               max={500}
@@ -587,6 +587,7 @@ completion = openai_client.chat.completions.create(
               placeholder="输入检测间隔（默认50）"
             />
           </Form.Item>
+
         </Form>
       </Modal>
 

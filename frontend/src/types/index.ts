@@ -33,6 +33,7 @@ export interface GuardrailResponse {
   overall_risk_level: string;
   suggest_action: string;
   suggest_answer?: string;
+  prob?: number;  // 检测概率分数 (0.0-1.0)
 }
 
 // 检测结果类型
@@ -50,6 +51,8 @@ export interface DetectionResult {
   security_categories: string[];
   compliance_risk_level: string;
   compliance_categories: string[];
+  // 检测结果相关字段
+  prob?: number;  // 检测概率分数 (0.0-1.0)
 }
 
 // 分页响应类型

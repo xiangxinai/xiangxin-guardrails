@@ -262,7 +262,7 @@ export const testModelsApi = {
 export const riskConfigApi = {
   // 获取风险配置
   get: () => api.get('/api/v1/config/risk-types').then(res => res.data),
-  
+
   // 更新风险配置
   update: (config: {
     s1_enabled: boolean;
@@ -278,12 +278,29 @@ export const riskConfigApi = {
     s11_enabled: boolean;
     s12_enabled: boolean;
   }) => api.put('/api/v1/config/risk-types', config).then(res => res.data),
-  
+
   // 获取启用的风险类型
   getEnabled: () => api.get('/api/v1/config/risk-types/enabled').then(res => res.data),
-  
+
   // 重置为默认配置
   reset: () => api.post('/api/v1/config/risk-types/reset').then(res => res.data),
+};
+
+// 敏感度阈值配置API
+export const sensitivityThresholdApi = {
+  // 获取敏感度阈值配置
+  get: () => api.get('/api/v1/config/sensitivity-thresholds').then(res => res.data),
+
+  // 更新敏感度阈值配置
+  update: (config: {
+    high_sensitivity_threshold: number;
+    medium_sensitivity_threshold: number;
+    low_sensitivity_threshold: number;
+    sensitivity_trigger_level: string;
+  }) => api.put('/api/v1/config/sensitivity-thresholds', config).then(res => res.data),
+
+  // 重置为默认配置
+  reset: () => api.post('/api/v1/config/sensitivity-thresholds/reset').then(res => res.data),
 };
 
 // 代理模型配置API

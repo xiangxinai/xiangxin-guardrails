@@ -50,14 +50,26 @@ async def get_user_proxy_models(request: Request):
         auth_ctx = getattr(request.state, 'auth_context', None)
         if not auth_ctx:
             raise HTTPException(status_code=401, detail="Authentication required")
-        
+
         user_id = auth_ctx['data']['user_id']
-        
+
+        # 标准化user_id为UUID对象
+        try:
+            if isinstance(user_id, str):
+                user_id_uuid = uuid.UUID(user_id)
+            elif hasattr(user_id, 'hex'):  # 已经是UUID对象
+                user_id_uuid = user_id
+            else:
+                user_id_uuid = uuid.UUID(str(user_id))
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid user_id format: {user_id}, error: {e}")
+            raise HTTPException(status_code=400, detail="Invalid user ID format")
+
         # 直接使用数据库查询
         db = get_admin_db_session()
         try:
             models = db.query(ProxyModelConfig).filter(
-                ProxyModelConfig.user_id == user_id
+                ProxyModelConfig.user_id == user_id_uuid
             ).all()
             
             return {
@@ -93,8 +105,21 @@ async def create_proxy_model(request: Request):
         auth_ctx = getattr(request.state, 'auth_context', None)
         if not auth_ctx:
             raise HTTPException(status_code=401, detail="Authentication required")
-        
+
         user_id = auth_ctx['data']['user_id']
+
+        # 标准化user_id为UUID对象
+        try:
+            if isinstance(user_id, str):
+                user_id_uuid = uuid.UUID(user_id)
+            elif hasattr(user_id, 'hex'):  # 已经是UUID对象
+                user_id_uuid = user_id
+            else:
+                user_id_uuid = uuid.UUID(str(user_id))
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid user_id format: {user_id}, error: {e}")
+            raise HTTPException(status_code=400, detail="Invalid user ID format")
+
         request_data = await request.json()
         
         # 调试日志
@@ -114,7 +139,7 @@ async def create_proxy_model(request: Request):
         try:
             # 检查配置名称是否已存在
             existing = db.query(ProxyModelConfig).filter(
-                ProxyModelConfig.user_id == user_id,
+                ProxyModelConfig.user_id == user_id_uuid,
                 ProxyModelConfig.config_name == request_data['config_name']
             ).first()
             if existing:
@@ -126,7 +151,7 @@ async def create_proxy_model(request: Request):
             # 创建模型配置，使用极简"3+3"设计
             model_config = ProxyModelConfig(
                 id=uuid.uuid4(),
-                user_id=user_id,
+                user_id=user_id_uuid,
                 config_name=request_data['config_name'],
                 api_base_url=request_data['api_base_url'],
                 api_key_encrypted=encrypted_api_key,
@@ -167,14 +192,26 @@ async def get_proxy_model_detail(model_id: str, request: Request):
         auth_ctx = getattr(request.state, 'auth_context', None)
         if not auth_ctx:
             raise HTTPException(status_code=401, detail="Authentication required")
-        
+
         user_id = auth_ctx['data']['user_id']
-        
+
+        # 标准化user_id为UUID对象
+        try:
+            if isinstance(user_id, str):
+                user_id_uuid = uuid.UUID(user_id)
+            elif hasattr(user_id, 'hex'):  # 已经是UUID对象
+                user_id_uuid = user_id
+            else:
+                user_id_uuid = uuid.UUID(str(user_id))
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid user_id format: {user_id}, error: {e}")
+            raise HTTPException(status_code=400, detail="Invalid user ID format")
+
         db = get_admin_db_session()
         try:
             model_config = db.query(ProxyModelConfig).filter(
                 ProxyModelConfig.id == model_id,
-                ProxyModelConfig.user_id == user_id
+                ProxyModelConfig.user_id == user_id_uuid
             ).first()
             
             if not model_config:
@@ -212,8 +249,21 @@ async def update_proxy_model(model_id: str, request: Request):
         auth_ctx = getattr(request.state, 'auth_context', None)
         if not auth_ctx:
             raise HTTPException(status_code=401, detail="Authentication required")
-        
+
         user_id = auth_ctx['data']['user_id']
+
+        # 标准化user_id为UUID对象
+        try:
+            if isinstance(user_id, str):
+                user_id_uuid = uuid.UUID(user_id)
+            elif hasattr(user_id, 'hex'):  # 已经是UUID对象
+                user_id_uuid = user_id
+            else:
+                user_id_uuid = uuid.UUID(str(user_id))
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid user_id format: {user_id}, error: {e}")
+            raise HTTPException(status_code=400, detail="Invalid user ID format")
+
         request_data = await request.json()
         
         # 调试日志
@@ -227,16 +277,16 @@ async def update_proxy_model(model_id: str, request: Request):
         try:
             model_config = db.query(ProxyModelConfig).filter(
                 ProxyModelConfig.id == model_id,
-                ProxyModelConfig.user_id == user_id
+                ProxyModelConfig.user_id == user_id_uuid
             ).first()
-            
+
             if not model_config:
                 raise ValueError(f"Model configuration not found")
-            
+
             # 检查配置名称是否与其他配置重复
             if 'config_name' in request_data:
                 existing = db.query(ProxyModelConfig).filter(
-                    ProxyModelConfig.user_id == user_id,
+                    ProxyModelConfig.user_id == user_id_uuid,
                     ProxyModelConfig.config_name == request_data['config_name'],
                     ProxyModelConfig.id != model_id  # 排除当前配置
                 ).first()
@@ -287,15 +337,27 @@ async def delete_proxy_model(model_id: str, request: Request):
         auth_ctx = getattr(request.state, 'auth_context', None)
         if not auth_ctx:
             raise HTTPException(status_code=401, detail="Authentication required")
-        
+
         user_id = auth_ctx['data']['user_id']
-        
+
+        # 标准化user_id为UUID对象
+        try:
+            if isinstance(user_id, str):
+                user_id_uuid = uuid.UUID(user_id)
+            elif hasattr(user_id, 'hex'):  # 已经是UUID对象
+                user_id_uuid = user_id
+            else:
+                user_id_uuid = uuid.UUID(str(user_id))
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid user_id format: {user_id}, error: {e}")
+            raise HTTPException(status_code=400, detail="Invalid user ID format")
+
         # 直接使用数据库操作
         db = get_admin_db_session()
         try:
             model_config = db.query(ProxyModelConfig).filter(
                 ProxyModelConfig.id == model_id,
-                ProxyModelConfig.user_id == user_id
+                ProxyModelConfig.user_id == user_id_uuid
             ).first()
             
             if not model_config:

@@ -4,10 +4,10 @@
 <br>
 
 <p align="center">
-        🤗 <a href="https://huggingface.co/xiangxinai/Xiangxin-Guardrails-Text">Hugging Face</a>&nbsp&nbsp ｜  &nbsp&nbsp<a href="assets/wechat.jpg">微信公众号</a>&nbsp&nbsp ｜  &nbsp&nbsp<a href="https://www.xiangxinai.cn">官网</a>
+        🤗 <a href="https://huggingface.co/xiangxinai/Xiangxin-Guardrails-Text">Hugging Face</a>&nbsp&nbsp ｜  &nbsp&nbsp<a href="assets/wechat.jpg">WeChat</a>&nbsp&nbsp ｜  &nbsp&nbsp<a href="https://www.xiangxinai.cn">Website</a>
 </p>
 
-# 象信AI安全护栏
+# Xiangxin AI Guardrails 🛡️
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org)
@@ -15,173 +15,157 @@
 [![React](https://img.shields.io/badge/React-18.0%2B-blue)](https://reactjs.org)
 [![HuggingFace](https://img.shields.io/badge/🤗-Models-yellow)](https://huggingface.co/xiangxinai/Xiangxin-Guardrails-Text)
 
-> 🚀 **企业级AI安全防护平台** - 为AI应用提供全方位的安全防护
+> 🚀 **Enterprise-grade AI Safety Guardrails Platform** - Comprehensive security protection for AI applications
 
-象信AI安全护栏是北京象信智能科技有限公司开源的免费可商用的AI安全防护解决方案。支持检测API和安全网关两种使用模式，基于先进的大语言模型，提供提示词攻击检测、内容合规检测等功能，支持完全私有化部署，为AI应用构建坚实的安全防线。
+Xiangxin AI Guardrails is an open-source and free-for-commercial-use AI security solution by Beijing Xiangxin Intelligent Technology Co., Ltd. Built on advanced large language models, it provides prompt attack detection, content compliance detection, and supports complete on-premise deployment to build robust security defenses for AI applications.
 
-[English](./README_EN.md) | 中文
+English | [中文](./README_ZH.md)
 
-## ✨ 核心特性
+## ✨ Core Features
 
-- 🪄 **两种使用模式** - 检测API + 安全网关
-- 🛡️ **双重防护** - 提示词攻击检测 + 内容合规检测
-- 🧠 **上下文感知** - 基于对话上下文的智能安全检测
-- 📋 **合规标准** - 符合《GB/T45654—2025 生成式人工智能服务安全基本要求》
-- 🔧 **灵活配置** - 黑白名单、代答库、限速等个性化配置
-- 🏢 **私有化部署** - 支持完全本地化部署，数据安全可控
-- 🔌 **客户系统集成** - 支持与客户现有用户系统深度集成，API级别的配置管理
-- 📊 **可视化管理** - 直观的Web管理界面和实时监控
-- ⚡ **高性能** - 异步处理，支持高并发访问
-- 🔌 **易于集成** - 兼容OpenAI API格式，一行代码接入
+- 🪄 **Two Usage Modes** - Detection API + Security Gateway
+- 🛡️ **Dual Protection** - Prompt attack detection + Content compliance detection
+- 🧠 **Context Awareness** - Intelligent safety detection based on conversation context
+- 📋 **Compliance Standards** - Compliant with "GB/T45654—2025 Basic Security Requirements for Generative AI Services"
+- 🔧 **Flexible Configuration** - Blacklist/whitelist, response templates, rate limiting and other personalized configurations
+- 🏢 **Private Deployment** - Support for complete local deployment, controllable data security
+- 🔌 **Customer System Integration** - Deep integration with existing customer user systems, API-level configuration management
+- 📊 **Visual Management** - Intuitive web management interface and real-time monitoring
+- ⚡ **High Performance** - Asynchronous processing, supporting high-concurrency access
+- 🔌 **Easy Integration** - Compatible with OpenAI API format, one-line code integration
+- 🎯 **Configurable Sensitivity** - Three-tier sensitivity threshold configuration for automated pipeline scenarios 🆕
 
-## 🚀 双模式支持
+## 🚀 Dual Mode Support
 
-象信AI安全护栏2.0支持两种使用模式，满足不同场景需求：
+Xiangxin AI Guardrails 2.1 supports two usage modes to meet different scenario requirements:
 
-### 🔍 API调用模式
-开发者**主动调用**检测API进行安全检测
-- **适用场景**：需要精确控制检测时机，自定义处理逻辑
-- **接入方式**：在输入AI模型前和输出后主动调用检测接口
-- **服务端口**：5001（检测服务）
-- **官方提供的服务接口**：https://api.xiangxinai.cn/v1/guardrails/
-- **特点**：灵活可控，支持批量检测，适合复杂业务逻辑
+### 🔍 API Call Mode
+Developers **actively call** detection APIs for safety checks
+- **Use Case**: Precise control over detection timing, custom processing logic
+- **Integration**: Call detection interface before inputting to AI models and after output
+- **Service Port**: 5001 (Detection Service)
+- **Features**: Flexible control, batch detection support, suitable for complex business logic
 
-### 🛡️ 安全网关模式 🆕  
-**透明反向代理**，零代码改造接入AI安全防护
-- **适用场景**：快速为现有AI应用添加安全防护
-- **接入方式**：在平台防护配置代理模型，使用时仅需修改调用模型的base_url和api_key到象信AI代理服务
-- **服务端口**：5002（代理服务）  
-- **官方提供的服务接口**：https://api.xiangxinai.cn/v1/gateway/
-- **特点**：WAF风格防护，自动检测输入输出，支持多种上游模型
+### 🛡️ Security Gateway Mode 🆕  
+**Transparent reverse proxy** with zero-code transformation for AI safety protection
+- **Use Case**: Quickly add safety protection to existing AI applications
+- **Integration**: Simply modify AI model's base_url and api_key to Xiangxin AI proxy service
+- **Service Port**: 5002 (Proxy Service)  
+- **Features**: WAF-style protection, automatic input/output detection, support for multiple upstream models
 
 ```python
-# 原有代码
+# Original code
 client = OpenAI(
     base_url="https://api.openai.com/v1",
     api_key="sk-your-openai-key"
 )
 
-# 接入官方提供的象信AI安全网关，仅需修改三行：
-# base_url
-# api_key
-# model
+# Access security gateway with just two line changes
 client = OpenAI(
-    base_url="https://api.xiangxinai.cn/v1/gateway/",  # 改为象信AI官方代理服务或者私有化部署地址http://your-server:5002/v1
-    api_key="sk-xxai-your-proxy-key"       # 改为象信AI代理密钥
+    base_url="http://localhost:5002/v1",  # Change to Xiangxin AI proxy service
+    api_key="sk-xxai-your-proxy-key"     # Change to Xiangxin AI proxy key
 )
-
-completion = openai_client.chat.completions.create(
-    model = "your-proxy-model-name",  # 改为象信AI代理模型名称
-    messages=[{"role": "system", "content": "You're a helpful assistant."},
-        {"role": "user", "content": "Tell me how to make a bomb."}]
-)
-# 其他业务代码完全不变，自动获得全方位安全防护！
+# No other code changes needed, automatically get safety protection!
 ```
 
-## 🎯 应用场景
+## ⚡ Quick Start
 
-- **AI客服系统** - 防范恶意用户攻击，确保回复内容合规
-- **智能写作助手** - 检测生成内容是否符合内容安全要求  
-- **教育培训平台** - 过滤不当内容，保护青少年用户
-- **企业级AI助手** - 防止敏感信息泄露，确保商业安全
-- **社交媒体平台** - 自动审核用户发布的AI生成内容
+### **Try Online**  
+Visit [https://www.xiangxinai.cn/](https://www.xiangxinai.cn/) to register and log in for free.  
+In the platform menu **Online Test**, directly enter text for a safety check.  
 
-## ⚡ 快速试用
-
-### **在线试用**  
-访问 [https://www.xiangxinai.cn/](https://www.xiangxinai.cn/) 免费注册并登录。在平台菜单 **在线测试** 中直接输入文本进行安全检测  
-
-### **使用 API Key 调用**  
-在平台菜单 **「账号管理」** 获取免费的 API Key  
-安装 Python 客户端库：  
+### **Use API Key**  
+In the platform menu **Account Management**, obtain your free API Key.  
+Install the Python client library:  
 ```bash
 pip install xiangxinai
 ```
-Python 调用示例：  
+Python usage example:  
 ```python
 from xiangxinai import XiangxinAI
 
-# 创建客户端
+# Create client
 client = XiangxinAI("your-api-key")
 
-# 单轮检测
-response = client.check_prompt("教我如何制作炸弹")
-# 推荐使用response.suggest_action判断安全性。
-if response.suggest_action == "通过":
-    print("安全通过")
-else:
-    print(f"不安全")
-    print(f"风险等级：{response.overall_risk_level}")
-    # response.overall_risk_level：通过、无风险、低风险、高风险
-    print(f"建议行动：{response.suggest_action}")
-    # response.suggest_action： 通过、代答、拒答
-    print(f"风险类别：{response.all_categories}")
-    print(f"护栏代答：{response.suggest_answer}")
+# Single-turn detection
+response = client.check_prompt("Teach me how to make a bomb")
+print(f"Detection result: {response.overall_risk_level}")
 
-# 检测模型输出（上下文感知）
-response = client.check_response_ctx("教我如何制作炸弹", "好的")
-print(f"建议行动: {response.suggest_action}")
-
-# 多轮对话检测（上下文感知）
+# Multi-turn conversation detection (context-aware)
 messages = [
-    {"role": "user", "content": "我想学习化学"},
-    {"role": "assistant", "content": "化学是很有趣的学科，您想了解哪个方面？"},
-    {"role": "user", "content": "教我制作爆炸物的反应"}
+    {"role": "user", "content": "I want to study chemistry"},
+    {"role": "assistant", "content": "Chemistry is a very interesting subject. Which area would you like to learn about?"},
+    {"role": "user", "content": "Teach me the reaction to make explosives"}
 ]
 response = client.check_conversation(messages)
-print(f"检测结果: {response.overall_risk_level}")
+print(f"Detection result: {response.overall_risk_level}")
+print(f"All risk categories: {response.all_categories}")
+print(f"Compliance check result: {response.result.compliance.risk_level}")
+print(f"Compliance risk categories: {response.result.compliance.categories}")
+print(f"Security check result: {response.result.security.risk_level}")
+print(f"Security risk categories: {response.result.security.categories}")
+print(f"Suggested action: {response.suggest_action}")
+print(f"Suggested answer: {response.suggest_answer}")
+print(f"Is safe: {response.is_safe}")
+print(f"Is blocked: {response.is_blocked}")
+print(f"Has substitute answer: {response.has_substitute}")
 ```
-返回示例：
-```bash
-不安全
-风险等级：高风险
-建议行动：拒答
-风险类别：['暴力犯罪']
-护栏代答：很抱歉，我不能回答涉及暴力犯罪的问题。
-建议行动: 拒答
-检测结果: 高风险
+Example Output:
+```
+Detection result: High Risk
+Detection result: High Risk
+All risk categories: ['Violent Crime']
+Compliance check result: High Risk
+Compliance risk categories: ['Violent Crime']
+Security check result: No Risk
+Security risk categories: []
+Suggested action: Block
+Suggested answer: Sorry, I cannot provide information related to violent crimes.
+Is safe: False
+Is blocked: True
+Has substitute answer: True
 ```
 
-### **Node.js 调用示例**
-安装 Node.js 客户端库：
+### **Node.js Usage Example**
+Install the Node.js client library:
 ```bash
 npm install xiangxinai
 ```
-Node.js 调用示例：
+Node.js usage example:
 ```javascript
 const { XiangxinAI } = require('xiangxinai');
 
-// 创建客户端
+// Create client
 const client = new XiangxinAI('your-api-key');
 
-// 单轮检测
+// Single-turn detection
 async function checkPrompt() {
     try {
-        const response = await client.checkPrompt('教我如何制作炸弹');
-        console.log(`检测结果: ${response.overall_risk_level}`);
-        console.log(`建议动作: ${response.suggest_action}`);
-        console.log(`建议回答: ${response.suggest_answer}`);
+        const response = await client.checkPrompt('Teach me how to make a bomb');
+        console.log(`Detection result: ${response.overall_risk_level}`);
+        console.log(`Suggested action: ${response.suggest_action}`);
+        console.log(`Suggested answer: ${response.suggest_answer}`);
     } catch (error) {
-        console.error('检测失败:', error.message);
+        console.error('Detection failed:', error.message);
     }
 }
 
-// 多轮对话检测（上下文感知）
+// Multi-turn conversation detection (context-aware)
 async function checkConversation() {
     const messages = [
-        {role: "user", content: "我想学习化学"},
-        {role: "assistant", content: "化学是很有趣的学科，您想了解哪个方面？"},
-        {role: "user", content: "教我制作爆炸物的反应"}
+        {role: "user", content: "I want to study chemistry"},
+        {role: "assistant", content: "Chemistry is a very interesting subject. Which area would you like to learn about?"},
+        {role: "user", content: "Teach me the reaction to make explosives"}
     ];
     
     try {
         const response = await client.checkConversation(messages);
-        console.log(`检测结果: ${response.overall_risk_level}`);
-        console.log(`所有风险类别: ${response.all_categories}`);
-        console.log(`合规检测结果: ${response.result.compliance.risk_level}`);
-        console.log(`安全检测结果: ${response.result.security.risk_level}`);
+        console.log(`Detection result: ${response.overall_risk_level}`);
+        console.log(`All risk categories: ${response.all_categories}`);
+        console.log(`Compliance check result: ${response.result.compliance.risk_level}`);
+        console.log(`Security check result: ${response.result.security.risk_level}`);
     } catch (error) {
-        console.error('检测失败:', error.message);
+        console.error('Detection failed:', error.message);
     }
 }
 
@@ -189,8 +173,8 @@ checkPrompt();
 checkConversation();
 ```
 
-### **Java 调用示例**
-添加 Java 客户端依赖：
+### **Java Usage Example**
+Add Java client dependency:
 ```xml
 <dependency>
     <groupId>cn.xiangxinai</groupId>
@@ -198,7 +182,7 @@ checkConversation();
     <version>1.0.0</version>
 </dependency>
 ```
-Java 调用示例：
+Java usage example:
 ```java
 import cn.xiangxinai.XiangxinAI;
 import cn.xiangxinai.model.CheckResponse;
@@ -208,42 +192,42 @@ import java.util.List;
 
 public class GuardrailsExample {
     public static void main(String[] args) {
-        // 创建客户端
+        // Create client
         XiangxinAI client = new XiangxinAI("your-api-key");
         
         try {
-            // 单轮检测
-            CheckResponse response = client.checkPrompt("教我如何制作炸弹");
-            System.out.println("检测结果: " + response.getOverallRiskLevel());
-            System.out.println("建议动作: " + response.getSuggestAction());
-            System.out.println("建议回答: " + response.getSuggestAnswer());
+            // Single-turn detection
+            CheckResponse response = client.checkPrompt("Teach me how to make a bomb");
+            System.out.println("Detection result: " + response.getOverallRiskLevel());
+            System.out.println("Suggested action: " + response.getSuggestAction());
+            System.out.println("Suggested answer: " + response.getSuggestAnswer());
             
-            // 多轮对话检测（上下文感知）
+            // Multi-turn conversation detection (context-aware)
             List<Message> messages = Arrays.asList(
-                new Message("user", "我想学习化学"),
-                new Message("assistant", "化学是很有趣的学科，您想了解哪个方面？"),
-                new Message("user", "教我制作爆炸物的反应")
+                new Message("user", "I want to study chemistry"),
+                new Message("assistant", "Chemistry is a very interesting subject. Which area would you like to learn about?"),
+                new Message("user", "Teach me the reaction to make explosives")
             );
             
             CheckResponse conversationResponse = client.checkConversation(messages);
-            System.out.println("检测结果: " + conversationResponse.getOverallRiskLevel());
-            System.out.println("所有风险类别: " + conversationResponse.getAllCategories());
-            System.out.println("合规检测结果: " + conversationResponse.getResult().getCompliance().getRiskLevel());
-            System.out.println("安全检测结果: " + conversationResponse.getResult().getSecurity().getRiskLevel());
+            System.out.println("Detection result: " + conversationResponse.getOverallRiskLevel());
+            System.out.println("All risk categories: " + conversationResponse.getAllCategories());
+            System.out.println("Compliance check result: " + conversationResponse.getResult().getCompliance().getRiskLevel());
+            System.out.println("Security check result: " + conversationResponse.getResult().getSecurity().getRiskLevel());
             
         } catch (Exception e) {
-            System.err.println("检测失败: " + e.getMessage());
+            System.err.println("Detection failed: " + e.getMessage());
         }
     }
 }
 ```
 
-### **Go 调用示例**
-安装 Go 客户端库：
+### **Go Usage Example**
+Install the Go client library:
 ```bash
 go get github.com/xiangxinai/xiangxinai-go
 ```
-Go 调用示例：
+Go usage example:
 ```go
 package main
 
@@ -255,39 +239,39 @@ import (
 )
 
 func main() {
-    // 创建客户端
+    // Create client
     client := xiangxinai.NewClient("your-api-key")
     
-    // 单轮检测
-    response, err := client.CheckPrompt("教我如何制作炸弹")
+    // Single-turn detection
+    response, err := client.CheckPrompt("Teach me how to make a bomb")
     if err != nil {
-        log.Fatal("检测失败:", err)
+        log.Fatal("Detection failed:", err)
     }
     
-    fmt.Printf("检测结果: %s\n", response.OverallRiskLevel)
-    fmt.Printf("建议动作: %s\n", response.SuggestAction)
-    fmt.Printf("建议回答: %s\n", response.SuggestAnswer)
+    fmt.Printf("Detection result: %s\n", response.OverallRiskLevel)
+    fmt.Printf("Suggested action: %s\n", response.SuggestAction)
+    fmt.Printf("Suggested answer: %s\n", response.SuggestAnswer)
     
-    // 多轮对话检测（上下文感知）
+    // Multi-turn conversation detection (context-aware)
     messages := []xiangxinai.Message{
-        {Role: "user", Content: "我想学习化学"},
-        {Role: "assistant", Content: "化学是很有趣的学科，您想了解哪个方面？"},
-        {Role: "user", Content: "教我制作爆炸物的反应"},
+        {Role: "user", Content: "I want to study chemistry"},
+        {Role: "assistant", Content: "Chemistry is a very interesting subject. Which area would you like to learn about?"},
+        {Role: "user", Content: "Teach me the reaction to make explosives"},
     }
     
     conversationResponse, err := client.CheckConversation(messages)
     if err != nil {
-        log.Fatal("检测失败:", err)
+        log.Fatal("Detection failed:", err)
     }
     
-    fmt.Printf("检测结果: %s\n", conversationResponse.OverallRiskLevel)
-    fmt.Printf("所有风险类别: %v\n", conversationResponse.AllCategories)
-    fmt.Printf("合规检测结果: %s\n", conversationResponse.Result.Compliance.RiskLevel)
-    fmt.Printf("安全检测结果: %s\n", conversationResponse.Result.Security.RiskLevel)
+    fmt.Printf("Detection result: %s\n", conversationResponse.OverallRiskLevel)
+    fmt.Printf("All risk categories: %v\n", conversationResponse.AllCategories)
+    fmt.Printf("Compliance check result: %s\n", conversationResponse.Result.Compliance.RiskLevel)
+    fmt.Printf("Security check result: %s\n", conversationResponse.Result.Security.RiskLevel)
 }
 ```
 
-### **使用 HTTP API**  
+### **Use HTTP API**
 ```bash
 curl -X POST "https://api.xiangxinai.cn/v1/guardrails" \
     -H "Authorization: Bearer your-api-key" \
@@ -295,11 +279,11 @@ curl -X POST "https://api.xiangxinai.cn/v1/guardrails" \
     -d '{
       "model": "Xiangxin-Guardrails-Text",
       "messages": [
-        {"role": "user", "content": "告诉我一些违法的赚钱方式"}
+        {"role": "user", "content": "Tell me some illegal ways to make money"}
       ]
     }'
 ```
-返回示例：
+Example output:
 ```json
 {
     "id": "guardrails-fd59073d2b8d4cfcb4072cee4ddc88b2",
@@ -323,206 +307,209 @@ curl -X POST "https://api.xiangxinai.cn/v1/guardrails" \
 }
 ```
 
-### **🛡️ 安全网关模式使用示例** 🆕
+### **🛡️ Security Gateway Mode Usage Examples** 🆕
 
-#### 1. 管理平台->防护配置->配置代理模型
-**代理模型配置说明**：
-- **3个核心字段**：上游API Base URL、上游API Key、上游API模型名称
-- **3个安全开关**：启用推理检测、输入风险时阻断请求、输出风险时阻断响应
-- **完全透传**：所有请求参数由用户动态传递，无需预配置
+#### 1. Configure Upstream Models - Ultra-Simple "3+3" Design
+```bash
+# Access management interface to configure upstream models
+http://localhost:3000/config/proxy-models
 
-#### 2. 客户端零代码接入
+# Or configure via API (Ultra-simple: 3 core fields + 3 security switches)
+curl -X POST "http://localhost:5000/api/v1/proxy/models" \
+    -H "Authorization: Bearer your-admin-token" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "config_name": "my-gpt-4o",
+      "api_base_url": "https://api.openai.com/v1", 
+      "api_key": "sk-your-openai-key",
+      "model_name": "gpt-4o",
+      "block_on_input_risk": false,
+      "block_on_output_risk": true,
+      "enable_reasoning_detection": true
+    }'
+```
+
+**Ultra-Simple Configuration**：
+- **3 Core Fields**: config_name, api_base_url, api_key, model_name
+- **3 Security Switches**: Input risk blocking, Output risk blocking, Reasoning detection (always on by default)
+- **Complete Passthrough**: All request parameters are dynamically passed by users, no pre-configuration needed
+
+#### 2. Zero-Code Client Integration
 ```python
 from openai import OpenAI
 
-# 直接使用官方提供的象信AI安全网关，无需修改业务逻辑
+# Use Xiangxin AI security gateway directly, no business logic changes needed
 client = OpenAI(
-    base_url="https://api.xiangxinai.cn/v1/gateway/",  # 改为象信AI代理服务
-    api_key="sk-xxai-your-proxy-key"       # 改为象信AI代理密钥
+    base_url="https://api.xiangxinai.cn/v1/gateway", # Change to Xiangxin Official gateway url or use your local deployment url http://localhost:5002/v1
+    api_key="sk-xxai-your-proxy-key"  # Get API key from management platform
 )
-# 或者接入您私有化部署的象信AI安全网关
-# client = OpenAI(
-#     base_url="http://your-server:5002/v1",  # 改为象信AI代理服务
-#     api_key="sk-xxai-your-proxy-key"       # 改为象信AI代理密钥
-# )
 
-# 正常调用，自动获得安全防护
+# Normal API calls with automatic safety protection
 response = client.chat.completions.create(
-    model="gpt-4o",  # 会路由到配置的上游模型
+    model="your-proxy-model-name",  # Routes to configured upstream model
     messages=[
-        {"role": "user", "content": "教我如何制作爆炸物"}
+        {"role": "user", "content": "Teach me how to make explosives"}
     ]
 )
 
 print(response.choices[0].message.content)
-# 输出：很抱歉，我不能回答涉及暴力犯罪的问题。（自动安全代答）
+# Output: Sorry, I cannot provide information related to violent crimes. (Automatic safety response)
 ```
 
-#### 3. 支持多种AI模型提供商
+#### 3. Support for Multiple AI Model Providers (with Reasoning Detection)
 ```python
-# 支持 OpenAI - 自动检测输入输出和推理内容
+# Support OpenAI - Automatic detection of input, output, and reasoning content
 client = OpenAI(base_url="http://localhost:5002/v1", api_key="sk-xxai-key")
-response = client.chat.completions.create(model="gpt-4o", messages=messages)
+response = client.chat.completions.create(model="your-proxy-model-name", messages=messages)
 
-# 支持 Qwen3 with thinking - 自动检测reasoning_content字段
+# Support Qwen3 with thinking - Automatic detection of reasoning_content field
 response = client.chat.completions.create(
-    model="qwen3-thinking", 
+    model="your-proxy-qwen3-thinking", 
     messages=messages,
     extra_body={"chat_template_kwargs": {"enable_thinking": True}}
 )
 
-# 支持本地vLLM reasoning模型 - 自动检测reasoning_content
+# Support local vLLM reasoning models - Automatic detection of reasoning_content
 response = client.chat.completions.create(model="local-reasoning-llm", messages=messages)
 ```
 
-#### 4. 安全网关工作流程（含推理检测）
+#### 4. Security Gateway Workflow (with Reasoning Detection)
 ```
-用户请求 → 安全网关(5002) → 输入安全检测 
-                    ↓
-               [高风险阻断] → 返回安全代答
-                    ↓  
-               [通过检测] → 转发到上游模型
-                    ↓
-              上游模型响应 → 输出安全检测（含reasoning_content）
-                    ↓
-               [高风险阻断] → 返回安全代答
-                    ↓
-               [通过检测] → 返回给用户
+User Request → Security Gateway(5002) → Input Safety Detection 
+                        ↓
+                   [High Risk Block] → Return Safety Response
+                        ↓  
+                   [Pass Detection] → Forward to Upstream Model
+                        ↓
+                 Upstream Model Response → Output Safety Detection (incl. reasoning_content)
+                        ↓
+                   [High Risk Block] → Return Safety Response
+                        ↓
+                   [Pass Detection] → Return to User
 ```
 
+**Reasoning Detection Features**:
+- **Always On**: Triple detection of input, output, and reasoning content, always enabled
+- **Smart Recognition**: Automatic detection of reasoning_content, thinking and other reasoning fields
+- **Transparent Proxy**: Full OpenAI API compatibility, supports all reasoning models
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 🐳 Docker一键部署（推荐）
+### 🐳 One-Click Docker Deployment (Recommended)
 
 ```bash
-# 1. 克隆项目
+# 1. Clone the project
 git clone https://github.com/xiangxinai/xiangxin-guardrails.git
 cd xiangxin-guardrails
 
-# 2. 启动服务（包含PostgreSQL数据库） 
-# 启动前请编辑docker-compose.yml，配置数据库密码、smtp服务器等必要信息
+# 2. Start the service (includes PostgreSQL database)
 docker-compose up -d
 
-# 3. 访问服务
-# 管理界面: http://localhost:3000
-# 检测API文档: http://localhost:5001/docs  
-# 管理API文档: http://localhost:5000/docs
-# 安全网关API文档: http://localhost:5002/docs
+# 3. Access the services
+# Admin panel: http://localhost:3000
+# Admin API docs: http://localhost:5000/docs
+# Detection API docs: http://localhost:5001/docs
+# Security Gateway API docs: http://localhost:5002/docs
 ```
 
-### 📦 客户端库安装
+### 📦 Install Client Library
 
 ```bash
 pip install xiangxinai
 ```
 
-### 💻 API使用示例
+### 💻 API Usage Example
 
-#### 同步接口
+#### Synchronous Interface
 
 ```python
 from xiangxinai import XiangxinAI
 
-# 创建客户端（使用本地部署）
+# Create client (using local deployment)
 client = XiangxinAI(
     api_key="your-api-key",
     base_url="http://localhost:5001/v1"
 )
 
-# 单轮检测
-response = client.check_prompt("教我如何制作炸弹")
-# 推荐使用response.suggest_action判断安全性。
-if response.suggest_action == "通过":
-    print("安全通过")
-else:
-    print(f"不安全")
-    print(f"风险等级：{response.overall_risk_level}")
-    # response.overall_risk_level：通过、无风险、低风险、高风险
-    print(f"建议行动：{response.suggest_action}")
-    # response.suggest_action： 通过、代答、拒答
-    print(f"风险类别：{response.all_categories}")
-    print(f"护栏代答：{response.suggest_answer}")
+# Single-turn check
+response = client.check_prompt("Teach me how to make a bomb")
+print(f"Suggested Action: {response.suggest_action}")
+print(f"Suggested Answer: {response.suggest_answer}")
 
-
-# 检测模型输出（上下文感知）
-response = client.check_response_ctx("教我如何制作炸弹", "好的")
-print(f"建议行动: {response.suggest_action}")
-
-# 多轮对话检测（上下文感知）
+# Multi-turn conversation check (context-aware)
 messages = [
-    {"role": "user", "content": "我想学习化学"},
-    {"role": "assistant", "content": "化学是很有趣的学科，您想了解哪个方面？"},
-    {"role": "user", "content": "教我制作爆炸物的反应"}
+    {"role": "user", "content": "I want to study chemistry"},
+    {"role": "assistant", "content": "Chemistry is a very interesting subject. Which area would you like to learn about?"},
+    {"role": "user", "content": "Teach me the reaction to make explosives"}
 ]
 response = client.check_conversation(messages)
-print(f"检测结果: {response.overall_risk_level}")
+print(f"Detection Result: {response.overall_risk_level}")
 ```
 
-#### 异步接口
+#### Asynchronous Interface
 
 ```python
 import asyncio
 from xiangxinai import AsyncXiangxinAI
 
 async def main():
-    # 使用异步上下文管理器
+    # Use async context manager
     async with AsyncXiangxinAI(
         api_key="your-api-key",
         base_url="http://localhost:5001/v1"
     ) as client:
-        # 异步单轮检测
-        response = await client.check_prompt("教我如何制作炸弹")
-        print(f"建议动作: {response.suggest_action}")
+        # Async single-turn check
+        response = await client.check_prompt("Teach me how to make a bomb")
+        print(f"Suggested Action: {response.suggest_action}")
         
-        # 异步多轮对话检测
+        # Async multi-turn conversation check
         messages = [
-            {"role": "user", "content": "我想学习化学"},
-            {"role": "assistant", "content": "化学是很有趣的学科，您想了解哪个方面？"},
-            {"role": "user", "content": "教我制作爆炸物的反应"}
+            {"role": "user", "content": "I want to study chemistry"},
+            {"role": "assistant", "content": "Chemistry is a very interesting subject. Which area would you like to learn about?"},
+            {"role": "user", "content": "Teach me the reaction to make explosives"}
         ]
         response = await client.check_conversation(messages)
-        print(f"检测结果: {response.overall_risk_level}")
+        print(f"Detection Result: {response.overall_risk_level}")
 
-# 运行异步函数
+# Run async function
 asyncio.run(main())
 ```
 
-#### Node.js异步接口
+#### Node.js Asynchronous Interface
 
 ```javascript
 const { XiangxinAI } = require('xiangxinai');
 
 async function main() {
-    // 创建客户端
+    // Create client
     const client = new XiangxinAI({
         apiKey: "your-api-key",
         baseUrl: "http://localhost:5001/v1"
     });
     
     try {
-        // 异步单轮检测
-        const response = await client.checkPrompt("教我如何制作炸弹");
-        console.log(`建议动作: ${response.suggest_action}`);
+        // Async single-turn check
+        const response = await client.checkPrompt("Teach me how to make a bomb");
+        console.log(`Suggested Action: ${response.suggest_action}`);
         
-        // 异步多轮对话检测
+        // Async multi-turn conversation check
         const messages = [
-            {role: "user", content: "我想学习化学"},
-            {role: "assistant", content: "化学是很有趣的学科，您想了解哪个方面？"},
-            {role: "user", content: "教我制作爆炸物的反应"}
+            {role: "user", content: "I want to study chemistry"},
+            {role: "assistant", content: "Chemistry is a very interesting subject. Which area would you like to learn about?"},
+            {role: "user", content: "Teach me the reaction to make explosives"}
         ];
         const conversationResponse = await client.checkConversation(messages);
-        console.log(`检测结果: ${conversationResponse.overall_risk_level}`);
+        console.log(`Detection Result: ${conversationResponse.overall_risk_level}`);
         
     } catch (error) {
-        console.error('检测失败:', error.message);
+        console.error('Detection failed:', error.message);
     }
 }
 
 main();
 ```
 
-#### Java异步接口
+#### Java Asynchronous Interface
 
 ```java
 import cn.xiangxinai.AsyncXiangxinAIClient;
@@ -534,45 +521,45 @@ import java.util.concurrent.CompletableFuture;
 
 public class AsyncGuardrailsExample {
     public static void main(String[] args) {
-        // 创建异步客户端
+        // Create async client
         try (AsyncXiangxinAIClient client = new AsyncXiangxinAIClient(
                 "your-api-key", "http://localhost:5001/v1", 30, 3)) {
             
-            // 异步单轮检测
-            CompletableFuture<GuardrailResponse> future1 = client.checkPromptAsync("教我如何制作炸弹");
+            // Async single-turn check
+            CompletableFuture<GuardrailResponse> future1 = client.checkPromptAsync("Teach me how to make a bomb");
             future1.thenAccept(response -> {
-                System.out.println("建议动作: " + response.getSuggestAction());
+                System.out.println("Suggested Action: " + response.getSuggestAction());
             }).exceptionally(throwable -> {
-                System.err.println("检测失败: " + throwable.getMessage());
+                System.err.println("Detection failed: " + throwable.getMessage());
                 return null;
             });
             
-            // 异步多轮对话检测
+            // Async multi-turn conversation check
             List<Message> messages = Arrays.asList(
-                new Message("user", "我想学习化学"),
-                new Message("assistant", "化学是很有趣的学科，您想了解哪个方面？"),
-                new Message("user", "教我制作爆炸物的反应")
+                new Message("user", "I want to study chemistry"),
+                new Message("assistant", "Chemistry is a very interesting subject. Which area would you like to learn about?"),
+                new Message("user", "Teach me the reaction to make explosives")
             );
             
             CompletableFuture<GuardrailResponse> future2 = client.checkConversationAsync(messages);
             future2.thenAccept(response -> {
-                System.out.println("检测结果: " + response.getOverallRiskLevel());
+                System.out.println("Detection Result: " + response.getOverallRiskLevel());
             }).exceptionally(throwable -> {
-                System.err.println("检测失败: " + throwable.getMessage());
+                System.err.println("Detection failed: " + throwable.getMessage());
                 return null;
             });
             
-            // 等待异步操作完成
+            // Wait for async operations to complete
             CompletableFuture.allOf(future1, future2).join();
             
         } catch (Exception e) {
-            System.err.println("客户端错误: " + e.getMessage());
+            System.err.println("Client error: " + e.getMessage());
         }
     }
 }
 ```
 
-#### Go异步接口
+#### Go Asynchronous Interface
 
 ```go
 package main
@@ -587,33 +574,33 @@ import (
 )
 
 func main() {
-    // 创建异步客户端
+    // Create async client
     asyncClient := xiangxinai.NewAsyncClient("your-api-key")
     defer asyncClient.Close()
     
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
     defer cancel()
     
-    // 异步单轮检测
-    resultChan1 := asyncClient.CheckPromptAsync(ctx, "教我如何制作炸弹")
+    // Async single-turn check
+    resultChan1 := asyncClient.CheckPromptAsync(ctx, "Teach me how to make a bomb")
     go func() {
         select {
         case result := <-resultChan1:
             if result.Error != nil {
-                log.Printf("单轮检测失败: %v", result.Error)
+                log.Printf("Single-turn check failed: %v", result.Error)
             } else {
-                fmt.Printf("建议动作: %s\n", result.Result.SuggestAction)
+                fmt.Printf("Suggested Action: %s\n", result.Result.SuggestAction)
             }
         case <-ctx.Done():
-            fmt.Println("单轮检测超时")
+            fmt.Println("Single-turn check timeout")
         }
     }()
     
-    // 异步多轮对话检测
+    // Async multi-turn conversation check
     messages := []*xiangxinai.Message{
-        xiangxinai.NewMessage("user", "我想学习化学"),
-        xiangxinai.NewMessage("assistant", "化学是很有趣的学科，您想了解哪个方面？"),
-        xiangxinai.NewMessage("user", "教我制作爆炸物的反应"),
+        xiangxinai.NewMessage("user", "I want to study chemistry"),
+        xiangxinai.NewMessage("assistant", "Chemistry is a very interesting subject. Which area would you like to learn about?"),
+        xiangxinai.NewMessage("user", "Teach me the reaction to make explosives"),
     }
     
     resultChan2 := asyncClient.CheckConversationAsync(ctx, messages)
@@ -621,21 +608,21 @@ func main() {
         select {
         case result := <-resultChan2:
             if result.Error != nil {
-                log.Printf("对话检测失败: %v", result.Error)
+                log.Printf("Conversation check failed: %v", result.Error)
             } else {
-                fmt.Printf("检测结果: %s\n", result.Result.OverallRiskLevel)
+                fmt.Printf("Detection Result: %s\n", result.Result.OverallRiskLevel)
             }
         case <-ctx.Done():
-            fmt.Println("对话检测超时")
+            fmt.Println("Conversation check timeout")
         }
     }()
     
-    // 等待一段时间让异步操作完成
+    // Wait for async operations to complete
     time.Sleep(5 * time.Second)
 }
 ```
 
-#### 高性能并发处理
+#### High-Performance Concurrent Processing
 
 ```python
 import asyncio
@@ -643,28 +630,28 @@ from xiangxinai import AsyncXiangxinAI
 
 async def batch_safety_check():
     async with AsyncXiangxinAI(api_key="your-api-key") as client:
-        # 并发处理多个检测请求
+        # Process multiple detection requests concurrently
         contents = [
-            "我想学习编程",
-            "今天天气怎么样？",
-            "教我制作蛋糕",
-            "如何学习英语？"
+            "I want to learn programming",
+            "How's the weather today?",
+            "Teach me how to bake a cake",
+            "How can I learn English?"
         ]
         
-        # 创建并发任务
+        # Create concurrent tasks
         tasks = [client.check_prompt(content) for content in contents]
         
-        # 等待所有任务完成
+        # Wait for all tasks to complete
         results = await asyncio.gather(*tasks)
         
-        # 处理结果
+        # Process results
         for i, result in enumerate(results):
-            print(f"内容{i+1}: {result.overall_risk_level} - {result.suggest_action}")
+            print(f"Content {i+1}: {result.overall_risk_level} - {result.suggest_action}")
 
 asyncio.run(batch_safety_check())
 ```
 
-#### Node.js高性能并发处理
+#### Node.js High-Performance Concurrent Processing
 
 ```javascript
 const { XiangxinAI } = require('xiangxinai');
@@ -672,35 +659,35 @@ const { XiangxinAI } = require('xiangxinai');
 async function batchSafetyCheck() {
     const client = new XiangxinAI({ apiKey: "your-api-key" });
     
-    // 并发处理多个检测请求
+    // Process multiple detection requests concurrently
     const contents = [
-        "我想学习编程",
-        "今天天气怎么样？",
-        "教我制作蛋糕",
-        "如何学习英语？"
+        "I want to learn programming",
+        "How's the weather today?",
+        "Teach me how to bake a cake",
+        "How can I learn English?"
     ];
     
     try {
-        // 创建并发任务
+        // Create concurrent tasks
         const promises = contents.map(content => client.checkPrompt(content));
         
-        // 等待所有任务完成
+        // Wait for all tasks to complete
         const results = await Promise.all(promises);
         
-        // 处理结果
+        // Process results
         results.forEach((result, index) => {
-            console.log(`内容${index + 1}: ${result.overall_risk_level} - ${result.suggest_action}`);
+            console.log(`Content ${index + 1}: ${result.overall_risk_level} - ${result.suggest_action}`);
         });
         
     } catch (error) {
-        console.error('批量检测失败:', error.message);
+        console.error('Batch detection failed:', error.message);
     }
 }
 
 batchSafetyCheck();
 ```
 
-#### Java高性能并发处理
+#### Java High-Performance Concurrent Processing
 
 ```java
 import cn.xiangxinai.AsyncXiangxinAIClient;
@@ -714,45 +701,45 @@ public class BatchSafetyCheck {
     public static void main(String[] args) {
         try (AsyncXiangxinAIClient client = new AsyncXiangxinAIClient("your-api-key")) {
             
-            // 并发处理多个检测请求
+            // Process multiple detection requests concurrently
             List<String> contents = Arrays.asList(
-                "我想学习编程",
-                "今天天气怎么样？",
-                "教我制作蛋糕",
-                "如何学习英语？"
+                "I want to learn programming",
+                "How's the weather today?",
+                "Teach me how to bake a cake",
+                "How can I learn English?"
             );
             
-            // 创建并发任务
+            // Create concurrent tasks
             List<CompletableFuture<GuardrailResponse>> futures = contents.stream()
                 .map(client::checkPromptAsync)
                 .toList();
             
-            // 等待所有任务完成
+            // Wait for all tasks to complete
             CompletableFuture<Void> allOf = CompletableFuture.allOf(
                 futures.toArray(new CompletableFuture[0])
             );
             
             allOf.thenRun(() -> {
-                // 处理结果
+                // Process results
                 for (int i = 0; i < futures.size(); i++) {
                     try {
                         GuardrailResponse result = futures.get(i).get();
-                        System.out.printf("内容%d: %s - %s%n", 
+                        System.out.printf("Content %d: %s - %s%n", 
                             i + 1, result.getOverallRiskLevel(), result.getSuggestAction());
                     } catch (InterruptedException | ExecutionException e) {
-                        System.err.printf("内容%d 检测失败: %s%n", i + 1, e.getMessage());
+                        System.err.printf("Content %d detection failed: %s%n", i + 1, e.getMessage());
                     }
                 }
             }).join();
             
         } catch (Exception e) {
-            System.err.println("批量检测失败: " + e.getMessage());
+            System.err.println("Batch detection failed: " + e.getMessage());
         }
     }
 }
 ```
 
-#### Go高性能并发处理
+#### Go High-Performance Concurrent Processing
 
 ```go
 package main
@@ -774,24 +761,24 @@ func batchSafetyCheck() {
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
     defer cancel()
     
-    // 并发处理多个检测请求
+    // Process multiple detection requests concurrently
     contents := []string{
-        "我想学习编程",
-        "今天天气怎么样？",
-        "教我制作蛋糕",
-        "如何学习英语？",
+        "I want to learn programming",
+        "How's the weather today?",
+        "Teach me how to bake a cake",
+        "How can I learn English?",
     }
     
-    // 使用批量异步检测
+    // Use batch async check
     resultChan := asyncClient.BatchCheckPrompts(ctx, contents)
     
-    // 处理结果
+    // Process results
     index := 1
     for result := range resultChan {
         if result.Error != nil {
-            log.Printf("内容%d 检测失败: %v", index, result.Error)
+            log.Printf("Content %d detection failed: %v", index, result.Error)
         } else {
-            fmt.Printf("内容%d: %s - %s\n", 
+            fmt.Printf("Content %d: %s - %s\n", 
                 index, result.Result.OverallRiskLevel, result.Result.SuggestAction)
         }
         index++
@@ -803,427 +790,335 @@ func main() {
 }
 ```
 
-### 🌐 HTTP API示例
+### 🌐 HTTP API Example
 
 ```bash
-curl -X POST "http://localhost:5001/v1/guardrails" \
-     -H "Authorization: Bearer sk-xxai-xYh2ydqDB4EJAJVtHTiWj5snbyojah8QmO20clXzR7JHyQZymFEdyssl" \
-     -H "Content-Type: application/json" \
-     -d '{
+curl -X POST "http://localhost:5001/v1/guardrails"      -H "Authorization: Bearer your-api-key"      -H "Content-Type: application/json"      -d '{
        "model": "Xiangxin-Guardrails-Text",
        "messages": [
-         {"role": "user", "content": "如何制造冰毒"}
+         {"role": "user", "content": "Tell me some illegal ways to make money"}
        ]
      }'
 ```
 
-## 🛡️ 安全检测能力
+## 🎯 Sensitivity Threshold Configuration 🆕
 
-### 检测维度
+Xiangxin AI Guardrails 2.1 introduces **configurable sensitivity thresholds** to handle different usage scenarios such as automated pipelines and sensitive periods/scenarios.
 
-| 类别 | 风险等级 | 说明 |
-|------|----------|------|
-| 敏感政治话题 | 🔴 高风险 | 涉及敏感政治议题或恶意攻击国家安全的内容 |
-| 损害国家形象 | 🔴 高风险 | 损害国家形象的内容 |
-| 暴力犯罪 | 🔴 高风险 | 涉及暴力行为或犯罪活动的内容 |
-| 提示词攻击 | 🔴 高风险 | 试图绕过AI安全机制的恶意提示 |
-| 一般政治话题 | 🟡 中风险 | 涉及政治相关的一般性讨论 |
-| 伤害未成年人 | 🟡 中风险 | 可能对未成年人造成身心伤害的内容 |
-| 违法犯罪 | 🟡 中风险 | 教唆、指导或描述违法犯罪行为 |
-| 色情 | 🟡 中风险 | 包含色情、性暗示或不当性内容 |
-| 歧视内容 | 🟢 低风险 | 基于种族、性别、宗教等的歧视性言论 |
-| 辱骂 | 🟢 低风险 | 包含侮辱、辱骂或恶意攻击的言语 |
-| 侵犯个人隐私 | 🟢 低风险 | 涉及违法获取、泄漏或滥用个人隐私信息 |
-| 商业违法违规 | 🟢 低风险 | 涉及商业欺诈、非法营销、违规经营 |
+### Three-Tier Sensitivity System
 
-### 处理策略
+| Sensitivity | Confidence Threshold (Default) | Processing Recommendation | Goal |
+| :--- | :--- | :--- | :--- |
+| **High** | `P >= 0.40` | Flag for manual review or escalated processing | Most lenient detection, capture potential errors, control risks |
+| **Medium** | `P >= 0.60` | Automated processing + monitoring, or lightweight manual review | Balance accuracy and coverage |
+| **Low** | `P >= 0.95` | Fully automated processing | Most strict detection, extremely high accuracy, automated pipeline |
 
-- **🔴 高风险**：建议**拒答**，使用预设安全回复
-- **🟡 中风险**：建议**代答**，使用正向价值观回复  
-- **🟢 低风险**：建议**代答**，使用温和提醒回复 
-- **⚪ 安全**：建议**通过**，无风险内容
+### Configuration Features
 
-## 🏗️ 系统架构
+- **Customizable Thresholds**: Set precise thresholds for each sensitivity level (accurate to two decimal places, e.g., 0.95)
+- **Current Sensitivity Level**: Configure the current active sensitivity level (default: Medium)
+- **Smart Filtering**: If detection result probability is below the current sensitivity threshold, return as safe
+- **Universal Application**: Works in both API detection mode and Security Gateway mode
+
+### How It Works
+
+The system uses `logprobs=True` when calling the detection model to obtain log probabilities and convert them to confidence scores:
+
+```python
+def chat_with_openai(prompt, model="Xiangxin-Guardrails-Text"):
+    completion = openai_client.chat.completions.create(
+        model = model,
+        messages=[
+            {"role": "user", "content": prompt}],
+        logprobs=True,
+    )
+
+    prob = math.exp(completion.choices[0].logprobs.content[0].logprob)
+    print("Confidence Score:", prob)
+```
+
+This feature enables flexible risk management for different operational scenarios, from strict automated pipelines to comprehensive security monitoring.
+
+## 🛡️ Safety Detection Capabilities
+
+### Detection Dimensions
+
+| Label | Category | Risk Level | Description |
+|-------|----------|------------|-------------|
+| S2 | Sensitive Political Topics | 🔴 High | Sensitive political issues or attacks on national security |
+| S3 | Disrespect to National Leaders | 🔴 High | Inappropriate remarks about national leaders |
+| S5 | Violence & Crime | 🔴 High | Content involving violence or criminal activities |
+| S9 | Prompt Attacks | 🔴 High | Malicious prompts attempting to bypass AI safety |
+| S1 | General Political Topics | 🟡 Medium | General political discussions |
+| S4 | Harm to Minors | 🟡 Medium | Content potentially harmful to minors |
+| S6 | Illegal Activities | 🟡 Medium | Teaching or describing illegal activities |
+| S7 | Sexual Content | 🟡 Medium | Pornographic or sexually suggestive content |
+| S8 | Discriminatory Content | 🟢 Low | Discriminatory speech based on race, gender, religion |
+| S10 | Abusive Language | 🟢 Low | Insulting or abusive language |
+| S11 | Privacy Invasion | 🟢 Low | Content involving privacy violations |
+| S12 | Commercial Violations | 🟢 Low | Business fraud or illegal marketing |
+
+### Processing Strategies
+
+- **🔴 High Risk**: **Substitute** with preset safety responses
+- **🟡 Medium Risk**: **Substitute** with gentle reminder responses
+- **🟢 Low Risk**: **Allow** normal processing
+- **⚪ Safe**: **Allow** no risk content
+
+## 🏗️ Architecture
 
 ```
-                           用户/开发者
+                           Users/Developers
                                │
                  ┌─────────────┼─────────────┐
                  │             │             │
                  ▼             ▼             ▼
         ┌──────────────┐ ┌──────────────┐ ┌─────────────────┐
-        │  管理界面    │ │  API调用模式  │ │  安全网关模式    │
-        │ (React Web) │ │   (主动检测)  │ │  (透明代理)     │
+        │  Management  │ │  API Call    │ │ Security Gateway │
+        │  Interface   │ │  Mode        │ │    Mode         │
+        │ (React Web)  │ │ (Active Det) │ │ (Transparent    │
+        │              │ │              │ │  Proxy)         │
         └──────┬───────┘ └──────┬───────┘ └────────┬────────┘
                │ HTTP API       │ HTTP API          │ OpenAI API
                ▼                ▼                   ▼
     ┌──────────────┐  ┌──────────────┐    ┌──────────────────┐
-    │  管理服务    │  │  检测服务    │    │   代理服务       │
-    │ (5000端口)   │  │ (5001端口)   │    │  (5002端口)      │
-    │ 低并发优化   │  │ 高并发优化   │    │  高并发优化      │
+    │  Admin       │  │  Detection   │    │   Proxy          │
+    │  Service     │  │  Service     │    │   Service        │
+    │ (Port 5000)  │  │ (Port 5001)  │    │  (Port 5002)     │
+    │ Low Conc.    │  │ High Conc.   │    │  High Conc.      │
     └──────┬───────┘  └──────┬───────┘    └─────────┬────────┘
            │                 │                      │
            │          ┌──────┼──────────────────────┼───────┐
            │          │      │                      │       │
            ▼          ▼      ▼                      ▼       ▼
     ┌─────────────────────────────────────────────────────────────┐
-    │                PostgreSQL 数据库                            │
-    │   用户表 | 检测结果表 | 黑白名单表 | 代答库表 | 代理配置表   │
+    │                PostgreSQL Database                          │
+    │   Users | Results | Blacklist | Whitelist | Templates      │
+    │         | Proxy Config | Upstream Models                   │
     └─────────────────────┬───────────────────────────────────────┘
                           │
     ┌─────────────────────▼───────────────────────────────────────┐
-    │              象信AI安全护栏检测模型                          │
+    │              Xiangxin AI Guardrails Model                   │
     │           (Xiangxin-Guardrails-Text)                       │
-    │             🤗 HuggingFace开源模型                         │
+    │             🤗 HuggingFace Open Source                     │
     └─────────────────────┬───────────────────────────────────────┘
-                          │ (代理服务专用)
+                          │ (Proxy Service Only)
     ┌─────────────────────▼───────────────────────────────────────┐
-    │                   上游AI模型                                │
-    │       OpenAI | Anthropic | 本地模型 | 其他API                │
+    │                   Upstream AI Models                        │
+    │       OpenAI | Anthropic | Local Models | Other APIs       │
     └─────────────────────────────────────────────────────────────┘
 ```
 
-### 🏭 三服务架构说明
+### 🏭 Three-Service Architecture
 
-1. **管理服务 (5000端口)**
-   - 处理管理平台API和Web界面
-   - 用户管理、配置管理、数据统计
-   - 低并发优化：2个工作进程
+1. **Admin Service (Port 5000)**
+   - Handles management platform APIs and web interface
+   - User management, configuration, data statistics
+   - Low concurrency optimization: 2 worker processes
 
-2. **检测服务 (5001端口)** 
-   - 提供高并发护栏检测API
-   - 支持单轮和多轮对话检测
-   - 高并发优化：32个工作进程
+2. **Detection Service (Port 5001)** 
+   - Provides high-concurrency guardrails detection API
+   - Supports single-turn and multi-turn conversation detection
+   - High concurrency optimization: 32 worker processes
 
-3. **代理服务 (5002端口)** 🆕
-   - OpenAI兼容的安全网关反向代理  
-   - 自动检测输入输出，智能拒答和代答
-   - 高并发优化：24个工作进程
+3. **Proxy Service (Port 5002)** 🆕
+   - OpenAI-compatible security gateway reverse proxy
+   - Automatic input/output detection with intelligent blocking
+   - High concurrency optimization: 24 worker processes
 
-## 📊 管理功能
+## 📊 Management Interface
 
-### 🏠 总览仪表盘
-- 📈 实时检测统计数据
-- 📊 风险分布可视化图表  
-- 📉 检测趋势分析
-- 🎯 系统运行状态监控
+### Dashboard
+- 📈 Detection statistics display
+- 📊 Risk distribution charts
+- 📉 Detection trend graphs
+- 🎯 Real-time monitoring panel
 
-### 🔍 检测结果管理
-- 📋 检测历史记录查询
-- 🏷️ 多维度筛选和排序
-- 📋 详细检测结果展示
-- 📤 数据导出功能
+### Detection Results
+- 🔍 Historical detection queries
+- 🏷️ Multi-dimensional filtering
+- 📋 Detailed result display
+- 📤 Data export functionality
 
-### ⚙️ 防护配置管理
-- ⚫ 黑名单关键词管理
-- ⚪ 白名单关键词管理
-- 💬 代答库配置管理
-- 🚦 用户限速配置
+### Protection Configuration
+- ⚫ Blacklist management
+- ⚪ Whitelist management
+- 💬 Response template configuration
+- ⚙️ Flexible rule settings
 
-### 👥 用户管理（管理员）
-- 👤 用户账号管理
-- 🔑 API密钥管理
-- 🚦 用户限速配置
-- 📊 用户使用统计
+## 🤗 Open Source Model
 
-## 📸 产品截图
+Our guardrail model is open-sourced on HuggingFace:
 
-### 总览页面
-<p align="left">
-    <img src="assets/prod_dashboard.png" width="400"/>
-<p>
-
-### 在线测试页面  
-<p align="left">
-    <img src="assets/prod_onlinetest.png" width="400"/>
-<p>
-
-### 检测结果页面  
-<p align="left">
-    <img src="assets/prod_results.png" width="400"/>
-<p>
-
-### 风险报表页面
-<p align="left">
-    <img src="assets/prod_reports.png" width="400"/>
-<p>
-
-### 黑白名单页面
-
-<p align="left">
-    <img src="assets/prod_blacklist.png" width="400"/>
-<p>
-
-### 代答库页面
-<p align="left">
-    <img src="assets/prod_answers.png" width="400"/>
-<p>
-
-## 🤗 开源模型
-
-我们的护栏模型已在HuggingFace开源：
-
-- **模型地址**: [xiangxinai/Xiangxin-Guardrails-Text](https://huggingface.co/xiangxinai/Xiangxin-Guardrails-Text)
-- **许可协议**: Apache 2.0
-- **支持语言**: 中文、英文
-- **模型性能**: 检测精准率：99.99%，检测召回率：98.63%，响应时间(P95)：274.6ms
+- **Model**: [xiangxinai/Xiangxin-Guardrails-Text](https://huggingface.co/xiangxinai/Xiangxin-Guardrails-Text)
+- **Model Size**: 7B parameters
+- **Languages**: Chinese, English
+- **Model Performance**: Precision: 99.99%, Recall: 98.63%, Response(P95): 274.6ms
 
 ```python
-# 本地模型推理示例
+# Local model inference example
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 model_name = "xiangxinai/Xiangxin-Guardrails-Text"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSequenceClassification.from_pretrained(model_name)
 
-# 进行推理
-inputs = tokenizer("测试文本", return_tensors="pt")
+# Perform inference
+inputs = tokenizer("Test text", return_tensors="pt")
 outputs = model(**inputs)
 ```
 
-## 🚀 部署指南
+## 🤝 Commercial Services
 
-象信AI安全护栏支持两种部署模式：
+We provide professional AI safety solutions:
 
-### 🔧 部署模式选择
+### 🎯 Model Fine-tuning Services
+- **Industry Customization**: Professional fine-tuning for finance, healthcare, education
+- **Scenario Optimization**: Optimize detection for specific use cases
+- **Continuous Improvement**: Ongoing optimization based on usage data
 
-#### SaaS模式（默认）
-- 完整的Web管理界面
-- 检测结果存储到数据库
-- 适合内部使用和完整功能体验
+### 🏢 Enterprise Support
+- **Technical Support**: 24/7 professional technical support
+- **SLA Guarantee**: 99.9% availability guarantee
+- **Private Deployment**: Completely offline private deployment solutions
 
-#### 私有化集成模式 🆕
-- 与客户现有用户系统深度集成
-- 检测结果仅写日志文件，数据库只存配置信息
-- 通过API管理用户级别的黑白名单和代答模板
-- 客户在自己的中控台管理安全配置
-- 适合私有化部署到客户环境
+### 🔧 Custom Development
+- **API Customization**: Custom API interfaces for business needs
+- **UI Customization**: Customized management interface and user experience
+- **Integration Services**: Deep integration with existing systems
 
-详细的私有化集成指南请参考：[📖 客户集成指南](backend/docs/客户集成指南.md)
+> 📧 **Contact Us**: wanglei@xiangxinai.cn
+> 🌐 **Official Website**: https://xiangxinai.cn
 
-### 系统要求
+## 🚀 Roadmap
 
-- **操作系统**: Linux、macOS、Windows
-- **Python**: 3.8+
-- **Node.js**: 16+ (如需前端开发)
-- **内存**: 最低2GB，推荐4GB+
-- **存储**: 最低10GB可用空间
-- **数据库**: PostgreSQL 12+
+Xiangxin AI Guardrails will continue to evolve in two directions: **Detection Capabilities** and **Platform Features**, ensuring that large model applications run under safe and compliant conditions.
 
-### Docker部署（推荐）
+### 🔍 Detection Capabilities
+- **Multimodal Subtle Violation Content Recognition**: Support multimodal inputs including text, images, audio, and video, identifying and intercepting subtle violations or illegal information.
+- **Role-based Privilege Escalation Detection**: Combined with context and user identity, identify and intercept privilege escalation questions or sensitive information requests.
+- **Personal Information & Sensitive Data Detection**: Automatically identify and intercept content involving personal information, business secrets, and other sensitive content to prevent data leaks.
+- **Out-of-business-scope Content Detection**: Identify and intervene in questions/outputs that exceed business scenarios or compliance boundaries.
 
-#### 三服务架构部署（推荐）
+### 🛡️ Platform Features
+- **Multimodal Content Recognition Support**: Provide security recognition matching actual application modalities (text, images, audio, video, files).
+- **Sensitive Information Interception & Desensitization**: When sensitive content is detected, it can be directly intercepted or automatically desensitized based on rules before output.
+- **Desensitization Rule Configuration**: Support user-defined desensitization strategies, flexibly adapting to compliance requirements in different scenarios.
+- **Out-of-business-scope Control**: Block or substitute answers for privilege escalation or inappropriate questions, ensuring compliant output.
+- **Configurable Response Knowledge Base**: Support configurable, extensible, and continuously updatable standard response knowledge bases to ensure consistency and controllability of responses.
+
+This roadmap will be continuously updated with changes in **security attack and defense situations** and **compliance requirements**. Community users are welcome to provide suggestions and contributions.
+
+## 🚀 Deployment Guide
+
+### Docker Deployment (Recommended)
+
 ```bash
-# 1. 克隆项目
-git clone https://github.com/xiangxinai/xiangxin-guardrails.git
+# 1. Clone the project
+git clone https://github.com/xiangxinai/xiangxin-guardrails
 cd xiangxin-guardrails
 
-# 2. 启动三服务（管理5000 + 检测5001 + 代理5002）
-docker-compose up -d
+# 2. Start services
+./scripts/start.sh
 
-# 3. 检查服务状态
-docker-compose ps
-
-# 4. 验证服务
-curl http://localhost:5000/health  # 管理服务
-curl http://localhost:5001/health  # 检测服务  
-curl http://localhost:5002/health  # 代理服务
-
-# 5. 查看服务日志
-docker-compose logs -f admin-service      # 管理服务日志
-docker-compose logs -f detection-service  # 检测服务日志
-docker-compose logs -f proxy-service      # 代理服务日志
-
-# 6. 停止服务
-docker-compose down -v
+# 3. Access services
+# Frontend: http://localhost:3000
+# Backend: http://localhost:5000
 ```
 
-#### 服务架构说明
-- **管理服务** (5000端口)：处理管理平台API `/api/v1/*`
-- **检测服务** (5001端口)：处理高并发检测API `/v1/guardrails`
-- **代理服务** (5002端口)：OpenAI兼容的安全网关 `/v1/*` 🆕
-- **并发性能**：并发配置 `PROXY_MAX_CONCURRENT_REQUESTS`和`DETECTION_MAX_CONCURRENT_REQUESTS`，每个worker能承受500-1000个并发。
+### Manual Deployment
 
-#### 私有化集成模式
-```bash
-# 配置私有化模式（仅写日志文件，不存数据库）
-cp backend/.env.example backend/.env
-# 编辑 backend/.env 文件，设置：
-# STORE_DETECTION_RESULTS=false
-
-docker-compose up -d
-```
-
-
-### 手动部署
-
-#### 1. 数据库准备
-
-```bash
-# 安装PostgreSQL
-sudo apt-get install postgresql postgresql-contrib
-
-# 创建数据库和用户
-sudo -u postgres psql
-CREATE DATABASE xiangxin_guardrails;
-CREATE USER xiangxin WITH ENCRYPTED PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE xiangxin_guardrails TO xiangxin;
-```
-
-#### 2. 后端部署
+#### Backend Deployment
 
 ```bash
 cd backend
 
-# 安装依赖
+# Install dependencies
 pip install -r requirements.txt
 
-# 配置环境变量
-export DATABASE_URL="postgresql://xiangxin:your_password@localhost/xiangxin_guardrails"
-export SECRET_KEY="your_secret_key"
-export MODEL_API_URL="http://localhost:58002/v1"
-export MODEL_API_KEY="your_model_api_key"
+# Configure environment variables
+cp .env.example .env
+# Edit .env file to configure parameters
 
-# 初始化数据库
-python scripts/init_postgres.py
-
-# 启动三服务
-./start_all_services.sh
-
-# 或单独启动
-python start_detection_service.py  # 检测服务
-python start_admin_service.py      # 管理服务  
-python start_proxy_service.py      # 代理服务
+# Start service
+python main.py
 ```
 
-#### 3. 前端部署
+#### Frontend Deployment
 
 ```bash
 cd frontend
 
-# 安装依赖
+# Install dependencies
 npm install
 
-# 构建生产版本
+# Build project
 npm run build
 
-# 使用nginx部署dist目录
-sudo cp -r dist/* /var/www/html/
+# Deploy dist directory using nginx or other web servers
 ```
 
-## 📚 文档
+### Requirements
 
-- [📖 API文档](docs/api-documentation.md)
-- [🚀 快速开始](docs/quickstart.md)  
-- [⚙️ 配置说明](docs/configuration.md)
-- [🔧 开发指南](docs/development.md)
-- [❓ 常见问题](docs/faq.md)
-- [🔄 更新日志](CHANGELOG.md)
+- **Python**: 3.8+
+- **Node.js**: 16+
+- **Memory**: Minimum 2GB, recommended 4GB+
+- **Storage**: Minimum 10GB available space
+- **OS**: Linux, macOS, Windows
 
-### 私有化集成文档 🆕
-- [📖 客户集成指南](backend/docs/客户集成指南.md) - 详细的客户系统集成说明
-- [📋 API接口文档](backend/docs/API接口文档.md) - 完整的API接口说明
-- [🚀 私有化部署指南](backend/docs/私有化部署指南.md) - Docker和源码部署指导
-- [💻 Python SDK](backend/client-sdk/python/guardrails_client.py) - Python客户端SDK
-- [💻 Node.js SDK](backend/client-sdk/nodejs/guardrails-client.js) - Node.js客户端SDK
+## 📚 Documentation
 
-## 🤝 贡献指南
+- [Quick Start Guide](docs/quickstart.md)
+- [Introduction Guide](docs/product-introduction.md)
 
-我们欢迎所有形式的贡献！
+## 🤝 Contributing
 
-### 参与方式
-- 🐛 [提交Bug报告](https://github.com/xiangxinai/xiangxin-guardrails/issues)
-- 💡 [提出功能建议](https://github.com/xiangxinai/xiangxin-guardrails/issues)
-- 📖 完善项目文档
-- 🧪 添加测试用例
-- 💻 提交代码
+We welcome all forms of contributions!
 
-### 开发流程
+### How to Contribute
+- 🐛 [Submit Bug Reports](https://github.com/xiangxinai/xiangxin-guardrails/issues)
+- 💡 [Propose New Features](https://github.com/xiangxinai/xiangxin-guardrails/issues)
+- 📖 Improve documentation
+- 🧪 Add test cases
+- 💻 Submit code
+
+### Development Workflow
 ```bash
-# 1. Fork项目到你的GitHub账号
-# 2. 创建特性分支
+# 1. Fork the project
+# 2. Create feature branch
 git checkout -b feature/amazing-feature
 
-# 3. 提交更改
+# 3. Commit changes
 git commit -m 'Add some amazing feature'
 
-# 4. 推送到分支
+# 4. Push to branch
 git push origin feature/amazing-feature
 
-# 5. 创建Pull Request
+# 5. Create Pull Request
 ```
 
-详细的贡献指南请参考 [CONTRIBUTING.md](CONTRIBUTING.md)
+## 📄 License
 
-## 🔒 安全说明
+This project is licensed under [Apache 2.0](LICENSE).
 
-本项目专注于**防御性安全**，所有功能都用于保护AI应用免受恶意攻击。我们严格遵循负责任的AI开发原则，不支持任何恶意用途。
+## 🌟 Support Us
 
-相关安全考虑请参考 [SECURITY.md](SECURITY.md)
+If this project helps you, please give us a ⭐️
 
-## 🌟 商业服务
+[![Star History Chart](https://api.star-history.com/svg?repos=XiangxinAI/xiangxin-guardrails&type=Date)](https://star-history.com/#XiangxinAI/xiangxin-guardrails&Date)
 
-我们提供专业的AI安全解决方案：
+## 📞 Contact Us
 
-### 🎯 定制化服务
-- **行业定制**: 针对特定行业的模型微调
-- **场景优化**: 根据应用场景优化检测效果
-- **私有化部署**: 完全离线的企业级部署方案
-
-### 🏢 技术支持
-- **专业咨询**: AI安全架构设计咨询
-- **技术培训**: 团队技能提升培训
-- **社区支持**: 免费的社区技术支持服务
-
-> 📧 **商务咨询**: wanglei@xiangxinai.cn  
-> 🌐 **官方网站**: https://xiangxinai.cn
-
-## 🚀 Roadmap | 路线图
-
-象信 AI 安全护栏将持续演进，在 **检测能力** 和 **平台功能** 两个方向不断增强，确保大模型应用在安全、合规的前提下运行。
-
-### 🔍 检测能力
-- **多模态隐晦违规内容识别**：支持文本、图像、音频、视频等多模态输入，识别并拦截隐蔽的违规或违法信息。  
-- **基于用户角色的越权检测**：结合上下文与用户身份，识别并拦截越权提问或敏感信息请求。  
-- **个人信息与敏感数据检测**：自动识别、拦截涉及个人信息、商业秘密等敏感内容，防止数据泄露。  
-- **超业务范围内容检测**：对超出业务场景或合规边界的提问/输出进行识别和干预。  
-
-### 🛡️ 平台功能
-- **多模态内容识别支持**：提供与实际应用模态匹配的安全识别（文本、图像、音频、视频、文件）。  
-- **敏感信息拦截与脱敏**：在检测到敏感内容时，可直接拦截或基于规则进行自动脱敏后输出。  
-- **脱敏规则配置**：支持用户自定义脱敏策略，灵活适配不同场景的合规需求。  
-- **超业务范围管控**：对越权或不当提问进行拒答或代答，确保输出合规。  
-- **可配置的代答知识库**：支持可配置、可扩展、可持续更新的标准代答知识库，保障应答一致性和可控性。  
-
-本路线图会随着 **安全攻防形势** 与 **合规要求** 的变化持续更新，欢迎社区用户提出建议和贡献。
-
-## 📄 许可证
-
-本项目基于 [Apache 2.0](LICENSE) 许可证开源，可免费商用。
-
-## 🌟 支持我们
-
-如果这个项目对您有帮助，请给我们一个 ⭐️！
-
-[![Star History Chart](https://api.star-history.com/svg?repos=xiangxinai/xiangxin-guardrails&type=Date)](https://star-history.com/#xiangxinai/xiangxin-guardrails&Date)
-
-## 🙏 致谢
-
-感谢所有为本项目做出贡献的开发者和用户！
-
-## 📞 联系我们
-
-- 📧 **技术支持**: 我们提供免费的社区技术支持
-- 📧 **商务咨询**：wanglei@xiangxinai.cn
-- 🌐 **官方网站**: https://xiangxinai.cn
-- 📱 **微信公众号**: 扫描二维码关注<a href="assets/wechat.jpg">微信公众号</a>
+- 📧 **Technical Support**: wanglei@xiangxinai.cn
+- 🌐 **Official Website**: https://xiangxinai.cn
+- 💬 **Community**: Join our technical discussion group
 
 ---
 
 <div align="center">
 
-**让AI更安全，让应用更可信** 🛡️
+**Making AI Safer, Making Applications More Trustworthy** 🛡️
 
-Made with ❤️ by [北京象信智能科技有限公司](https://xiangxinai.cn) 象信AI®是注册商标
+Made with ❤️ by [Xiangxin AI](https://xiangxinai.cn)
 
 </div>

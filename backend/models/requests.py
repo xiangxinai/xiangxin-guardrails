@@ -100,13 +100,13 @@ class ProxyModelConfig(BaseModel):
     api_key: str = Field(..., description="API密钥")
     model_name: str = Field(..., description="模型名称")
     enabled: Optional[bool] = Field(True, description="是否启用")
-    
+
     # 允许以 model_ 开头的字段名
     model_config = ConfigDict(protected_namespaces=())
-    
+
     # 安全配置（极简设计）
     block_on_input_risk: Optional[bool] = Field(False, description="输入风险时是否阻断，默认不阻断")
-    block_on_output_risk: Optional[bool] = Field(False, description="输出风险时是否阻断，默认不阻断") 
+    block_on_output_risk: Optional[bool] = Field(False, description="输出风险时是否阻断，默认不阻断")
     enable_reasoning_detection: Optional[bool] = Field(True, description="是否检测reasoning内容，默认开启")
     stream_chunk_size: Optional[int] = Field(50, description="流式检测间隔，每N个chunk检测一次，默认50", ge=1, le=500)
 
@@ -126,7 +126,7 @@ class OutputGuardrailRequest(BaseModel):
     """输出检测请求模型 - 适用于dify/coze等平台插件"""
     input: str = Field(..., description="用户输入文本")
     output: str = Field(..., description="模型输出文本")
-    
+
     @validator('input')
     def validate_input(cls, v):
         if not v or not v.strip():
@@ -134,7 +134,7 @@ class OutputGuardrailRequest(BaseModel):
         if len(v) > 1000000:
             raise ValueError('input too long (max 1000000 characters)')
         return v.strip()
-    
+
     @validator('output')
     def validate_output(cls, v):
         if not v or not v.strip():
@@ -142,3 +142,10 @@ class OutputGuardrailRequest(BaseModel):
         if len(v) > 1000000:
             raise ValueError('output too long (max 1000000 characters)')
         return v.strip()
+
+class ConfidenceThresholdRequest(BaseModel):
+    """敏感度阈值配置请求模型"""
+    high_confidence_threshold: float = Field(..., description="高敏感度阈值", ge=0.0, le=1.0)
+    medium_confidence_threshold: float = Field(..., description="中敏感度阈值", ge=0.0, le=1.0)
+    low_confidence_threshold: float = Field(..., description="低敏感度阈值", ge=0.0, le=1.0)
+    confidence_trigger_level: str = Field(..., description="触发检测命中的最低敏感度等级", pattern="^(low|medium|high)$")

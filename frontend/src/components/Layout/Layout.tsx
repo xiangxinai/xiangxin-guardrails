@@ -92,6 +92,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           label: '风险类型配置',
         },
         {
+          key: '/config/sensitivity-thresholds',
+          label: '敏感度阈值管理',
+        },
+        {
           key: '/config/blacklist',
           label: '黑名单管理',
         },

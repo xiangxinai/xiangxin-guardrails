@@ -7,6 +7,7 @@ import WhitelistManagement from './WhitelistManagement';
 import ResponseTemplateManagement from './ResponseTemplateManagement';
 import RiskTypeManagement from './RiskTypeManagement';
 import ProxyModelManagement from './ProxyModelManagement';
+import SensitivityThresholdManagement from './SensitivityThresholdManagement';
 
 const Config: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ const Config: React.FC = () => {
     if (path.includes('/whitelist')) return 'whitelist';
     if (path.includes('/responses')) return 'responses';
     if (path.includes('/risk-types')) return 'risk-types';
+    if (path.includes('/sensitivity-thresholds')) return 'sensitivity-thresholds';
     if (path.includes('/proxy-models')) return 'proxy-models';
     return 'risk-types';
   };
@@ -32,6 +34,11 @@ const Config: React.FC = () => {
       key: 'risk-types',
       label: '风险类型配置',
       children: <RiskTypeManagement />,
+    },
+    {
+      key: 'sensitivity-thresholds',
+      label: '敏感度阈值管理',
+      children: <SensitivityThresholdManagement />,
     },
     {
       key: 'blacklist',

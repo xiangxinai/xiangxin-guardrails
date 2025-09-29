@@ -59,7 +59,8 @@ class DetectionGuardrailService:
         self,
         content: str,
         user_id: str,
-        request_id: str
+        request_id: str,
+        model_sensitivity_trigger_level: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         代理服务专用的简化检测方法
@@ -70,11 +71,12 @@ class DetectionGuardrailService:
         # 将文本内容包装为消息格式
         message = Message(role="user", content=content)
         request = GuardrailRequest(model="detection", messages=[message])
-        
+
         # 调用完整的检测方法
         result = await self.check_guardrails(
             request=request,
-            user_id=user_id
+            user_id=user_id,
+            model_sensitivity_trigger_level=model_sensitivity_trigger_level
         )
         
         # 返回与代理API兼容的格式
@@ -91,7 +93,8 @@ class DetectionGuardrailService:
         self,
         messages: List[Dict[str, str]],
         user_id: str,
-        request_id: str
+        request_id: str,
+        model_sensitivity_trigger_level: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         上下文感知检测方法 - 支持问答对的messages结构
@@ -105,11 +108,12 @@ class DetectionGuardrailService:
             message_objects.append(Message(role=msg["role"], content=msg["content"]))
         
         request = GuardrailRequest(model="detection", messages=message_objects)
-        
+
         # 调用完整的检测方法
         result = await self.check_guardrails(
             request=request,
-            user_id=user_id
+            user_id=user_id,
+            model_sensitivity_trigger_level=model_sensitivity_trigger_level
         )
         
         # 返回与代理API兼容的格式
@@ -123,11 +127,12 @@ class DetectionGuardrailService:
         }
     
     async def check_guardrails(
-        self, 
+        self,
         request: GuardrailRequest,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        model_sensitivity_trigger_level: Optional[str] = None
     ) -> GuardrailResponse:
         """执行护栏检测（只写日志文件）"""
         
@@ -161,12 +166,14 @@ class DetectionGuardrailService:
                     ip_address, user_agent, user_id
                 )
             
-            # 2. 模型检测（使用截断后的消息）
+            # 2. 模型检测（使用截断后的消息，获取敏感度）
             messages_dict = [{"role": msg.role, "content": msg.content} for msg in truncated_messages]
-            model_response = await model_service.check_messages(messages_dict)
-            
-            # 3. 解析模型响应并应用风险类型过滤
-            compliance_result, security_result = await self._parse_model_response(model_response, user_id)
+            model_response, sensitivity_score = await model_service.check_messages_with_sensitivity(messages_dict)
+
+            # 3. 解析模型响应并应用风险类型过滤和敏感度阈值
+            compliance_result, security_result, sensitivity_level = await self._parse_model_response_with_sensitivity(
+                model_response, sensitivity_score, user_id, model_sensitivity_trigger_level
+            )
             
             # 4. 确定建议动作和回答
             overall_risk_level, suggest_action, suggest_answer = await self._determine_action(
@@ -176,22 +183,23 @@ class DetectionGuardrailService:
             # 5. 异步记录检测结果到日志文件（不写数据库）
             await self._log_detection_result(
                 request_id, user_content, compliance_result, security_result,
-                suggest_action, suggest_answer, model_response, 
-                ip_address, user_agent, user_id
+                suggest_action, suggest_answer, model_response,
+                ip_address, user_agent, user_id, sensitivity_level, sensitivity_score
             )
-            
+
             # 6. 构造响应
             result = GuardrailResult(
                 compliance=compliance_result,
                 security=security_result
             )
-            
+
             return GuardrailResponse(
                 id=request_id,
                 result=result,
                 overall_risk_level=overall_risk_level,
                 suggest_action=suggest_action,
                 suggest_answer=suggest_answer,
+                prob=sensitivity_score,
             )
             
         except Exception as e:
@@ -213,16 +221,16 @@ class DetectionGuardrailService:
     async def _parse_model_response(self, response: str, user_id: Optional[str] = None) -> Tuple[ComplianceResult, SecurityResult]:
         """解析模型响应并应用风险类型过滤"""
         response = response.strip()
-        
+
         if response == "无风险":
             return (
                 ComplianceResult(risk_level="无风险", categories=[]),
                 SecurityResult(risk_level="无风险", categories=[])
             )
-        
+
         if response.startswith("unsafe\n"):
             category = response.split('\n')[1] if '\n' in response else ""
-            
+
             # 检查用户是否禁用了此风险类型
             if user_id and not await risk_config_cache.is_risk_type_enabled(user_id, category):
                 logger.info(f"Risk type {category} is disabled for user {user_id}, treating as safe")
@@ -230,10 +238,10 @@ class DetectionGuardrailService:
                     ComplianceResult(risk_level="无风险", categories=[]),
                     SecurityResult(risk_level="无风险", categories=[])
                 )
-            
+
             risk_level = RISK_LEVEL_MAPPING.get(category, "中风险")
             category_name = CATEGORY_NAMES.get(category, category)
-            
+
             if category == "S9":  # 提示词攻击
                 return (
                     ComplianceResult(risk_level="无风险", categories=[]),
@@ -244,11 +252,77 @@ class DetectionGuardrailService:
                     ComplianceResult(risk_level=risk_level, categories=[category_name]),
                     SecurityResult(risk_level="无风险", categories=[])
                 )
-        
+
         # 默认返回安全
         return (
             ComplianceResult(risk_level="无风险", categories=[]),
             SecurityResult(risk_level="无风险", categories=[])
+        )
+
+    async def _parse_model_response_with_sensitivity(
+        self, response: str, sensitivity_score: Optional[float], user_id: Optional[str] = None,
+        model_sensitivity_trigger_level: Optional[str] = None
+    ) -> Tuple[ComplianceResult, SecurityResult, Optional[str]]:
+        """解析模型响应并应用风险类型过滤和敏感度阈值"""
+        response = response.strip()
+
+        if response == "无风险":
+            sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, user_id) if sensitivity_score else None
+            return (
+                ComplianceResult(risk_level="无风险", categories=[]),
+                SecurityResult(risk_level="无风险", categories=[]),
+                sensitivity_level
+            )
+
+        if response.startswith("unsafe\n"):
+            category = response.split('\n')[1] if '\n' in response else ""
+
+            # 检查用户是否禁用了此风险类型
+            if user_id and not await risk_config_cache.is_risk_type_enabled(user_id, category):
+                logger.info(f"Risk type {category} is disabled for user {user_id}, treating as safe")
+                sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, user_id) if sensitivity_score else None
+                return (
+                    ComplianceResult(risk_level="无风险", categories=[]),
+                    SecurityResult(risk_level="无风险", categories=[]),
+                    sensitivity_level
+                )
+
+            # 检查敏感度触发等级（优先使用模型特定配置）
+            if sensitivity_score is not None and user_id:
+                sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, user_id)
+                trigger_level = model_sensitivity_trigger_level or await self._get_sensitivity_trigger_level(user_id)
+
+                if not await self._should_trigger_detection(sensitivity_score, user_id):
+                    logger.info(f"Sensitivity score {sensitivity_score} below current threshold for {category}, treating as safe")
+                    return (
+                        ComplianceResult(risk_level="无风险", categories=[]),
+                        SecurityResult(risk_level="无风险", categories=[]),
+                        sensitivity_level
+                    )
+
+            risk_level = RISK_LEVEL_MAPPING.get(category, "中风险")
+            category_name = CATEGORY_NAMES.get(category, category)
+            sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, user_id) if sensitivity_score else None
+
+            if category == "S9":  # 提示词攻击
+                return (
+                    ComplianceResult(risk_level="无风险", categories=[]),
+                    SecurityResult(risk_level=risk_level, categories=[category_name]),
+                    sensitivity_level
+                )
+            else:  # 内容合规问题
+                return (
+                    ComplianceResult(risk_level=risk_level, categories=[category_name]),
+                    SecurityResult(risk_level="无风险", categories=[]),
+                    sensitivity_level
+                )
+
+        # 默认返回安全
+        sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, user_id) if sensitivity_score else None
+        return (
+            ComplianceResult(risk_level="无风险", categories=[]),
+            SecurityResult(risk_level="无风险", categories=[]),
+            sensitivity_level
         )
     
     def _get_highest_risk_level(self, categories: List[str]) -> str:
@@ -301,6 +375,75 @@ class DetectionGuardrailService:
     async def _get_suggest_answer(self, categories: List[str], user_id: Optional[str] = None) -> str:
         """获取建议回答"""
         return await template_cache.get_suggest_answer(categories, user_id)
+
+    async def _calculate_sensitivity_level(self, sensitivity_score: float, user_id: Optional[str] = None) -> str:
+        """根据敏感度分数和用户配置计算敏感度等级"""
+        if not user_id:
+            # 使用默认阈值
+            if sensitivity_score >= 0.95:
+                return "低"
+            elif sensitivity_score >= 0.60:
+                return "中"
+            else:
+                return "高"
+
+        try:
+            # 获取用户的敏感度阈值配置
+            thresholds = await risk_config_cache.get_sensitivity_thresholds(user_id)
+
+            if sensitivity_score >= thresholds.get("low", 0.95):
+                return "低"
+            elif sensitivity_score >= thresholds.get("medium", 0.60):
+                return "中"
+            else:
+                return "高"
+        except Exception as e:
+            logger.warning(f"Failed to get sensitivity thresholds for user {user_id}: {e}")
+            # 使用默认阈值
+            if sensitivity_score >= 0.95:
+                return "低"
+            elif sensitivity_score >= 0.60:
+                return "中"
+            else:
+                return "高"
+
+
+    async def _get_sensitivity_trigger_level(self, user_id: str) -> str:
+        """获取用户配置的敏感度触发等级"""
+        try:
+            from services.risk_config_cache import risk_config_cache
+            trigger_level = await risk_config_cache.get_sensitivity_trigger_level(user_id)
+            return trigger_level if trigger_level else "medium"  # 默认中敏感度触发
+        except Exception as e:
+            logger.warning(f"Failed to get sensitivity trigger level for user {user_id}: {e}")
+            return "medium"  # 默认中敏感度触发
+
+    async def _should_trigger_detection(self, sensitivity_score: float, user_id: str) -> bool:
+        """判断是否应该触发检测基于敏感度分数和当前敏感度等级阈值"""
+        try:
+            # 获取用户当前敏感度等级
+            current_level = await self._get_sensitivity_trigger_level(user_id)
+
+            # 获取敏感度阈值配置
+            thresholds = await risk_config_cache.get_sensitivity_thresholds(user_id)
+
+            # 根据当前敏感度等级获取对应阈值
+            if current_level == "low":
+                threshold = thresholds.get("low", 0.95)
+            elif current_level == "medium":
+                threshold = thresholds.get("medium", 0.60)
+            elif current_level == "high":
+                threshold = thresholds.get("high", 0.40)
+            else:
+                threshold = 0.60  # 默认中敏感度
+
+            # 检测分数 >= 当前敏感度阈值时触发
+            return sensitivity_score >= threshold
+
+        except Exception as e:
+            logger.warning(f"Failed to check sensitivity trigger for user {user_id}: {e}")
+            # 默认使用中敏感度阈值
+            return sensitivity_score >= 0.60
     
     async def _handle_blacklist_hit(
         self, request_id: str, content: str, list_name: str, 
@@ -378,7 +521,8 @@ class DetectionGuardrailService:
         self, request_id: str, content: str, compliance_result: ComplianceResult,
         security_result: SecurityResult, suggest_action: str, suggest_answer: Optional[str],
         model_response: str, ip_address: Optional[str], user_agent: Optional[str],
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None, sensitivity_level: Optional[str] = None,
+        sensitivity_score: Optional[float] = None
     ):
         """异步记录检测结果到日志文件（不写数据库）"""
         
@@ -398,6 +542,8 @@ class DetectionGuardrailService:
             "security_categories": security_result.categories,
             "compliance_risk_level": compliance_result.risk_level,
             "compliance_categories": compliance_result.categories,
+            "sensitivity_level": sensitivity_level,
+            "sensitivity_score": sensitivity_score,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "hit_keywords": None
         }

@@ -83,18 +83,38 @@ class ProxyService:
     
     async def get_user_models(self, user_id: str) -> List[ProxyModelConfig]:
         """获取用户的模型配置列表"""
+        # 确保user_id是UUID对象
+        if isinstance(user_id, str):
+            user_id = uuid.UUID(user_id)
+
         db = get_admin_db_session()
         try:
             models = db.query(ProxyModelConfig).filter(
                 ProxyModelConfig.user_id == user_id,
                 ProxyModelConfig.enabled == True
             ).order_by(ProxyModelConfig.created_at).all()
+
+            # 预加载所有模型的属性以避免session detached错误
+            for model in models:
+                _ = model.user  # 触发user关系的加载
+                # 确保所有属性都被加载到内存中（只访问实际存在的字段）
+                _ = (model.id, model.config_name, model.model_name, model.api_base_url,
+                     model.api_key_encrypted, model.enabled, model.created_at, model.updated_at,
+                     model.stream_chunk_size, model.block_on_input_risk, model.block_on_output_risk,
+                     model.enable_reasoning_detection)
+                # 将对象从session中分离
+                db.expunge(model)
+
             return models
         finally:
             db.close()
     
     async def get_user_model_config(self, user_id: str, model_name: str) -> Optional[ProxyModelConfig]:
         """获取用户的特定模型配置"""
+        # 确保user_id是UUID对象
+        if isinstance(user_id, str):
+            user_id = uuid.UUID(user_id)
+
         db = get_admin_db_session()
         try:
             # 先按config_name精确匹配
@@ -103,20 +123,37 @@ class ProxyService:
                 ProxyModelConfig.config_name == model_name,
                 ProxyModelConfig.enabled == True
             ).first()
-            
+
             # 如果没找到，尝试获取第一个启用的模型
             if not model:
                 model = db.query(ProxyModelConfig).filter(
                     ProxyModelConfig.user_id == user_id,
                     ProxyModelConfig.enabled == True
                 ).first()
-            
+
+            # 如果找到了模型，预加载所有可能用到的属性，避免lazy loading导致的session detached错误
+            if model:
+                # 预加载user关系和所有属性
+                _ = model.user  # 触发user关系的加载
+                # 确保所有属性都被加载到内存中（只访问实际存在的字段）
+                _ = (model.id, model.config_name, model.model_name, model.api_base_url,
+                     model.api_key_encrypted, model.enabled, model.created_at, model.updated_at,
+                     model.stream_chunk_size, model.block_on_input_risk, model.block_on_output_risk,
+                     model.enable_reasoning_detection)
+
+                # 将对象从session中分离，避免在session关闭后出现问题
+                db.expunge(model)
+
             return model
         finally:
             db.close()
     
     async def create_user_model(self, user_id: str, model_data: Dict[str, Any]) -> ProxyModelConfig:
         """创建用户模型配置"""
+        # 确保user_id是UUID对象
+        if isinstance(user_id, str):
+            user_id = uuid.UUID(user_id)
+
         db = get_admin_db_session()
         try:
             # 验证必要字段
@@ -124,7 +161,7 @@ class ProxyService:
             for field in required_fields:
                 if field not in model_data or not model_data[field]:
                     raise ValueError(f"Missing required field: {field}")
-            
+
             # 检查配置名称是否已存在
             existing = db.query(ProxyModelConfig).filter(
                 ProxyModelConfig.user_id == user_id,
@@ -164,6 +201,10 @@ class ProxyService:
     
     async def update_user_model(self, user_id: str, model_id: str, model_data: Dict[str, Any]) -> ProxyModelConfig:
         """更新用户模型配置"""
+        # 确保user_id是UUID对象
+        if isinstance(user_id, str):
+            user_id = uuid.UUID(user_id)
+
         db = get_admin_db_session()
         try:
             model_config = db.query(ProxyModelConfig).filter(
@@ -199,6 +240,10 @@ class ProxyService:
     
     async def delete_user_model(self, user_id: str, model_id: str):
         """删除用户模型配置"""
+        # 确保user_id是UUID对象
+        if isinstance(user_id, str):
+            user_id = uuid.UUID(user_id)
+
         db = get_admin_db_session()
         try:
             model_config = db.query(ProxyModelConfig).filter(

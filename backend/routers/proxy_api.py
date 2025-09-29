@@ -50,18 +50,18 @@ def get_detection_mode(model_config, detection_type: str) -> DetectionMode:
 async def perform_input_detection(model_config, input_messages: list, user_id: str, request_id: str):
     """执行输入检测 - 根据配置选择异步或同步模式"""
     detection_mode = get_detection_mode(model_config, 'input')
-    
+
     if detection_mode == DetectionMode.ASYNC_BYPASS:
         # 异步旁路模式：不阻塞，同时启动检测和上游调用
-        return await _async_input_detection(input_messages, user_id, request_id)
+        return await _async_input_detection(input_messages, user_id, request_id, model_config)
     else:
         # 同步串行模式：先检测，再决定是否调用上游
         return await _sync_input_detection(model_config, input_messages, user_id, request_id)
 
-async def _async_input_detection(input_messages: list, user_id: str, request_id: str):
+async def _async_input_detection(input_messages: list, user_id: str, request_id: str, model_config=None):
     """异步输入检测 - 启动后台检测任务，立即返回通过结果"""
     # 启动后台检测任务
-    asyncio.create_task(_background_input_detection(input_messages, user_id, request_id))
+    asyncio.create_task(_background_input_detection(input_messages, user_id, request_id, model_config))
     
     # 立即返回通过状态，允许请求继续处理
     return {
@@ -70,7 +70,7 @@ async def _async_input_detection(input_messages: list, user_id: str, request_id:
         'suggest_answer': None
     }
 
-async def _background_input_detection(input_messages: list, user_id: str, request_id: str):
+async def _background_input_detection(input_messages: list, user_id: str, request_id: str, model_config=None):
     """后台输入检测任务 - 仅记录结果，不影响请求处理"""
     try:
         detection_result = await detection_guardrail_service.detect_messages(
@@ -130,18 +130,18 @@ async def _sync_input_detection(model_config, input_messages: list, user_id: str
 async def perform_output_detection(model_config, input_messages: list, response_content: str, user_id: str, request_id: str):
     """执行输出检测 - 根据配置选择异步或同步模式"""
     detection_mode = get_detection_mode(model_config, 'output')
-    
+
     if detection_mode == DetectionMode.ASYNC_BYPASS:
         # 异步旁路模式：启动后台检测，立即返回通过结果
-        return await _async_output_detection(input_messages, response_content, user_id, request_id)
+        return await _async_output_detection(input_messages, response_content, user_id, request_id, model_config)
     else:
         # 同步串行模式：检测完成后再返回结果
         return await _sync_output_detection(model_config, input_messages, response_content, user_id, request_id)
 
-async def _async_output_detection(input_messages: list, response_content: str, user_id: str, request_id: str):
+async def _async_output_detection(input_messages: list, response_content: str, user_id: str, request_id: str, model_config=None):
     """异步输出检测 - 启动后台检测任务，立即返回通过结果"""
     # 启动后台检测任务
-    asyncio.create_task(_background_output_detection(input_messages, response_content, user_id, request_id))
+    asyncio.create_task(_background_output_detection(input_messages, response_content, user_id, request_id, model_config))
     
     # 立即返回通过状态，允许响应直接返回给用户
     return {
@@ -151,7 +151,7 @@ async def _async_output_detection(input_messages: list, response_content: str, u
         'response_content': response_content  # 原始响应内容
     }
 
-async def _background_output_detection(input_messages: list, response_content: str, user_id: str, request_id: str):
+async def _background_output_detection(input_messages: list, response_content: str, user_id: str, request_id: str, model_config=None):
     """后台输出检测任务 - 仅记录结果，不影响响应"""
     try:
         # 构造检测messages: input + response
@@ -160,7 +160,7 @@ async def _background_output_detection(input_messages: list, response_content: s
             "role": "assistant",
             "content": response_content
         })
-        
+
         detection_result = await detection_guardrail_service.detect_messages(
             messages=detection_messages,
             user_id=user_id,
@@ -181,10 +181,10 @@ async def _sync_output_detection(model_config, input_messages: list, response_co
         # 构造检测messages: input + response
         detection_messages = input_messages.copy()
         detection_messages.append({
-            "role": "assistant", 
+            "role": "assistant",
             "content": response_content
         })
-        
+
         detection_result = await detection_guardrail_service.detect_messages(
             messages=detection_messages,
             user_id=user_id,

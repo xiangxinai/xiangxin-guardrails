@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, JSON, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, JSON, ForeignKey, UniqueConstraint, Float
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from sqlalchemy.sql import func
@@ -41,7 +41,7 @@ class EmailVerification(Base):
 class DetectionResult(Base):
     """检测结果表"""
     __tablename__ = "detection_results"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     request_id = Column(String(64), unique=True, nullable=False, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)  # 关联用户
@@ -58,7 +58,10 @@ class DetectionResult(Base):
     security_categories = Column(JSON, default=list)  # 提示词攻击类别
     compliance_risk_level = Column(String(10), default='无风险')  # 内容合规风险等级
     compliance_categories = Column(JSON, default=list)  # 内容合规类别
-    
+    # 敏感度相关字段
+    sensitivity_level = Column(String(10))  # 敏感度等级: '高', '中', '低'
+    sensitivity_score = Column(Float)  # 原始敏感度分数 (0.0-1.0)
+
     # 关联关系
     user = relationship("User", back_populates="detection_results")
 
@@ -149,10 +152,10 @@ class LoginAttempt(Base):
 class RiskTypeConfig(Base):
     """风险类型开关配置表"""
     __tablename__ = "risk_type_config"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True, unique=True)
-    
+
     # S1-S12风险类型开关配置
     s1_enabled = Column(Boolean, default=True)  # 一般政治话题
     s2_enabled = Column(Boolean, default=True)  # 敏感政治话题
@@ -166,10 +169,18 @@ class RiskTypeConfig(Base):
     s10_enabled = Column(Boolean, default=True) # 辱骂
     s11_enabled = Column(Boolean, default=True) # 侵犯个人隐私
     s12_enabled = Column(Boolean, default=True) # 商业违法违规
-    
+
+    # 全局敏感度阈值配置
+    high_sensitivity_threshold = Column(Float, default=0.40)    # 高敏感度阈值
+    medium_sensitivity_threshold = Column(Float, default=0.60)  # 中敏感度阈值
+    low_sensitivity_threshold = Column(Float, default=0.95)     # 低敏感度阈值
+
+    # 敏感度触发等级配置 (low, medium, high)
+    sensitivity_trigger_level = Column(String(10), default="medium")  # 触发检测命中的最低敏感度等级
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    
+
     # 关联关系
     user = relationship("User", back_populates="risk_config")
 
@@ -219,7 +230,7 @@ class TestModelConfig(Base):
 class ProxyModelConfig(Base):
     """反向代理模型配置表"""
     __tablename__ = "proxy_model_configs"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     config_name = Column(String(100), nullable=False, index=True)  # 代理模型名称，用于model参数匹配
@@ -227,16 +238,16 @@ class ProxyModelConfig(Base):
     api_key_encrypted = Column(Text, nullable=False)  # 加密的上游API密钥
     model_name = Column(String(255), nullable=False)  # 上游API模型名称
     enabled = Column(Boolean, default=True, index=True)  # 是否启用
-    
+
     # 安全配置（极简设计）
     block_on_input_risk = Column(Boolean, default=False)  # 输入风险时是否阻断，默认不阻断
     block_on_output_risk = Column(Boolean, default=False)  # 输出风险时是否阻断，默认不阻断
     enable_reasoning_detection = Column(Boolean, default=True)  # 是否检测reasoning内容，默认开启
     stream_chunk_size = Column(Integer, default=50)  # 流式检测间隔，每N个chunk检测一次，默认50
-    
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    
+
     # 关联关系
     user = relationship("User")
 

@@ -112,3 +112,65 @@ class RiskConfigService:
             's11_enabled': config.s11_enabled,
             's12_enabled': config.s12_enabled,
         }
+
+    def update_sensitivity_thresholds(self, user_id: str, threshold_data: Dict) -> Optional[RiskTypeConfig]:
+        """更新用户敏感度阈值配置"""
+        try:
+            config = self.get_user_risk_config(user_id)
+            if not config:
+                config = self.create_default_risk_config(user_id)
+
+            # 更新敏感度阈值字段
+            for field, value in threshold_data.items():
+                if hasattr(config, field):
+                    setattr(config, field, value)
+
+            self.db.commit()
+            self.db.refresh(config)
+            logger.info(f"Updated sensitivity thresholds for user {user_id}")
+            return config
+        except Exception as e:
+            logger.error(f"Failed to update sensitivity thresholds for {user_id}: {e}")
+            self.db.rollback()
+            return None
+
+    def get_sensitivity_threshold_dict(self, user_id: str) -> Dict:
+        """获取用户敏感度阈值配置的字典格式"""
+        config = self.get_user_risk_config(user_id)
+        if not config:
+            return {
+                'low_sensitivity_threshold': 0.95,
+                'medium_sensitivity_threshold': 0.60,
+                'high_sensitivity_threshold': 0.40,
+                'sensitivity_trigger_level': "medium"
+            }
+
+        return {
+            'low_sensitivity_threshold': config.low_sensitivity_threshold or 0.95,
+            'medium_sensitivity_threshold': config.medium_sensitivity_threshold or 0.60,
+            'high_sensitivity_threshold': config.high_sensitivity_threshold or 0.40,
+            'sensitivity_trigger_level': config.sensitivity_trigger_level or "medium",
+        }
+
+    def get_sensitivity_thresholds(self, user_id: str) -> Dict[str, float]:
+        """获取用户敏感度阈值映射"""
+        config = self.get_user_risk_config(user_id)
+        if not config:
+            return {
+                'low': 0.95,
+                'medium': 0.60,
+                'high': 0.40
+            }
+
+        return {
+            'low': config.low_sensitivity_threshold or 0.95,
+            'medium': config.medium_sensitivity_threshold or 0.60,
+            'high': config.high_sensitivity_threshold or 0.40
+        }
+
+    def get_sensitivity_trigger_level(self, user_id: str) -> str:
+        """获取用户敏感度触发等级"""
+        config = self.get_user_risk_config(user_id)
+        if not config:
+            return "medium"
+        return config.sensitivity_trigger_level or "medium"

@@ -24,6 +24,7 @@ class GuardrailResponse(BaseModel):
     overall_risk_level: str  # 综合风险等级：无风险/低风险/中风险/高风险
     suggest_action: str  # 通过，拒答，代答
     suggest_answer: Optional[str] = None
+    prob: Optional[float] = None  # 检测概率分数 (0.0-1.0)
 
 class DetectionResultResponse(BaseModel):
     """检测结果响应模型"""
@@ -40,6 +41,8 @@ class DetectionResultResponse(BaseModel):
     security_categories: List[str] = []
     compliance_risk_level: str = "无风险"
     compliance_categories: List[str] = []
+    # 检测结果相关字段
+    prob: Optional[float] = None  # 检测概率分数 (0.0-1.0)
 
 class BlacklistResponse(BaseModel):
     """黑名单响应模型"""
@@ -71,6 +74,13 @@ class ResponseTemplateResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+class SensitivityThresholdResponse(BaseModel):
+    """敏感度阈值配置响应模型"""
+    high_sensitivity_threshold: float      # 高敏感度阈值
+    medium_sensitivity_threshold: float    # 中敏感度阈值
+    low_sensitivity_threshold: float       # 低敏感度阈值
+    sensitivity_trigger_level: str         # 触发检测命中的最低敏感度等级
 
 class DashboardStats(BaseModel):
     """仪表板统计数据"""

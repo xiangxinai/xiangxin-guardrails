@@ -5,7 +5,7 @@ from database.connection import get_db
 from services.risk_config_service import RiskConfigService
 from services.risk_config_cache import risk_config_cache
 from utils.logger import setup_logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = setup_logger()
 router = APIRouter(prefix="/api/v1/config", tags=["风险类型配置"])
@@ -49,7 +49,22 @@ class RiskConfigResponse(BaseModel):
     s10_enabled: bool
     s11_enabled: bool
     s12_enabled: bool
-    
+
+    class Config:
+        from_attributes = True
+
+class SensitivityThresholdRequest(BaseModel):
+    high_sensitivity_threshold: float = Field(..., ge=0.0, le=1.0)
+    medium_sensitivity_threshold: float = Field(..., ge=0.0, le=1.0)
+    low_sensitivity_threshold: float = Field(..., ge=0.0, le=1.0)
+    sensitivity_trigger_level: str = Field(..., pattern="^(low|medium|high)$")
+
+class SensitivityThresholdResponse(BaseModel):
+    high_sensitivity_threshold: float
+    medium_sensitivity_threshold: float
+    low_sensitivity_threshold: float
+    sensitivity_trigger_level: str
+
     class Config:
         from_attributes = True
 
@@ -142,3 +157,79 @@ async def reset_risk_config(
     except Exception as e:
         logger.error(f"Failed to reset risk config for user {current_user_id}: {e}")
         raise HTTPException(status_code=500, detail="重置风险配置失败")
+
+@router.get("/sensitivity-thresholds", response_model=SensitivityThresholdResponse)
+async def get_sensitivity_thresholds(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """获取用户敏感度阈值配置"""
+    try:
+        current_user_id = get_current_user_id(request)
+        risk_service = RiskConfigService(db)
+        config_dict = risk_service.get_sensitivity_threshold_dict(current_user_id)
+        return SensitivityThresholdResponse(**config_dict)
+    except Exception as e:
+        logger.error(f"Failed to get sensitivity thresholds for user {current_user_id}: {e}")
+        raise HTTPException(status_code=500, detail="获取敏感度阈值配置失败")
+
+@router.put("/sensitivity-thresholds", response_model=SensitivityThresholdResponse)
+async def update_sensitivity_thresholds(
+    threshold_request: SensitivityThresholdRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """更新用户敏感度阈值配置"""
+    try:
+        current_user_id = get_current_user_id(request)
+        risk_service = RiskConfigService(db)
+        threshold_data = threshold_request.dict()
+
+        updated_config = risk_service.update_sensitivity_thresholds(current_user_id, threshold_data)
+        if not updated_config:
+            raise HTTPException(status_code=500, detail="更新敏感度阈值配置失败")
+
+        # 清空该用户的敏感度缓存，强制重新加载
+        await risk_config_cache.invalidate_sensitivity_cache(current_user_id)
+
+        # 返回更新后的配置
+        config_dict = risk_service.get_sensitivity_threshold_dict(current_user_id)
+        logger.info(f"Updated sensitivity thresholds for user {current_user_id}")
+
+        return SensitivityThresholdResponse(**config_dict)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update sensitivity thresholds for user {current_user_id}: {e}")
+        raise HTTPException(status_code=500, detail="更新敏感度阈值配置失败")
+
+@router.post("/sensitivity-thresholds/reset")
+async def reset_sensitivity_thresholds(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """重置敏感度阈值配置为默认值"""
+    try:
+        current_user_id = get_current_user_id(request)
+        risk_service = RiskConfigService(db)
+        default_config = {
+            'high_sensitivity_threshold': 0.40,
+            'medium_sensitivity_threshold': 0.60,
+            'low_sensitivity_threshold': 0.95,
+            'sensitivity_trigger_level': 'medium'
+        }
+
+        updated_config = risk_service.update_sensitivity_thresholds(current_user_id, default_config)
+        if not updated_config:
+            raise HTTPException(status_code=500, detail="重置敏感度阈值配置失败")
+
+        # 清空该用户的敏感度缓存
+        await risk_config_cache.invalidate_sensitivity_cache(current_user_id)
+
+        logger.info(f"Reset sensitivity thresholds to default for user {current_user_id}")
+        return {"message": "敏感度阈值配置已重置为默认值"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to reset sensitivity thresholds for user {current_user_id}: {e}")
+        raise HTTPException(status_code=500, detail="重置敏感度阈值配置失败")

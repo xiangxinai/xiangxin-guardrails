@@ -10,7 +10,11 @@ class RiskConfigCache:
     
     def __init__(self):
         self._cache: Dict[str, Dict[str, bool]] = {}
+        self._sensitivity_cache: Dict[str, Dict[str, float]] = {}
+        self._trigger_level_cache: Dict[str, str] = {}
         self._cache_timestamps: Dict[str, float] = {}
+        self._sensitivity_timestamps: Dict[str, float] = {}
+        self._trigger_level_timestamps: Dict[str, float] = {}
         self._cache_ttl = 300  # 5分钟缓存
         self._lock = asyncio.Lock()
     
@@ -94,7 +98,132 @@ class RiskConfigCache:
         async with self._lock:
             self._cache.clear()
             self._cache_timestamps.clear()
+            self._sensitivity_cache.clear()
+            self._sensitivity_timestamps.clear()
+            self._trigger_level_cache.clear()
+            self._trigger_level_timestamps.clear()
             logger.info("Cleared all risk config cache")
+
+    async def get_sensitivity_thresholds(self, user_id: str) -> Dict[str, float]:
+        """获取用户敏感度阈值配置（带缓存）- 新的全局阈值"""
+        if not user_id:
+            return self._get_default_sensitivity_thresholds()
+
+        async with self._lock:
+            # 检查缓存是否有效
+            current_time = time.time()
+            if (user_id in self._sensitivity_cache and
+                user_id in self._sensitivity_timestamps and
+                current_time - self._sensitivity_timestamps[user_id] < self._cache_ttl):
+                return self._sensitivity_cache[user_id]
+
+            # 缓存失效或不存在，从数据库获取
+            try:
+                config = await self._load_sensitivity_thresholds_from_db(user_id)
+                self._sensitivity_cache[user_id] = config
+                self._sensitivity_timestamps[user_id] = current_time
+                return config
+            except Exception as e:
+                logger.error(f"Failed to load sensitivity thresholds for user {user_id}: {e}")
+                # 数据库失败时返回默认配置
+                default_config = self._get_default_sensitivity_thresholds()
+                self._sensitivity_cache[user_id] = default_config
+                self._sensitivity_timestamps[user_id] = current_time
+                return default_config
+
+    async def _load_sensitivity_thresholds_from_db(self, user_id: str) -> Dict[str, float]:
+        """从数据库加载敏感度阈值配置"""
+        from database.connection import get_db
+        from database.models import RiskTypeConfig
+        from sqlalchemy.orm import Session
+
+        # 使用同步数据库连接
+        db: Session = next(get_db())
+        try:
+            config = db.query(RiskTypeConfig).filter(
+                RiskTypeConfig.user_id == user_id
+            ).first()
+
+            if config:
+                return {
+                    'low': config.low_sensitivity_threshold or 0.95,
+                    'medium': config.medium_sensitivity_threshold or 0.60,
+                    'high': config.high_sensitivity_threshold or 0.40,
+                }
+            else:
+                # 用户没有配置，返回默认阈值
+                return self._get_default_sensitivity_thresholds()
+        finally:
+            db.close()
+
+    def _get_default_sensitivity_thresholds(self) -> Dict[str, float]:
+        """获取默认敏感度阈值配置"""
+        return {
+            'low': 0.95,
+            'medium': 0.60,
+            'high': 0.40
+        }
+
+    async def invalidate_sensitivity_cache(self, user_id: str):
+        """使指定用户的敏感度缓存失效"""
+        async with self._lock:
+            if user_id in self._sensitivity_cache:
+                del self._sensitivity_cache[user_id]
+            if user_id in self._sensitivity_timestamps:
+                del self._sensitivity_timestamps[user_id]
+            if user_id in self._trigger_level_cache:
+                del self._trigger_level_cache[user_id]
+            if user_id in self._trigger_level_timestamps:
+                del self._trigger_level_timestamps[user_id]
+            logger.info(f"Invalidated sensitivity config cache for user {user_id}")
+
+    async def get_sensitivity_trigger_level(self, user_id: str) -> str:
+        """获取用户敏感度触发等级配置（带缓存）"""
+        if not user_id:
+            return "low"
+
+        async with self._lock:
+            # 检查缓存是否有效
+            current_time = time.time()
+            if (user_id in self._trigger_level_cache and
+                user_id in self._trigger_level_timestamps and
+                current_time - self._trigger_level_timestamps[user_id] < self._cache_ttl):
+                return self._trigger_level_cache[user_id]
+
+            # 缓存失效或不存在，从数据库获取
+            try:
+                trigger_level = await self._load_trigger_level_from_db(user_id)
+                self._trigger_level_cache[user_id] = trigger_level
+                self._trigger_level_timestamps[user_id] = current_time
+                return trigger_level
+            except Exception as e:
+                logger.error(f"Failed to load trigger level for user {user_id}: {e}")
+                # 数据库失败时返回默认配置
+                default_level = "low"
+                self._trigger_level_cache[user_id] = default_level
+                self._trigger_level_timestamps[user_id] = current_time
+                return default_level
+
+    async def _load_trigger_level_from_db(self, user_id: str) -> str:
+        """从数据库加载敏感度触发等级配置"""
+        from database.connection import get_db
+        from database.models import RiskTypeConfig
+        from sqlalchemy.orm import Session
+
+        # 使用同步数据库连接
+        db: Session = next(get_db())
+        try:
+            config = db.query(RiskTypeConfig).filter(
+                RiskTypeConfig.user_id == user_id
+            ).first()
+
+            if config:
+                return config.sensitivity_trigger_level or "medium"
+            else:
+                # 用户没有配置，返回默认触发等级
+                return "medium"
+        finally:
+            db.close()
 
 # 全局实例
 risk_config_cache = RiskConfigCache()
