@@ -79,6 +79,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./backend/config:/app/config:ro
+      - /mnt/data/xiangxin-guardrails-data/media:/mnt/data/xiangxin-guardrails-data/media
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,17 +112,21 @@ services:
       - DEPLOYMENT_MODE=local
 
       # 模型API配置（请根据实际情况修改）
-      # - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
-      - GUARDRAILS_MODEL_API_URL=http://your-host-ip:your-port/v1
+      - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
       - GUARDRAILS_MODEL_API_KEY=your-guardrails-model-api-key
+
+      # 多模态模型API配置
+      - GUARDRAILS_VL_MODEL_API_URL=http://host.docker.internal:58003/v1
+      - GUARDRAILS_VL_MODEL_API_KEY=your-vl-model-api-key
+      - GUARDRAILS_VL_MODEL_NAME=Xiangxin-Guardrails-VL
 
       # 数据目录配置
       - DATA_DIR=/app/data
       - LOG_LEVEL=INFO
-      
+
       # CORS配置
       - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-      
+
       # 双服务配置
       - DETECTION_PORT=5001
       - DETECTION_UVICORN_WORKERS=32
@@ -131,6 +136,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./backend/config:/app/config:ro
+      - /mnt/data/xiangxin-guardrails-data/media:/mnt/data/xiangxin-guardrails-data/media
     depends_on:
       postgres:
         condition: service_healthy
@@ -163,17 +169,21 @@ services:
       - DEPLOYMENT_MODE=local
 
       # 模型API配置（请根据实际情况修改）
-      # - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
-      - GUARDRAILS_MODEL_API_URL=http://your-host-ip:your-port/v1
+      - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
       - GUARDRAILS_MODEL_API_KEY=your-guardrails-model-api-key
+
+      # 多模态模型API配置
+      - GUARDRAILS_VL_MODEL_API_URL=http://host.docker.internal:58003/v1
+      - GUARDRAILS_VL_MODEL_API_KEY=your-vl-model-api-key
+      - GUARDRAILS_VL_MODEL_NAME=Xiangxin-Guardrails-VL
 
       # 数据目录配置
       - DATA_DIR=/app/data
       - LOG_LEVEL=INFO
-      
+
       # CORS配置
       - CORS_ORIGINS=*
-      
+
       # 代理服务配置（高并发）
       - PROXY_PORT=5002
       - PROXY_UVICORN_WORKERS=24
@@ -186,6 +196,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./backend/config:/app/config:ro
+      - /mnt/data/xiangxin-guardrails-data/media:/mnt/data/xiangxin-guardrails-data/media
     depends_on:
       postgres:
         condition: service_healthy

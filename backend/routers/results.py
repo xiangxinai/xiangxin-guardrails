@@ -1,5 +1,6 @@
 from typing import List, Optional
 import json
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, text
@@ -7,6 +8,7 @@ from database.connection import get_db
 from database.models import DetectionResult
 from models.responses import DetectionResultResponse, PaginatedResponse
 from utils.logger import setup_logger
+from utils.url_signature import generate_signed_media_url
 from config import settings
 
 logger = setup_logger()
@@ -109,6 +111,27 @@ async def get_detection_results(
         # 转换为响应模型
         items = []
         for result in results:
+            # 生成带签名的图片URLs
+            image_urls = []
+            if hasattr(result, 'image_paths') and result.image_paths:
+                for image_path in result.image_paths:
+                    try:
+                        # 从路径提取 user_id 和 filename
+                        # 路径格式: /mnt/data/xiangxin-guardrails-data/media/{user_id}/{filename}
+                        path_parts = Path(image_path).parts
+                        filename = path_parts[-1]
+                        extracted_user_id = path_parts[-2]
+
+                        # 生成带签名的URL
+                        signed_url = generate_signed_media_url(
+                            user_id=extracted_user_id,
+                            filename=filename,
+                            expires_in_seconds=86400  # 24小时有效期
+                        )
+                        image_urls.append(signed_url)
+                    except Exception as e:
+                        logger.error(f"Failed to generate signed URL for {image_path}: {e}")
+
             items.append(DetectionResultResponse(
                 id=result.id,
                 request_id=result.request_id,
@@ -121,7 +144,11 @@ async def get_detection_results(
                 security_risk_level=result.security_risk_level,
                 security_categories=result.security_categories,
                 compliance_risk_level=result.compliance_risk_level,
-                compliance_categories=result.compliance_categories
+                compliance_categories=result.compliance_categories,
+                has_image=result.has_image if hasattr(result, 'has_image') else False,
+                image_count=result.image_count if hasattr(result, 'image_count') else 0,
+                image_paths=result.image_paths if hasattr(result, 'image_paths') else [],
+                image_urls=image_urls  # 新增带签名的URLs
             ))
         
         pages = (total + per_page - 1) // per_page
@@ -163,6 +190,27 @@ async def get_detection_result(result_id: int, request: Request, db: Session = D
             except ValueError:
                 raise HTTPException(status_code=403, detail="Invalid user ID format")
         
+        # 生成带签名的图片URLs
+        image_urls = []
+        if hasattr(result, 'image_paths') and result.image_paths:
+            for image_path in result.image_paths:
+                try:
+                    # 从路径提取 user_id 和 filename
+                    # 路径格式: /mnt/data/xiangxin-guardrails-data/media/{user_id}/{filename}
+                    path_parts = Path(image_path).parts
+                    filename = path_parts[-1]
+                    extracted_user_id = path_parts[-2]
+
+                    # 生成带签名的URL
+                    signed_url = generate_signed_media_url(
+                        user_id=extracted_user_id,
+                        filename=filename,
+                        expires_in_seconds=86400  # 24小时有效期
+                    )
+                    image_urls.append(signed_url)
+                except Exception as e:
+                    logger.error(f"Failed to generate signed URL for {image_path}: {e}")
+
         return DetectionResultResponse(
             id=result.id,
             request_id=result.request_id,
@@ -175,7 +223,11 @@ async def get_detection_result(result_id: int, request: Request, db: Session = D
             security_risk_level=result.security_risk_level,
             security_categories=result.security_categories,
             compliance_risk_level=result.compliance_risk_level,
-            compliance_categories=result.compliance_categories
+            compliance_categories=result.compliance_categories,
+            has_image=result.has_image if hasattr(result, 'has_image') else False,
+            image_count=result.image_count if hasattr(result, 'image_count') else 0,
+            image_paths=result.image_paths if hasattr(result, 'image_paths') else [],
+            image_urls=image_urls  # 新增带签名的URLs
         )
         
     except HTTPException:

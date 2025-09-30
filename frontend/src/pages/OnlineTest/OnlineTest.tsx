@@ -20,8 +20,10 @@ import api, { testModelsApi } from '../../services/api';
 import {
   PlayCircleOutlined,
   ClearOutlined,
-  SettingOutlined
+  SettingOutlined,
+  PictureOutlined
 } from '@ant-design/icons';
+import ImageUpload from '../../components/ImageUpload/ImageUpload';
 
 const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
@@ -79,6 +81,7 @@ const OnlineTest: React.FC = () => {
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [models, setModels] = useState<TestModel[]>([]);
   const [modelSelectionChanged, setModelSelectionChanged] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 
   // 加载模型配置
   const loadModels = async () => {
@@ -176,8 +179,8 @@ const OnlineTest: React.FC = () => {
 
   // 执行测试
   const runTest = async () => {
-    if (!testInput.trim()) {
-      message.warning('请输入测试内容');
+    if (!testInput.trim() && uploadedImages.length === 0) {
+      message.warning('请输入测试内容或上传图片');
       return;
     }
 
@@ -185,45 +188,91 @@ const OnlineTest: React.FC = () => {
     try {
       // 构造消息格式
       let messages;
+      let content: any[] = []; // 提升作用域到函数顶部
+
       if (inputType === 'question') {
-        messages = [{ role: 'user', content: testInput }];
+        // 构建多模态内容
+        // 添加文本内容（如果有）
+        if (testInput.trim()) {
+          content.push({ type: 'text', text: testInput });
+        }
+
+        // 添加图片内容
+        uploadedImages.forEach(base64Image => {
+          content.push({
+            type: 'image_url',
+            image_url: { url: base64Image }
+          });
+        });
+
+        // 如果只有文本，使用简单格式；如果有图片，使用多模态格式
+        if (uploadedImages.length > 0) {
+          messages = [{ role: 'user', content }];
+        } else {
+          messages = [{ role: 'user', content: testInput }];
+        }
       } else {
-        // 解析问答对
+        // 问答对模式（暂不支持图片）
         const lines = testInput.split('\n');
         const question = lines.find(line => line.startsWith('Q:'))?.substring(2).trim();
         const answer = lines.find(line => line.startsWith('A:'))?.substring(2).trim();
-        
+
         if (!question || !answer) {
           message.error('问答对格式错误，请使用 Q: 问题\\nA: 回答 的格式');
           return;
         }
-        
+
         messages = [
           { role: 'user', content: question },
           { role: 'assistant', content: answer }
         ];
       }
 
-      // 检查是否有选中的模型（仅用于模型对比功能提示，不阻止护栏测试）
-      const selectedModels = models.filter(m => m.selected);
-      if (inputType === 'question' && selectedModels.length === 0) {
-        // 提示用户可以配置代理模型进行对比测试，但不阻止护栏检测
-        message.info('提示：您可以在下方配置代理模型来对比测试模型响应与护栏保护效果');
-      }
+      // 检查是否有图片，决定使用哪个API和模型
+      const hasImages = uploadedImages.length > 0;
+      let response;
 
-      // 调用在线测试API - 不再发送models参数，后端会使用用户选择的模型
-      const requestData = {
-        content: testInput,
-        input_type: inputType
-      };
-      
-      const response = await api.post('/api/v1/test/online', requestData);
-      
-      setTestResult({
-        guardrail: response.data.guardrail,
-        models: response.data.models || {},
-        original_responses: response.data.original_responses || {}
-      });
+      if (hasImages) {
+        // 有图片：直接调用护栏API，使用VL模型
+        const guardrailRequest = {
+          model: "Xiangxin-Guardrails-VL",
+          messages: [{ role: 'user', content }]
+        };
+
+        response = await api.post('/v1/guardrails', guardrailRequest);
+
+        // 格式化为在线测试结果格式
+        setTestResult({
+          guardrail: {
+            compliance: response.data.result.compliance,
+            security: response.data.result.security,
+            overall_risk_level: response.data.overall_risk_level,
+            suggest_action: response.data.suggest_action,
+            suggest_answer: response.data.suggest_answer
+          },
+          models: {},
+          original_responses: {}
+        });
+      } else {
+        // 纯文本：使用原有的在线测试API
+        const selectedModels = models.filter(m => m.selected);
+        if (inputType === 'question' && selectedModels.length === 0) {
+          message.info('提示：您可以在下方配置代理模型来对比测试模型响应与护栏保护效果');
+        }
+
+        const requestData = {
+          content: testInput,
+          input_type: inputType
+        };
+
+        response = await api.post('/api/v1/test/online', requestData);
+
+        setTestResult({
+          guardrail: response.data.guardrail,
+          models: response.data.models || {},
+          original_responses: response.data.original_responses || {}
+        });
+      }
 
     } catch (error: any) {
       console.error('Test failed:', error);
@@ -277,6 +326,12 @@ const OnlineTest: React.FC = () => {
   const clearInput = () => {
     setTestInput('');
     setTestResult(null);
+    setUploadedImages([]);
+  };
+
+  // 处理图片上传
+  const handleImageChange = (base64Images: string[]) => {
+    setUploadedImages(base64Images);
   };
 
   // 使用预设用例
@@ -344,13 +399,40 @@ const OnlineTest: React.FC = () => {
                   value={testInput}
                   onChange={(e) => setTestInput(e.target.value)}
                   placeholder={
-                    inputType === 'question' 
-                      ? "请输入要测试的问题..."
+                    inputType === 'question'
+                      ? "请输入要测试的问题（可选，可以只上传图片）..."
                       : "请输入问答对，格式如下：\nQ: 您的问题\nA: 模型的回答"
                   }
                   rows={6}
                 />
               </div>
+
+              {/* 图片上传区域 - 只在单个问题类型时显示 */}
+              {inputType === 'question' && (
+                <Card
+                  title={
+                    <Space>
+                      <PictureOutlined />
+                      图片检测（可选）
+                    </Space>
+                  }
+                  size="small"
+                >
+                  <ImageUpload
+                    onChange={handleImageChange}
+                    maxCount={5}
+                    maxSize={10}
+                  />
+                  {uploadedImages.length > 0 && (
+                    <Alert
+                      message={`已选择${uploadedImages.length}张图片`}
+                      type="success"
+                      showIcon
+                      style={{ marginTop: 12 }}
+                    />
+                  )}
+                </Card>
+              )}
 
               {/* 代理模型选择 - 只在单个问题类型时显示 */}
               {inputType === 'question' && (

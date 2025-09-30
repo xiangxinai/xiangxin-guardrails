@@ -11,7 +11,7 @@ from pathlib import Path
 
 from config import settings
 from database.connection import init_db
-from routers import guardrails, dashboard, config_api, results, auth, user, sync, admin, online_test, test_models
+from routers import guardrails, dashboard, config_api, results, auth, user, sync, admin, online_test, test_models, media
 from services.async_logger import async_detection_logger
 from services.data_sync_service import data_sync_service
 from utils.logger import setup_logger
@@ -396,6 +396,7 @@ app.include_router(sync.router, prefix="/api/v1", dependencies=[Depends(verify_u
 app.include_router(admin.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
 app.include_router(online_test.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
 app.include_router(test_models.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
+app.include_router(media.router, prefix="/api/v1")  # media路由的认证在各个接口中单独控制
 
 # 全局异常处理
 @app.exception_handler(Exception)

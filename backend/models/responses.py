@@ -43,6 +43,11 @@ class DetectionResultResponse(BaseModel):
     compliance_categories: List[str] = []
     # 检测结果相关字段
     prob: Optional[float] = None  # 检测概率分数 (0.0-1.0)
+    # 多模态相关字段
+    has_image: bool = False
+    image_count: int = 0
+    image_paths: List[str] = []
+    image_urls: List[str] = []  # 带签名的图片访问URLs
 
 class BlacklistResponse(BaseModel):
     """黑名单响应模型"""

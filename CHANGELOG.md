@@ -10,6 +10,99 @@ All notable changes to Xiangxin AI Guardrails platform are documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-09-30
+
+### 🚀 重大更新 Major Updates
+- 🖼️ **多模态检测功能**
+  - 新增图片模态安全检测能力
+  - 支持图片内容的合规性和安全性检测
+  - 与文本检测保持一致的风险类型和检测标准
+  - 完整支持API调用模式和安全网关模式
+
+### 新增 Added
+- 🖼️ **图片检测功能**
+  - 支持base64编码和URL两种图片输入方式
+  - 调用多模态检测模型 `Xiangxin-Guardrails-VL`
+  - 图片文件存储在用户专属目录（/mnt/data/xiangxin-guardrails-data/media/{user_uuid}/）
+  - 支持在线测试界面上传图片进行检测
+  - 新增图片上传组件和预览功能
+
+- 🔌 **API接口增强**
+  - 检测API支持混合消息（文本+图片）
+  - messages中的content支持数组格式：`[{"type": "text"}, {"type": "image_url"}]`
+  - 图片URL支持 `data:image/jpeg;base64,...` 和 `file://...` 两种格式
+  - 安全网关代理服务完整支持多模态请求透传
+
+- 📁 **新增文件**
+  - `backend/routers/media.py` - 媒体文件管理路由
+  - `backend/utils/image_utils.py` - 图片处理工具
+  - `backend/utils/url_signature.py` - URL签名验证工具
+  - `backend/scripts/migrate_add_image_fields.py` - 数据库迁移脚本
+  - `frontend/src/components/ImageUpload/` - 图片上传组件
+
+### 变更 Changed
+- 🔄 **检测服务增强**
+  - 检测模型调用逻辑支持多模态内容
+  - 检测结果数据库表新增图片相关字段
+  - 在线测试页面支持图片上传和预览
+
+- 🌐 **API响应格式**
+  - 保持与文本检测一致的响应格式
+  - 多标签风险支持：可返回多个unsafe标签（如：unsafe\nS1,S2）
+  - 敏感度分数和等级适用于图片检测
+
+### 技术特性 Technical Features
+- **图片检测模型**：基于视觉-语言模型的多模态安全检测
+- **存储管理**：用户级别的媒体文件隔离存储
+- **URL安全**：支持签名URL防止未授权访问
+- **格式兼容**：兼容OpenAI Vision API消息格式
+
+### 使用示例 Usage Examples
+
+#### Python API调用示例
+```python
+import base64
+from xiangxinai import XiangxinAI
+
+client = XiangxinAI("your-api-key")
+
+# 图片base64编码
+with open("image.jpg", "rb") as f:
+    image_base64 = base64.b64encode(f.read()).decode("utf-8")
+
+# 发送图片检测请求
+response = client.check_messages([
+    {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "这个图片安全吗？"},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
+        ]
+    }
+])
+
+print(f"检测结果: {response.overall_risk_level}")
+print(f"风险类别: {response.all_categories}")
+```
+
+#### cURL调用示例
+```bash
+curl -X POST "http://localhost:5001/v1/guardrails" \
+    -H "Authorization: Bearer your-api-key" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "model": "Xiangxin-Guardrails-VL",
+      "messages": [{
+        "role": "user",
+        "content": [
+          {"type": "text", "text": "这个图片安全吗？"},
+          {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}}
+        ]
+      }],
+      "logprobs": true
+    }'
+```
+
 ## [2.2.0] - 2025-01-15
 
 ### 🚀 重大更新 Major Updates
@@ -49,7 +142,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ```
 
 ## [2.1.0] - 2025-09-29
-增加敏感度阈值配置功能，应对特殊场景和全自动流水线。
+增加敏感度阈值配置功能，可自定义检测的敏感度阈值，可用于应对特殊场景或全自动流水线场景。
 
 ## [2.0.0] - 2025-01-01
 

@@ -167,8 +167,40 @@ class DetectionGuardrailService:
                 )
             
             # 2. 模型检测（使用截断后的消息，获取敏感度）
-            messages_dict = [{"role": msg.role, "content": msg.content} for msg in truncated_messages]
-            model_response, sensitivity_score = await model_service.check_messages_with_sensitivity(messages_dict)
+            # 转换消息为字典格式，支持多模态
+            from utils.image_utils import image_utils
+
+            messages_dict = []
+            has_image = False
+            saved_image_paths = []  # 记录保存的图片路径
+
+            for msg in truncated_messages:
+                content = msg.content
+                if isinstance(content, str):
+                    messages_dict.append({"role": msg.role, "content": content})
+                elif isinstance(content, list):
+                    # 多模态内容
+                    content_parts = []
+                    for part in content:
+                        if hasattr(part, 'type'):
+                            if part.type == 'text' and hasattr(part, 'text'):
+                                content_parts.append({"type": "text", "text": part.text})
+                            elif part.type == 'image_url' and hasattr(part, 'image_url'):
+                                has_image = True
+                                # 处理图片URL（支持base64、file://、http(s)://）
+                                original_url = part.image_url.url
+                                processed_url, saved_path = image_utils.process_image_url(original_url, user_id)
+
+                                # 如果保存了图片，记录路径
+                                if saved_path:
+                                    saved_image_paths.append(saved_path)
+
+                                # 传递处理后的URL给模型（base64保持不变，直接发送给模型）
+                                content_parts.append({"type": "image_url", "image_url": {"url": processed_url}})
+                    messages_dict.append({"role": msg.role, "content": content_parts})
+
+            # 根据是否包含图片选择检测模型
+            model_response, sensitivity_score = await model_service.check_messages_with_sensitivity(messages_dict, use_vl_model=has_image)
 
             # 3. 解析模型响应并应用风险类型过滤和敏感度阈值
             compliance_result, security_result, sensitivity_level = await self._parse_model_response_with_sensitivity(
@@ -184,7 +216,8 @@ class DetectionGuardrailService:
             await self._log_detection_result(
                 request_id, user_content, compliance_result, security_result,
                 suggest_action, suggest_answer, model_response,
-                ip_address, user_agent, user_id, sensitivity_level, sensitivity_score
+                ip_address, user_agent, user_id, sensitivity_level, sensitivity_score,
+                has_image=has_image, image_count=len(saved_image_paths), image_paths=saved_image_paths
             )
 
             # 6. 构造响应
@@ -210,12 +243,35 @@ class DetectionGuardrailService:
     def _extract_user_content(self, messages: List[Message]) -> str:
         """提取完整对话内容"""
         if len(messages) == 1 and messages[0].role == 'user':
-            return messages[0].content
+            content = messages[0].content
+            if isinstance(content, str):
+                return content
+            elif isinstance(content, list):
+                # 对于多模态内容，只提取文本部分用于日志
+                text_parts = []
+                for part in content:
+                    if hasattr(part, 'type') and part.type == 'text' and hasattr(part, 'text'):
+                        text_parts.append(part.text)
+                    elif hasattr(part, 'type') and part.type == 'image_url':
+                        text_parts.append("[图片]")
+                return ' '.join(text_parts) if text_parts else "[多模态内容]"
         else:
             conversation_parts = []
             for msg in messages:
                 role_label = "用户" if msg.role == "user" else "助手" if msg.role == "assistant" else msg.role
-                conversation_parts.append(f"[{role_label}]: {msg.content}")
+                content = msg.content
+                if isinstance(content, str):
+                    conversation_parts.append(f"[{role_label}]: {content}")
+                elif isinstance(content, list):
+                    # 对于多模态内容，只提取文本部分
+                    text_parts = []
+                    for part in content:
+                        if hasattr(part, 'type') and part.type == 'text' and hasattr(part, 'text'):
+                            text_parts.append(part.text)
+                        elif hasattr(part, 'type') and part.type == 'image_url':
+                            text_parts.append("[图片]")
+                    content_str = ' '.join(text_parts) if text_parts else "[多模态内容]"
+                    conversation_parts.append(f"[{role_label}]: {content_str}")
             return '\n'.join(conversation_parts)
     
     async def _parse_model_response(self, response: str, user_id: Optional[str] = None) -> Tuple[ComplianceResult, SecurityResult]:
@@ -523,13 +579,14 @@ class DetectionGuardrailService:
         security_result: SecurityResult, suggest_action: str, suggest_answer: Optional[str],
         model_response: str, ip_address: Optional[str], user_agent: Optional[str],
         user_id: Optional[str] = None, sensitivity_level: Optional[str] = None,
-        sensitivity_score: Optional[float] = None
+        sensitivity_score: Optional[float] = None, has_image: bool = False,
+        image_count: int = 0, image_paths: List[str] = None
     ):
         """异步记录检测结果到日志文件（不写数据库）"""
-        
+
         # 清理内容中的NUL字符
         from utils.validators import clean_null_characters
-        
+
         detection_data = {
             "request_id": request_id,
             "user_id": user_id,
@@ -546,7 +603,10 @@ class DetectionGuardrailService:
             "sensitivity_level": sensitivity_level,
             "sensitivity_score": sensitivity_score,
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "hit_keywords": None
+            "hit_keywords": None,
+            "has_image": has_image,
+            "image_count": image_count,
+            "image_paths": image_paths or []
         }
         await async_detection_logger.log_detection(detection_data)
     

@@ -1,24 +1,48 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Any, Dict
 from pydantic import BaseModel, Field, validator, ConfigDict
 
+class ImageUrl(BaseModel):
+    """图片URL模型 - 支持file://路径、http(s)://URL或data:image base64编码"""
+    url: str = Field(..., description="图片URL: file://本地路径, http(s)://远程URL, 或 data:image/jpeg;base64,{base64编码}")
+
+class ContentPart(BaseModel):
+    """内容部分模型 - 支持文本和图片"""
+    type: str = Field(..., description="内容类型: text 或 image_url")
+    text: Optional[str] = Field(None, description="文本内容")
+    image_url: Optional[ImageUrl] = Field(None, description="图片URL")
+
+    @validator('type')
+    def validate_type(cls, v):
+        if v not in ['text', 'image_url']:
+            raise ValueError('type must be one of: text, image_url')
+        return v
+
 class Message(BaseModel):
-    """消息模型"""
+    """消息模型 - 支持文本和多模态内容"""
     role: str = Field(..., description="消息角色: user, system, assistant")
-    content: str = Field(..., description="消息内容")
-    
+    content: Union[str, List[ContentPart]] = Field(..., description="消息内容，可以是字符串或内容部分列表")
+
     @validator('role')
     def validate_role(cls, v):
         if v not in ['user', 'system', 'assistant']:
             raise ValueError('role must be one of: user, system, assistant')
         return v
-    
+
     @validator('content')
     def validate_content(cls, v):
-        if not v or not v.strip():
-            raise ValueError('content cannot be empty')
-        if len(v) > 1000000:
-            raise ValueError('content too long (max 1000000 characters)')
-        return v.strip()
+        if isinstance(v, str):
+            if not v or not v.strip():
+                raise ValueError('content cannot be empty')
+            if len(v) > 1000000:
+                raise ValueError('content too long (max 1000000 characters)')
+            return v.strip()
+        elif isinstance(v, list):
+            if not v:
+                raise ValueError('content cannot be empty')
+            return v
+        else:
+            raise ValueError('content must be string or list of content parts')
+        return v
 
 class GuardrailRequest(BaseModel):
     """护栏检测请求模型"""

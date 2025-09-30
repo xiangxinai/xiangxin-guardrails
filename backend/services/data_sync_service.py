@@ -231,6 +231,9 @@ class DataSyncService:
                     security_categories=detection_data.get('security_categories', []),
                     compliance_risk_level=detection_data.get('compliance_risk_level', '无风险'),
                     compliance_categories=detection_data.get('compliance_categories', []),
+                    has_image=detection_data.get('has_image', False),
+                    image_count=detection_data.get('image_count', 0),
+                    image_paths=detection_data.get('image_paths', []),
                     created_at=created_at or datetime.now(timezone.utc)
                 )
             

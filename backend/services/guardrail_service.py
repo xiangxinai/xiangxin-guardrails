@@ -87,9 +87,39 @@ class GuardrailService:
                 )
             
             # 2. 模型检测
-            # 将 Message 对象转换为字典格式
-            messages_dict = [{"role": msg.role, "content": msg.content} for msg in request.messages]
-            model_response = await model_service.check_messages(messages_dict)
+            # 将 Message 对象转换为字典格式，同时处理图片
+            from utils.image_utils import image_utils
+
+            messages_dict = []
+            has_image = False
+            saved_image_paths = []
+
+            for msg in request.messages:
+                content = msg.content
+                if isinstance(content, str):
+                    messages_dict.append({"role": msg.role, "content": content})
+                elif isinstance(content, list):
+                    # 多模态内容
+                    content_parts = []
+                    for part in content:
+                        if hasattr(part, 'type'):
+                            if part.type == 'text' and hasattr(part, 'text'):
+                                content_parts.append({"type": "text", "text": part.text})
+                            elif part.type == 'image_url' and hasattr(part, 'image_url'):
+                                has_image = True
+                                original_url = part.image_url.url
+                                # 处理图片：保存并获取路径
+                                processed_url, saved_path = image_utils.process_image_url(original_url, user_id)
+                                if saved_path:
+                                    saved_image_paths.append(saved_path)
+                                content_parts.append({"type": "image_url", "image_url": {"url": processed_url}})
+                    messages_dict.append({"role": msg.role, "content": content_parts})
+                else:
+                    messages_dict.append({"role": msg.role, "content": content})
+
+            # 根据是否有图片选择模型
+            use_vl_model = has_image
+            model_response = await model_service.check_messages(messages_dict, use_vl_model=use_vl_model)
             
             # 3. 解析模型响应并应用风险类型过滤
             compliance_result, security_result = self._parse_model_response(model_response, user_id)
@@ -102,8 +132,9 @@ class GuardrailService:
             # 5. 异步记录检测结果到日志
             await self._log_detection_result(
                 request_id, user_content, compliance_result, security_result,
-                suggest_action, suggest_answer, model_response, 
-                ip_address, user_agent, user_id
+                suggest_action, suggest_answer, model_response,
+                ip_address, user_agent, user_id,
+                has_image=has_image, image_count=len(saved_image_paths), image_paths=saved_image_paths
             )
             
             # 6. 构造响应
@@ -129,13 +160,40 @@ class GuardrailService:
         """提取完整对话内容"""
         if len(messages) == 1 and messages[0].role == 'user':
             # 单条用户消息（提示词检测）
-            return messages[0].content
+            content = messages[0].content
+            if isinstance(content, str):
+                return content
+            elif isinstance(content, list):
+                # 对于多模态内容，只提取文本部分用于日志
+                text_parts = []
+                for part in content:
+                    if hasattr(part, 'type') and part.type == 'text' and hasattr(part, 'text'):
+                        text_parts.append(part.text)
+                    elif hasattr(part, 'type') and part.type == 'image_url':
+                        text_parts.append("[图片]")
+                return ' '.join(text_parts) if text_parts else "[多模态内容]"
+            else:
+                return str(content)
         else:
             # 多条消息（对话检测），保存完整对话
             conversation_parts = []
             for msg in messages:
                 role_label = "用户" if msg.role == "user" else "助手" if msg.role == "assistant" else msg.role
-                conversation_parts.append(f"[{role_label}]: {msg.content}")
+                content = msg.content
+                if isinstance(content, str):
+                    conversation_parts.append(f"[{role_label}]: {content}")
+                elif isinstance(content, list):
+                    # 对于多模态内容，只提取文本部分
+                    text_parts = []
+                    for part in content:
+                        if hasattr(part, 'type') and part.type == 'text' and hasattr(part, 'text'):
+                            text_parts.append(part.text)
+                        elif hasattr(part, 'type') and part.type == 'image_url':
+                            text_parts.append("[图片]")
+                    content_str = ' '.join(text_parts) if text_parts else "[多模态内容]"
+                    conversation_parts.append(f"[{role_label}]: {content_str}")
+                else:
+                    conversation_parts.append(f"[{role_label}]: {content}")
             return '\n'.join(conversation_parts)
     
     def _parse_model_response(self, response: str, user_id: Optional[str] = None) -> Tuple[ComplianceResult, SecurityResult]:
@@ -306,13 +364,14 @@ class GuardrailService:
         self, request_id: str, content: str, compliance_result: ComplianceResult,
         security_result: SecurityResult, suggest_action: str, suggest_answer: Optional[str],
         model_response: str, ip_address: Optional[str], user_agent: Optional[str],
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None, has_image: bool = False,
+        image_count: int = 0, image_paths: List[str] = None
     ):
         """异步记录检测结果到日志"""
-        
+
         # 清理内容中的NUL字符
         from utils.validators import clean_null_characters
-        
+
         detection_data = {
             "request_id": request_id,
             "user_id": user_id,
@@ -327,9 +386,12 @@ class GuardrailService:
             "compliance_risk_level": compliance_result.risk_level,
             "compliance_categories": compliance_result.categories,
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "hit_keywords": None  # 只有黑白名单命中才有值
+            "hit_keywords": None,  # 只有黑白名单命中才有值
+            "has_image": has_image,
+            "image_count": image_count,
+            "image_paths": image_paths or []
         }
-        
+
         # 只写日志文件，不写数据库（由管理服务的日志处理器负责写数据库）
         await async_detection_logger.log_detection(detection_data)
     

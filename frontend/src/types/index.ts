@@ -53,6 +53,11 @@ export interface DetectionResult {
   compliance_categories: string[];
   // 检测结果相关字段
   prob?: number;  // 检测概率分数 (0.0-1.0)
+  // 多模态相关字段
+  has_image?: boolean;
+  image_count?: number;
+  image_paths?: string[];
+  image_urls?: string[];  // 带签名的图片访问URLs
 }
 
 // 分页响应类型

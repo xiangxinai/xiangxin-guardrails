@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Select, DatePicker, Space, Tag, Button, Drawer, Typography, Row, Col, Input, Spin } from 'antd';
-import { EyeOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { Table, Card, Select, DatePicker, Space, Tag, Button, Drawer, Typography, Row, Col, Input, Spin, Image } from 'antd';
+import { EyeOutlined, ReloadOutlined, SearchOutlined, FileImageOutlined, PictureOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { resultsApi } from '../../services/api';
 import type { DetectionResult, PaginatedResponse } from '../../types';
@@ -90,6 +90,10 @@ const Results: React.FC = () => {
     try {
       // 调用详情API获取完整内容
       const fullRecord = await resultsApi.getResult(record.id);
+      console.log('Full record from API:', fullRecord);
+      console.log('has_image:', fullRecord.has_image);
+      console.log('image_count:', fullRecord.image_count);
+      console.log('image_paths:', fullRecord.image_paths);
       setSelectedResult(fullRecord);
     } catch (error) {
       console.error('Failed to fetch full record:', error);
@@ -158,12 +162,16 @@ const Results: React.FC = () => {
       },
       width: 250,
       render: (text: string, record: DetectionResult) => (
-        <span 
-          title={text} 
+        <span
           style={{ cursor: 'pointer', color: '#1890ff' }}
           onClick={() => showDetail(record)}
         >
-          {text}
+          {record.has_image && (
+            <Tag color="blue" icon={<FileImageOutlined />} style={{ marginRight: 8 }}>
+              {record.image_count}张图片
+            </Tag>
+          )}
+          <span title={text}>{text}</span>
         </span>
       ),
     },
@@ -428,7 +436,7 @@ const Results: React.FC = () => {
             
             <div style={{ marginBottom: 16 }}>
               <Text strong>检测内容:</Text>
-              <Paragraph
+              <div
                 style={{
                   marginTop: 8,
                   padding: 12,
@@ -436,10 +444,62 @@ const Results: React.FC = () => {
                   borderRadius: 4,
                 }}
               >
-                {selectedResult.content}
-              </Paragraph>
+                {/* 显示文本内容 */}
+                {selectedResult.content && (
+                  <Paragraph style={{ marginBottom: selectedResult.has_image ? 12 : 0 }}>
+                    {selectedResult.content}
+                  </Paragraph>
+                )}
+
+                {/* 如果有图片，在内容中显示缩略图 */}
+                {selectedResult.has_image && selectedResult.image_urls && selectedResult.image_urls.length > 0 ? (
+                  <div style={{ marginTop: 12 }}>
+                    <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                      检测图片 ({selectedResult.image_count}张):
+                    </Text>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                      {selectedResult.image_urls.map((imageUrl, index) => {
+                        return (
+                          <div
+                            key={index}
+                            style={{
+                              border: '1px solid #d9d9d9',
+                              borderRadius: 4,
+                              padding: 4,
+                              background: '#fafafa'
+                            }}
+                          >
+                            <Image
+                              src={imageUrl}
+                              alt={`检测图片 ${index + 1}`}
+                              style={{
+                                width: 150,
+                                height: 150,
+                                objectFit: 'cover',
+                                borderRadius: 4
+                              }}
+                            />
+                            <Text
+                              type="secondary"
+                              style={{
+                                fontSize: 11,
+                                display: 'block',
+                                marginTop: 4,
+                                textAlign: 'center'
+                              }}
+                            >
+                              图片 {index + 1}
+                            </Text>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 内容长度: {selectedResult.content.length} 字符
+                {selectedResult.has_image && ` | 包含 ${selectedResult.image_count} 张图片`}
               </Text>
             </div>
             

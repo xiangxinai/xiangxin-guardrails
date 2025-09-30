@@ -61,6 +61,10 @@ class DetectionResult(Base):
     # 敏感度相关字段
     sensitivity_level = Column(String(10))  # 敏感度等级: '高', '中', '低'
     sensitivity_score = Column(Float)  # 原始敏感度分数 (0.0-1.0)
+    # 多模态相关字段
+    has_image = Column(Boolean, default=False, index=True)  # 是否包含图片
+    image_count = Column(Integer, default=0)  # 图片数量
+    image_paths = Column(JSON, default=list)  # 保存的图片文件路径列表
 
     # 关联关系
     user = relationship("User", back_populates="detection_results")

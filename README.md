@@ -25,6 +25,7 @@ English | [中文](./README_ZH.md)
 
 - 🪄 **Two Usage Modes** - Detection API + Security Gateway
 - 🛡️ **Dual Protection** - Prompt attack detection + Content compliance detection
+- 🖼️ **Multimodal Detection** - Support for text and image content safety detection 🆕
 - 🧠 **Context Awareness** - Intelligent safety detection based on conversation context
 - 📋 **Compliance Standards** - Compliant with "GB/T45654—2025 Basic Security Requirements for Generative AI Services"
 - 🔧 **Flexible Configuration** - Blacklist/whitelist, response templates, rate limiting and other personalized configurations
@@ -34,11 +35,11 @@ English | [中文](./README_ZH.md)
 - 📊 **Visual Management** - Intuitive web management interface and real-time monitoring
 - ⚡ **High Performance** - Asynchronous processing, supporting high-concurrency access
 - 🔌 **Easy Integration** - Compatible with OpenAI API format, one-line code integration
-- 🎯 **Configurable Sensitivity** - Three-tier sensitivity threshold configuration for automated pipeline scenarios 🆕
+- 🎯 **Configurable Sensitivity** - Three-tier sensitivity threshold configuration for automated pipeline scenarios
 
 ## 🚀 Dual Mode Support
 
-Xiangxin AI Guardrails 2.1 supports two usage modes to meet different scenario requirements:
+Xiangxin AI Guardrails 2.3 supports two usage modes to meet different scenario requirements:
 
 ### 🔍 API Call Mode
 Developers **actively call** detection APIs for safety checks
@@ -394,7 +395,74 @@ User Request → Security Gateway(5002) → Input Safety Detection
 - **Smart Recognition**: Automatic detection of reasoning_content, thinking and other reasoning fields
 - **Transparent Proxy**: Full OpenAI API compatibility, supports all reasoning models
 
-## 🧠 Knowledge Base Responses Feature 🆕
+## 🖼️ Multimodal Detection Feature 🆕
+
+Xiangxin AI Guardrails v2.3.0 introduces **image modality detection**, expanding safety protection from text-only to multimodal content.
+
+### 📸 Key Features
+
+- **Image Content Detection**: AI-powered safety analysis of image content
+- **Unified Risk Standards**: Same risk categories (S1-S12) apply to both text and images
+- **Multiple Input Formats**: Support for base64-encoded images and image URLs
+- **Seamless Integration**: Compatible with both API Call Mode and Security Gateway Mode
+- **OpenAI Vision Compatible**: Supports OpenAI Vision API message format
+
+### 🔄 Usage Examples
+
+#### Python API - Image Detection
+```python
+import base64
+from xiangxinai import XiangxinAI
+
+client = XiangxinAI("your-api-key")
+
+# Encode image to base64
+with open("image.jpg", "rb") as f:
+    image_base64 = base64.b64encode(f.read()).decode("utf-8")
+
+# Check image safety
+response = client.check_messages([
+    {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "Is this image safe?"},
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}
+            }
+        ]
+    }
+])
+
+print(f"Risk Level: {response.overall_risk_level}")
+print(f"Risk Categories: {response.all_categories}")
+```
+
+#### HTTP API - Image Detection
+```bash
+curl -X POST "http://localhost:5001/v1/guardrails" \
+    -H "Authorization: Bearer your-api-key" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "model": "Xiangxin-Guardrails-VL",
+      "messages": [{
+        "role": "user",
+        "content": [
+          {"type": "text", "text": "Is this image safe?"},
+          {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}}
+        ]
+      }]
+    }'
+```
+
+### 🎯 Use Cases
+
+- **Social Media**: Automatically screen user-uploaded images for unsafe content
+- **E-commerce**: Ensure product images comply with platform policies
+- **Education**: Protect minors from inappropriate image content
+- **Content Platforms**: Moderate AI-generated images before publication
+
+## 🧠 Knowledge Base Responses Feature
 
 Xiangxin AI Guardrails v2.2.0 introduces powerful knowledge base response functionality with vector similarity-based intelligent Q&A matching.
 
@@ -1047,13 +1115,15 @@ We provide professional AI safety solutions:
 Xiangxin AI Guardrails will continue to evolve in two directions: **Detection Capabilities** and **Platform Features**, ensuring that large model applications run under safe and compliant conditions.
 
 ### 🔍 Detection Capabilities
+- ✅ **Image Modality Detection** (v2.3.0): AI-powered image content safety analysis
+- **Audio & Video Detection**: Support for audio and video content safety analysis (Coming Soon)
 - **Multimodal Subtle Violation Content Recognition**: Support multimodal inputs including text, images, audio, and video, identifying and intercepting subtle violations or illegal information.
 - **Role-based Privilege Escalation Detection**: Combined with context and user identity, identify and intercept privilege escalation questions or sensitive information requests.
 - **Personal Information & Sensitive Data Detection**: Automatically identify and intercept content involving personal information, business secrets, and other sensitive content to prevent data leaks.
 - **Out-of-business-scope Content Detection**: Identify and intervene in questions/outputs that exceed business scenarios or compliance boundaries.
 
 ### 🛡️ Platform Features
-- **Multimodal Content Recognition Support**: Provide security recognition matching actual application modalities (text, images, audio, video, files).
+- ✅ **Multimodal Content Recognition Support** (v2.3.0): Text and image safety detection available
 - **Sensitive Information Interception & Desensitization**: When sensitive content is detected, it can be directly intercepted or automatically desensitized based on rules before output.
 - **Desensitization Rule Configuration**: Support user-defined desensitization strategies, flexibly adapting to compliance requirements in different scenarios.
 - **Out-of-business-scope Control**: Block or substitute answers for privilege escalation or inappropriate questions, ensuring compliant output.

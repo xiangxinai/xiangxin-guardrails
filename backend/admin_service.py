@@ -16,7 +16,7 @@ from pathlib import Path
 
 from config import settings
 from database.connection import init_db, create_admin_engine
-from routers import dashboard, config_api, results, auth, user, sync, admin, online_test, test_models, risk_config_api, proxy_management, concurrent_stats
+from routers import dashboard, config_api, results, auth, user, sync, admin, online_test, test_models, risk_config_api, proxy_management, concurrent_stats, media
 from services.data_sync_service import data_sync_service
 from utils.logger import setup_logger
 from services.admin_service import admin_service
@@ -324,6 +324,32 @@ app.include_router(test_models.router, prefix="/api/v1", dependencies=[Depends(v
 app.include_router(risk_config_api.router, dependencies=[Depends(verify_user_auth)])
 app.include_router(proxy_management.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
 app.include_router(concurrent_stats.router, dependencies=[Depends(verify_user_auth)])
+# Media router: 图片上传/删除需要认证，但图片访问不需要认证
+# 先注册不需要认证的图片访问路由
+from fastapi import APIRouter
+from fastapi.responses import FileResponse
+from pathlib import Path
+
+public_media_router = APIRouter(tags=["Media"])
+
+@public_media_router.get("/media/image/{user_id}/{filename}")
+async def get_image_public(user_id: str, filename: str):
+    """获取图片文件（公开访问，不需要认证）"""
+    try:
+        file_path = Path(settings.media_dir) / user_id / filename
+        if not str(file_path).startswith(str(Path(settings.media_dir))):
+            raise HTTPException(status_code=403, detail="无权访问此文件")
+        if not file_path.exists() or not file_path.is_file():
+            raise HTTPException(status_code=404, detail="文件不存在")
+        return FileResponse(path=str(file_path), media_type="image/jpeg", filename=filename)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get image error: {e}")
+        raise HTTPException(status_code=500, detail=f"获取图片失败: {str(e)}")
+
+app.include_router(public_media_router, prefix="/api/v1")
+app.include_router(media.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
 
 # 全局异常处理
 @app.exception_handler(Exception)
