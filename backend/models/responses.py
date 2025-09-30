@@ -121,3 +121,33 @@ class ProxyModelListResponse(BaseModel):
     """代理模型列表响应"""
     object: str = "list"
     data: List[Dict[str, Any]]
+
+class KnowledgeBaseResponse(BaseModel):
+    """知识库响应模型"""
+    id: int
+    category: str
+    name: str
+    description: Optional[str]
+    file_path: str
+    vector_file_path: Optional[str]
+    total_qa_pairs: int
+    is_active: bool
+    is_global: bool
+    created_at: datetime
+    updated_at: datetime
+
+class KnowledgeBaseFileInfo(BaseModel):
+    """知识库文件信息"""
+    original_file_exists: bool
+    vector_file_exists: bool
+    original_file_size: int
+    vector_file_size: int
+    total_qa_pairs: int
+
+class SimilarQuestionResult(BaseModel):
+    """相似问题搜索结果"""
+    questionid: str
+    question: str
+    answer: str
+    similarity_score: float
+    rank: int

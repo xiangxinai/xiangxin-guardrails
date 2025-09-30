@@ -149,3 +149,26 @@ class ConfidenceThresholdRequest(BaseModel):
     medium_confidence_threshold: float = Field(..., description="中敏感度阈值", ge=0.0, le=1.0)
     low_confidence_threshold: float = Field(..., description="低敏感度阈值", ge=0.0, le=1.0)
     confidence_trigger_level: str = Field(..., description="触发检测命中的最低敏感度等级", pattern="^(low|medium|high)$")
+
+class KnowledgeBaseRequest(BaseModel):
+    """知识库请求模型"""
+    category: str = Field(..., description="风险类别")
+    name: str = Field(..., description="知识库名称")
+    description: Optional[str] = Field(None, description="描述")
+    is_active: bool = Field(True, description="是否启用")
+    is_global: Optional[bool] = Field(False, description="是否为全局知识库（仅管理员可设置）")
+
+    @validator('category')
+    def validate_category(cls, v):
+        valid_categories = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12']
+        if v not in valid_categories:
+            raise ValueError(f'category must be one of: {valid_categories}')
+        return v
+
+    @validator('name')
+    def validate_name(cls, v):
+        if not v or not v.strip():
+            raise ValueError('name cannot be empty')
+        if len(v.strip()) > 255:
+            raise ValueError('name too long (max 255 characters)')
+        return v.strip()

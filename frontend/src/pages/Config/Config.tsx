@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import BlacklistManagement from './BlacklistManagement';
 import WhitelistManagement from './WhitelistManagement';
 import ResponseTemplateManagement from './ResponseTemplateManagement';
+import KnowledgeBaseManagement from './KnowledgeBaseManagement';
 import RiskTypeManagement from './RiskTypeManagement';
 import ProxyModelManagement from './ProxyModelManagement';
 import SensitivityThresholdManagement from './SensitivityThresholdManagement';
@@ -18,6 +19,7 @@ const Config: React.FC = () => {
     if (path.includes('/blacklist')) return 'blacklist';
     if (path.includes('/whitelist')) return 'whitelist';
     if (path.includes('/responses')) return 'responses';
+    if (path.includes('/knowledge-bases')) return 'knowledge-bases';
     if (path.includes('/risk-types')) return 'risk-types';
     if (path.includes('/sensitivity-thresholds')) return 'sensitivity-thresholds';
     if (path.includes('/proxy-models')) return 'proxy-models';
@@ -52,8 +54,13 @@ const Config: React.FC = () => {
     },
     {
       key: 'responses',
-      label: '代答库管理',
+      label: '拒答答案库',
       children: <ResponseTemplateManagement />,
+    },
+    {
+      key: 'knowledge-bases',
+      label: '代答知识库',
+      children: <KnowledgeBaseManagement />,
     },
     {
       key: 'proxy-models',

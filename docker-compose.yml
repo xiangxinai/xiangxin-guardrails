@@ -51,6 +51,14 @@ services:
       - SUPER_ADMIN_USERNAME=admin@yourdomain.com
       - SUPER_ADMIN_PASSWORD=CHANGE-THIS-PASSWORD-IN-PRODUCTION
       
+      # 嵌入模型API配置
+      - EMBEDDING_API_BASE_URL=http://your-host-ip:your-port/v1
+      - EMBEDDING_API_KEY=your-embedding-api-key
+      - EMBEDDING_MODEL_NAME=Xiangxin-Embedding-1024
+      - EMBEDDING_MODEL_DIMENSION=1024
+      - EMBEDDING_SIMILARITY_THRESHOLD=0.7
+      - EMBEDDING_MAX_RESULTS=5
+
       # SMTP邮件配置
       - SMTP_SERVER=
       - SMTP_PORT=587
@@ -96,16 +104,17 @@ services:
     environment:
       # 数据库配置
       - DATABASE_URL=postgresql://xiangxin:your_password@postgres:5432/xiangxin_guardrails
-      
+
       # 应用配置
       - DEBUG=false
       - JWT_SECRET_KEY=your-secret-key-change-in-production
       - DEPLOYMENT_MODE=local
-      
+
       # 模型API配置（请根据实际情况修改）
-      - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
-      - GUARDRAILS_MODEL_API_KEY=your-model-api-key
-      
+      # - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
+      - GUARDRAILS_MODEL_API_URL=http://your-host-ip:your-port/v1
+      - GUARDRAILS_MODEL_API_KEY=your-guardrails-model-api-key
+
       # 数据目录配置
       - DATA_DIR=/app/data
       - LOG_LEVEL=INFO
@@ -147,16 +156,17 @@ services:
     environment:
       # 数据库配置
       - DATABASE_URL=postgresql://xiangxin:your_password@postgres:5432/xiangxin_guardrails
-      
+
       # 应用配置
       - DEBUG=false
       - JWT_SECRET_KEY=your-secret-key-change-in-production
       - DEPLOYMENT_MODE=local
-      
+
       # 模型API配置（请根据实际情况修改）
-      - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
-      - GUARDRAILS_MODEL_API_KEY=your-model-api-key
-      
+      # - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
+      - GUARDRAILS_MODEL_API_URL=http://your-host-ip:your-port/v1
+      - GUARDRAILS_MODEL_API_KEY=your-guardrails-model-api-key
+
       # 数据目录配置
       - DATA_DIR=/app/data
       - LOG_LEVEL=INFO

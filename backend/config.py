@@ -44,8 +44,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://xiangxin:your_password@localhost:54321/xiangxin_guardrails"
     
     # 模型配置
-    guardrails_model_api_url: str = "http://localhost:58002/v1"
-    guardrails_model_api_key: str = "your-model-api-key"
+    guardrails_model_api_url: str = "http://your-host-ip:your-port/v1"
+    guardrails_model_api_key: str = "your-guardrails-model-api-key"
     guardrails_model_name: str = "Xiangxin-Guardrails-Text"
     
     # 检测最大上下文长度配置 (应该等于模型max-model-len - 1000)
@@ -72,6 +72,15 @@ class Settings(BaseSettings):
     
     # HuggingFace模型
     huggingface_model: str = "xiangxinai/Xiangxin-Guardrails-Text"
+
+    # 嵌入模型API配置
+    # 用于知识库向量化的嵌入模型API
+    embedding_api_base_url: str = "http://your-host-ip:your-port/v1"
+    embedding_api_key: str = "your-embedding-api-key"
+    embedding_model_name: str = "Xiangxin-Embedding-1024"
+    embedding_model_dimension: int = 1024  # 嵌入向量维度
+    embedding_similarity_threshold: float = 0.7  # 相似度阈值
+    embedding_max_results: int = 5  # 最大返回结果数
     
     # JWT配置
     # 警告：请生成安全的随机密钥！使用: openssl rand -base64 64

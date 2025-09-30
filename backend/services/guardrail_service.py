@@ -7,7 +7,7 @@ from database.models import DetectionResult, ResponseTemplate
 from services.model_service import model_service
 from services.keyword_service import KeywordService
 from services.keyword_cache import keyword_cache
-from services.template_cache import template_cache
+from services.enhanced_template_service import enhanced_template_service
 from services.async_logger import async_detection_logger
 from services.risk_config_service import RiskConfigService
 from models.requests import GuardrailRequest, Message
@@ -94,9 +94,9 @@ class GuardrailService:
             # 3. 解析模型响应并应用风险类型过滤
             compliance_result, security_result = self._parse_model_response(model_response, user_id)
             
-            # 4. 确定建议动作和回答（传入 user_id 以按用户选择代答模板）
+            # 4. 确定建议动作和回答（传入 user_id 以按用户选择代答模板，传入用户查询以支持知识库搜索）
             overall_risk_level, suggest_action, suggest_answer = await self._determine_action(
-                compliance_result, security_result, user_id
+                compliance_result, security_result, user_id, user_content
             )
             
             # 5. 异步记录检测结果到日志
@@ -180,10 +180,11 @@ class GuardrailService:
         )
     
     async def _determine_action(
-        self, 
+        self,
         compliance_result: ComplianceResult,
         security_result: SecurityResult,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        user_query: Optional[str] = None
     ) -> Tuple[str, str, Optional[str]]:
         """确定建议动作和回答"""
         
@@ -214,18 +215,18 @@ class GuardrailService:
         if overall_risk_level == "无风险":
             return overall_risk_level, "通过", None
         elif overall_risk_level == "高风险":
-            suggest_answer = await self._get_suggest_answer(risk_categories, user_id)
+            suggest_answer = await self._get_suggest_answer(risk_categories, user_id, user_query)
             return overall_risk_level, "拒答", suggest_answer
         elif overall_risk_level == "中风险":
-            suggest_answer = await self._get_suggest_answer(risk_categories, user_id)
+            suggest_answer = await self._get_suggest_answer(risk_categories, user_id, user_query)
             return overall_risk_level, "代答", suggest_answer
         else:  # 低风险
-            suggest_answer = await self._get_suggest_answer(risk_categories, user_id)
+            suggest_answer = await self._get_suggest_answer(risk_categories, user_id, user_query)
             return overall_risk_level, "代答", suggest_answer
     
-    async def _get_suggest_answer(self, categories: List[str], user_id: Optional[str] = None) -> str:
-        """获取建议回答（使用高性能内存缓存，并按用户隔离）"""
-        return await template_cache.get_suggest_answer(categories, user_id)
+    async def _get_suggest_answer(self, categories: List[str], user_id: Optional[str] = None, user_query: Optional[str] = None) -> str:
+        """获取建议回答（使用增强的模板服务，支持知识库搜索）"""
+        return await enhanced_template_service.get_suggest_answer(categories, user_id, user_query)
     
     async def _handle_blacklist_hit(
         self, request_id: str, content: str, list_name: str, 

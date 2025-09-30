@@ -105,7 +105,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         },
         {
           key: '/config/responses',
-          label: '代答库管理',
+          label: '拒答答案库',
+        },
+        {
+          key: '/config/knowledge-bases',
+          label: '代答知识库',
         },
         {
           key: '/config/proxy-models',

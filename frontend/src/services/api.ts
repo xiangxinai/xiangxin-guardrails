@@ -9,7 +9,10 @@ import type {
   DashboardStats,
   Blacklist,
   Whitelist,
-  ResponseTemplate
+  ResponseTemplate,
+  KnowledgeBase,
+  KnowledgeBaseFileInfo,
+  SimilarQuestionResult
 } from '../types';
 
 // 创建axios实例 - 使用环境变量中的API URL
@@ -348,6 +351,62 @@ export const proxyModelsApi = {
   // 测试代理模型配置
   test: (id: string): Promise<{ success: boolean; message: string; data?: any }> =>
     api.post(`/api/v1/proxy/models/${id}/test`).then(res => res.data),
+};
+
+// 知识库管理API
+export const knowledgeBaseApi = {
+  // 获取知识库列表
+  list: (category?: string): Promise<KnowledgeBase[]> => {
+    const url = category ? `/api/v1/config/knowledge-bases?category=${category}` : '/api/v1/config/knowledge-bases';
+    return api.get(url).then(res => res.data);
+  },
+
+  // 创建知识库
+  create: (data: FormData): Promise<{ success: boolean; message: string }> =>
+    api.post('/api/v1/config/knowledge-bases', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }).then(res => res.data),
+
+  // 更新知识库
+  update: (id: number, data: {
+    category: string;
+    name: string;
+    description?: string;
+    is_active: boolean;
+  }): Promise<{ success: boolean; message: string }> =>
+    api.put(`/api/v1/config/knowledge-bases/${id}`, data).then(res => res.data),
+
+  // 删除知识库
+  delete: (id: number): Promise<{ success: boolean; message: string }> =>
+    api.delete(`/api/v1/config/knowledge-bases/${id}`).then(res => res.data),
+
+  // 替换知识库文件
+  replaceFile: (id: number, file: File): Promise<{ success: boolean; message: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/api/v1/config/knowledge-bases/${id}/replace-file`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }).then(res => res.data);
+  },
+
+  // 获取知识库文件信息
+  getInfo: (id: number): Promise<KnowledgeBaseFileInfo> =>
+    api.get(`/api/v1/config/knowledge-bases/${id}/info`).then(res => res.data),
+
+  // 搜索相似问题
+  search: (id: number, query: string, topK?: number): Promise<SimilarQuestionResult[]> => {
+    const params = new URLSearchParams({ query });
+    if (topK) params.append('top_k', topK.toString());
+    return api.post(`/api/v1/config/knowledge-bases/${id}/search?${params.toString()}`).then(res => res.data);
+  },
+
+  // 按类别获取知识库
+  getByCategory: (category: string): Promise<KnowledgeBase[]> =>
+    api.get(`/api/v1/config/categories/${category}/knowledge-bases`).then(res => res.data),
 };
 
 // 便捷函数

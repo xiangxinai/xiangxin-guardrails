@@ -287,6 +287,26 @@ class ProxyRequestLog(Base):
     user = relationship("User")
     proxy_config = relationship("ProxyModelConfig")
 
+class KnowledgeBase(Base):
+    """代答知识库表"""
+    __tablename__ = "knowledge_bases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    category = Column(String(50), nullable=False, index=True)  # 风险类别 (S1-S12)
+    name = Column(String(255), nullable=False)  # 知识库名称
+    description = Column(Text)  # 描述
+    file_path = Column(String(512), nullable=False)  # 原始JSONL文件路径
+    vector_file_path = Column(String(512))  # 向量化文件路径
+    total_qa_pairs = Column(Integer, default=0)  # 问答对总数
+    is_active = Column(Boolean, default=True, index=True)  # 是否启用
+    is_global = Column(Boolean, default=False, index=True)  # 是否为全局知识库（所有用户生效），仅管理员可设置
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # 关联关系
+    user = relationship("User")
+
 class OnlineTestModelSelection(Base):
     """在线测试模型选择表 - 记录用户在在线测试中选择的代理模型"""
     __tablename__ = "online_test_model_selections"

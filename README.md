@@ -28,6 +28,7 @@ English | [中文](./README_ZH.md)
 - 🧠 **Context Awareness** - Intelligent safety detection based on conversation context
 - 📋 **Compliance Standards** - Compliant with "GB/T45654—2025 Basic Security Requirements for Generative AI Services"
 - 🔧 **Flexible Configuration** - Blacklist/whitelist, response templates, rate limiting and other personalized configurations
+- 🧠 **Knowledge Base Responses** - Vector similarity-based intelligent Q&A matching with custom knowledge bases 🆕
 - 🏢 **Private Deployment** - Support for complete local deployment, controllable data security
 - 🔌 **Customer System Integration** - Deep integration with existing customer user systems, API-level configuration management
 - 📊 **Visual Management** - Intuitive web management interface and real-time monitoring
@@ -392,6 +393,57 @@ User Request → Security Gateway(5002) → Input Safety Detection
 - **Always On**: Triple detection of input, output, and reasoning content, always enabled
 - **Smart Recognition**: Automatic detection of reasoning_content, thinking and other reasoning fields
 - **Transparent Proxy**: Full OpenAI API compatibility, supports all reasoning models
+
+## 🧠 Knowledge Base Responses Feature 🆕
+
+Xiangxin AI Guardrails v2.2.0 introduces powerful knowledge base response functionality with vector similarity-based intelligent Q&A matching.
+
+### 📚 Key Features
+
+- **Intelligent Matching**: Vector similarity search for most relevant questions using embeddings
+- **Automatic Responses**: Priority responses from knowledge base when risks are detected
+- **Flexible Management**: Web interface for uploading, editing, and deleting knowledge bases
+- **Tiered Permissions**: Support for user-level and global knowledge bases, admin-configurable global knowledge bases
+- **File Format**: Support for JSONL format Q&A pair file uploads
+
+### 🔄 Workflow
+
+```
+User Input → Security Detection → [Risk Detected] → Search Knowledge Base → Similar Question Found?
+                                        ↓
+                                      Yes → Return Knowledge Base Answer
+                                        ↓
+                                      No → Return Traditional Rejection Template
+```
+
+### 📝 Knowledge Base File Format
+
+```jsonl
+{"questionid": "q1", "question": "What is artificial intelligence?", "answer": "Artificial intelligence is technology that simulates human intelligence, including machine learning and deep learning branches."}
+{"questionid": "q2", "question": "How to protect data privacy?", "answer": "Data privacy protection requires multiple technical measures including encryption, access control, and data anonymization."}
+{"questionid": "q3", "question": "What are the uses of blockchain?", "answer": "Blockchain technology can be used in digital currency, supply chain management, identity authentication and many other fields."}
+```
+
+### 🔧 Embedding Service Configuration
+
+The knowledge base response feature requires embedding model service support. 
+
+```bash
+# Start embedding service using vLLM
+vllm serve --port your-port --host your-host-ip --task embed path/to/Qwen/Qwen3-Embedding-0.6B --served-model-name Xiangxin-Embedding-1024
+
+# Then configure in your settings
+EMBEDDING_API_BASE_URL=http://your-host-ip:your-port/v1
+EMBEDDING_API_KEY=EMPTY
+EMBEDDING_MODEL_NAME=Xiangxin-Embedding-1024
+```
+
+### 🎯 Use Cases
+
+- **Customer Service**: Upload FAQ answers for automatic standard responses
+- **Policy Interpretation**: Configure policy-related Q&A for authoritative explanations
+- **Technical Support**: Build technical issue knowledge base for quick user consultation responses
+- **Compliance Responses**: Provide compliant standard answers for sensitive topics
 
 ## 🚀 Quick Start
 

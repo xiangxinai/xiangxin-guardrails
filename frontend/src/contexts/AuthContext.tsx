@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { authService, UserInfo } from '../services/auth';
 import { adminApi } from '../services/api';
 
@@ -133,7 +133,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const onUserSwitch = (callback: () => void) => {
+  const onUserSwitch = useCallback((callback: () => void) => {
     setSwitchCallbacks(prev => new Set(prev).add(callback));
     // 返回取消监听的函数
     return () => {
@@ -143,7 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return newSet;
       });
     };
-  };
+  }, []);
 
   const value = {
     user,

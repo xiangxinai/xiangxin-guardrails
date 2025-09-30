@@ -410,8 +410,8 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host=settings.host,
-        port=settings.port,
+        port=settings.admin_port,
         reload=settings.debug,
         log_level=settings.log_level.lower(),
-        workers=settings.uvicorn_workers if not settings.debug else 1
+        workers=settings.admin_uvicorn_workers if not settings.debug else 1
     )

@@ -10,6 +10,47 @@ All notable changes to Xiangxin AI Guardrails platform are documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-01-15
+
+### 🚀 重大更新 Major Updates
+- 🧠 **代答知识库功能** 
+  - 全新的智能代答系统，基于向量相似度搜索
+  - 支持上传问答对文件，自动构建知识库向量索引
+  - 风险检测时优先匹配知识库中的相似问题，返回对应答案
+  - 支持全局知识库和用户级知识库，管理员可配置全局生效的知识库
+  
+### 新增 Added
+- 📚 **代答知识库管理**
+  - Web界面支持知识库创建、编辑、删除
+  - JSONL格式问答对文件上传和验证
+  - 向量索引自动生成和管理
+  - 知识库搜索测试功能
+  - 支持文件替换和重新索引
+
+- 🎯 **智能代答策略**
+  - 风险检测触发时，优先搜索知识库相似问题
+  - 基于余弦相似度的问题匹配算法
+  - 可配置相似度阈值和返回结果数量
+  - 未找到相似问题时，回退到传统拒答模板
+
+### 新增配置 New Configuration
+- `EMBEDDING_API_BASE_URL` - Embedding API服务地址
+- `EMBEDDING_API_KEY` - Embedding API密钥
+- `EMBEDDING_MODEL_NAME` - Embedding模型名称
+- `EMBEDDING_MODEL_DIMENSION` - 向量维度配置
+- `EMBEDDING_SIMILARITY_THRESHOLD` - 相似度阈值
+- `EMBEDDING_MAX_RESULTS` - 最大返回结果数
+
+
+#### 知识库文件格式
+```jsonl
+{"questionid": "q1", "question": "什么是人工智能？", "answer": "人工智能是模拟人类智能的技术。"}
+{"questionid": "q2", "question": "如何使用机器学习？", "answer": "机器学习是AI的一个重要分支..."}
+```
+
+## [2.1.0] - 2025-09-29
+增加敏感度阈值配置功能，应对特殊场景和全自动流水线。
+
 ## [2.0.0] - 2025-01-01
 
 ### 🚀 重大更新 Major Updates

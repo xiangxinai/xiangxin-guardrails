@@ -177,7 +177,7 @@ class DetectionGuardrailService:
             
             # 4. 确定建议动作和回答
             overall_risk_level, suggest_action, suggest_answer = await self._determine_action(
-                compliance_result, security_result, user_id
+                compliance_result, security_result, user_id, user_content
             )
             
             # 5. 异步记录检测结果到日志文件（不写数据库）
@@ -346,7 +346,7 @@ class DetectionGuardrailService:
         else:
             return "无风险"
     
-    async def _determine_action(self, compliance_result: ComplianceResult, security_result: SecurityResult, user_id: Optional[str] = None) -> Tuple[str, str, Optional[str]]:
+    async def _determine_action(self, compliance_result: ComplianceResult, security_result: SecurityResult, user_id: Optional[str] = None, user_query: Optional[str] = None) -> Tuple[str, str, Optional[str]]:
         """确定建议动作"""
         overall_risk_level = "无风险"
         risk_categories = []
@@ -363,18 +363,19 @@ class DetectionGuardrailService:
         if overall_risk_level == "无风险":
             return overall_risk_level, "通过", None
         elif overall_risk_level == "高风险":
-            suggest_answer = await self._get_suggest_answer(risk_categories, user_id)
+            suggest_answer = await self._get_suggest_answer(risk_categories, user_id, user_query)
             return overall_risk_level, "拒答", suggest_answer
         elif overall_risk_level == "中风险":
-            suggest_answer = await self._get_suggest_answer(risk_categories, user_id)
+            suggest_answer = await self._get_suggest_answer(risk_categories, user_id, user_query)
             return overall_risk_level, "代答", suggest_answer
         else:  # 低风险
-            suggest_answer = await self._get_suggest_answer(risk_categories, user_id)
+            suggest_answer = await self._get_suggest_answer(risk_categories, user_id, user_query)
             return overall_risk_level, "代答", suggest_answer
     
-    async def _get_suggest_answer(self, categories: List[str], user_id: Optional[str] = None) -> str:
-        """获取建议回答"""
-        return await template_cache.get_suggest_answer(categories, user_id)
+    async def _get_suggest_answer(self, categories: List[str], user_id: Optional[str] = None, user_query: Optional[str] = None) -> str:
+        """获取建议回答（使用增强的模板服务，支持知识库搜索）"""
+        from services.enhanced_template_service import enhanced_template_service
+        return await enhanced_template_service.get_suggest_answer(categories, user_id, user_query)
 
     async def _calculate_sensitivity_level(self, sensitivity_score: float, user_id: Optional[str] = None) -> str:
         """根据敏感度分数和用户配置计算敏感度等级"""

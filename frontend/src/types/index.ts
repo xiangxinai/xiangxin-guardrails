@@ -122,3 +122,34 @@ export interface DailyTrend {
   low_risk: number;
   safe: number;
 }
+
+// 知识库相关类型
+export interface KnowledgeBase {
+  id: number;
+  category: string;
+  name: string;
+  description?: string;
+  file_path: string;
+  vector_file_path?: string;
+  total_qa_pairs: number;
+  is_active: boolean;
+  is_global: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeBaseFileInfo {
+  original_file_exists: boolean;
+  vector_file_exists: boolean;
+  original_file_size: number;
+  vector_file_size: number;
+  total_qa_pairs: number;
+}
+
+export interface SimilarQuestionResult {
+  questionid: string;
+  question: string;
+  answer: string;
+  similarity_score: number;
+  rank: number;
+}
