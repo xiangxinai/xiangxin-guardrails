@@ -233,25 +233,20 @@ const OnlineTest: React.FC = () => {
       let response;
 
       if (hasImages) {
-        // 有图片：直接调用护栏API，使用VL模型
-        const guardrailRequest = {
-          model: "Xiangxin-Guardrails-VL",
-          messages: [{ role: 'user', content }]
+        // 有图片：通过在线测试API调用护栏检测，使用VL模型
+        const requestData = {
+          content: testInput,
+          input_type: inputType,
+          images: uploadedImages // 添加图片数据
         };
 
-        response = await api.post('/v1/guardrails', guardrailRequest);
+        response = await api.post('/api/v1/test/online', requestData);
 
-        // 格式化为在线测试结果格式
+        // 使用统一的在线测试结果格式
         setTestResult({
-          guardrail: {
-            compliance: response.data.result.compliance,
-            security: response.data.result.security,
-            overall_risk_level: response.data.overall_risk_level,
-            suggest_action: response.data.suggest_action,
-            suggest_answer: response.data.suggest_answer
-          },
-          models: {},
-          original_responses: {}
+          guardrail: response.data.guardrail,
+          models: response.data.models || {},
+          original_responses: response.data.original_responses || {}
         });
       } else {
         // 纯文本：使用原有的在线测试API

@@ -35,6 +35,7 @@ class OnlineTestRequest(BaseModel):
     content: str
     input_type: str  # 'question' or 'qa_pair'
     models: Optional[List[ModelIdRequest]] = []
+    images: Optional[List[str]] = []  # base64编码的图片数据列表
 
 class ModelResponse(BaseModel):
     content: Optional[str] = None
@@ -220,7 +221,23 @@ async def online_test(
         # 构造消息格式
         messages = []
         if request_data.input_type == 'question':
-            messages = [{"role": "user", "content": request_data.content}]
+            # 检查是否有图片数据
+            if request_data.images and len(request_data.images) > 0:
+                # 多模态消息格式
+                content = []
+                # 添加文本内容（如果有）
+                if request_data.content.strip():
+                    content.append({"type": "text", "text": request_data.content})
+                # 添加图片内容
+                for image_base64 in request_data.images:
+                    content.append({
+                        "type": "image_url",
+                        "image_url": {"url": image_base64}
+                    })
+                messages = [{"role": "user", "content": content}]
+            else:
+                # 纯文本消息格式
+                messages = [{"role": "user", "content": request_data.content}]
         else:  # qa_pair
             # 解析问答对
             lines = request_data.content.split('\n')
@@ -264,7 +281,8 @@ async def online_test(
             raise HTTPException(status_code=400, detail="用户API key未找到")
         
         # 使用用户API key调用护栏API
-        guardrail_dict = await call_guardrail_api(user_api_key, messages, user_uuid, db)
+        has_images = request_data.images and len(request_data.images) > 0
+        guardrail_dict = await call_guardrail_api(user_api_key, messages, user_uuid, db, has_images)
         
         # 如果是问题类型，获取用户选择的代理模型进行测试
         model_results = {}
@@ -377,11 +395,14 @@ async def online_test(
         else:
             raise HTTPException(status_code=500, detail=f"测试执行失败: {str(e)}")
 
-async def call_guardrail_api(api_key: str, messages: List[Dict[str, str]], user_uuid: uuid.UUID, db: Session) -> Dict[str, Any]:
+async def call_guardrail_api(api_key: str, messages: List[Dict[str, Any]], user_uuid: uuid.UUID, db: Session, has_images: bool = False) -> Dict[str, Any]:
     """调用护栏API"""
     try:
         # 构建护栏API的URL - 根据配置自动适配环境
         guardrail_url = f"http://{settings.detection_host}:{settings.detection_port}/v1/guardrails"
+        
+        # 根据是否有图片选择合适的模型
+        model_name = "Xiangxin-Guardrails-VL" if has_images else "Xiangxin-Guardrails-Text"
         
         async with httpx.AsyncClient(timeout=180.0) as client:  # 增加护栏API超时到3分钟
             response = await client.post(
@@ -391,7 +412,7 @@ async def call_guardrail_api(api_key: str, messages: List[Dict[str, str]], user_
                     "Authorization": f"Bearer {api_key}"
                 },
                 json={
-                    "model": "Xiangxin-Guardrails-Text",
+                    "model": model_name,
                     "messages": messages
                 }
             )
@@ -479,7 +500,7 @@ async def call_guardrail_api(api_key: str, messages: List[Dict[str, str]], user_
             "suggest_answer": f"护栏检测系统出现错误: {str(e)}"
         }
 
-async def test_model_api(model: ModelConfig, messages: List[Dict[str, str]]) -> ModelResponse:
+async def test_model_api(model: ModelConfig, messages: List[Dict[str, Any]]) -> ModelResponse:
     """使用OpenAI SDK测试单个模型API"""
     try:
         # 创建OpenAI客户端，使用更长的超时时间以支持代理模型
