@@ -12,10 +12,16 @@ class SecurityResult(BaseModel):
     risk_level: str
     categories: List[str]
 
+class DataSecurityResult(BaseModel):
+    """数据安全检测结果"""
+    risk_level: str
+    categories: List[str]
+
 class GuardrailResult(BaseModel):
     """护栏检测结果"""
     compliance: ComplianceResult
     security: SecurityResult
+    data: DataSecurityResult
 
 class GuardrailResponse(BaseModel):
     """护栏API响应模型"""
@@ -24,7 +30,7 @@ class GuardrailResponse(BaseModel):
     overall_risk_level: str  # 综合风险等级：无风险/低风险/中风险/高风险
     suggest_action: str  # 通过，拒答，代答
     suggest_answer: Optional[str] = None
-    prob: Optional[float] = None  # 检测概率分数 (0.0-1.0)
+    score: Optional[float] = None  # 检测概率分数 (0.0-1.0)
 
 class DetectionResultResponse(BaseModel):
     """检测结果响应模型"""
@@ -41,8 +47,11 @@ class DetectionResultResponse(BaseModel):
     security_categories: List[str] = []
     compliance_risk_level: str = "无风险"
     compliance_categories: List[str] = []
+    # 数据安全检测结果
+    data_risk_level: str = "无风险"
+    data_categories: List[str] = []
     # 检测结果相关字段
-    prob: Optional[float] = None  # 检测概率分数 (0.0-1.0)
+    score: Optional[float] = None  # 检测概率分数 (0.0-1.0)
     # 多模态相关字段
     has_image: bool = False
     image_count: int = 0
@@ -92,6 +101,7 @@ class DashboardStats(BaseModel):
     total_requests: int
     security_risks: int
     compliance_risks: int
+    data_leaks: int
     high_risk_count: int
     medium_risk_count: int
     low_risk_count: int
@@ -156,3 +166,19 @@ class SimilarQuestionResult(BaseModel):
     answer: str
     similarity_score: float
     rank: int
+
+class DataSecurityEntityTypeResponse(BaseModel):
+    """数据安全实体类型响应模型"""
+    id: str
+    entity_type: str
+    display_name: str
+    risk_level: str  # 低、中、高
+    pattern: str
+    anonymization_method: str
+    anonymization_config: Dict[str, Any]
+    check_input: bool
+    check_output: bool
+    is_active: bool
+    is_global: bool
+    created_at: datetime
+    updated_at: datetime

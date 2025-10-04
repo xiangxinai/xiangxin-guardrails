@@ -428,6 +428,10 @@ async def call_guardrail_api(api_key: str, messages: List[Dict[str, Any]], user_
                         "risk_level": result.get('result', {}).get('security', {}).get('risk_level', '无风险'),
                         "categories": result.get('result', {}).get('security', {}).get('categories', [])
                     },
+                    "data": {
+                        "risk_level": result.get('result', {}).get('data', {}).get('risk_level', '无风险'),
+                        "categories": result.get('result', {}).get('data', {}).get('categories', [])
+                    },
                     "overall_risk_level": result.get('overall_risk_level', '无风险'),
                     "suggest_action": result.get('suggest_action', '通过'),
                     "suggest_answer": result.get('suggest_answer', '')
@@ -492,8 +496,12 @@ async def call_guardrail_api(api_key: str, messages: List[Dict[str, Any]], user_
                 "categories": ["系统错误"]
             },
             "security": {
-                "risk_level": "检测失败", 
+                "risk_level": "检测失败",
                 "categories": ["系统错误"]
+            },
+            "data": {
+                "risk_level": "无风险",
+                "categories": []
             },
             "overall_risk_level": "检测失败",
             "suggest_action": "系统错误",

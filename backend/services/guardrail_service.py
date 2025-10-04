@@ -10,8 +10,9 @@ from services.keyword_cache import keyword_cache
 from services.enhanced_template_service import enhanced_template_service
 from services.async_logger import async_detection_logger
 from services.risk_config_service import RiskConfigService
+from services.data_security_service import DataSecurityService
 from models.requests import GuardrailRequest, Message
-from models.responses import GuardrailResponse, GuardrailResult, ComplianceResult, SecurityResult
+from models.responses import GuardrailResponse, GuardrailResult, ComplianceResult, SecurityResult, DataSecurityResult
 from utils.logger import setup_logger
 
 logger = setup_logger()
@@ -120,13 +121,29 @@ class GuardrailService:
             # 根据是否有图片选择模型
             use_vl_model = has_image
             model_response = await model_service.check_messages(messages_dict, use_vl_model=use_vl_model)
-            
+
             # 3. 解析模型响应并应用风险类型过滤
             compliance_result, security_result = self._parse_model_response(model_response, user_id)
-            
+
+            # 3.5. 数据防泄漏检测（检测输入内容）
+            data_security_service = DataSecurityService(self.db)
+            logger.info(f"Starting data leak detection for user {user_id}")
+            data_detection_result = await data_security_service.detect_sensitive_data(
+                text=user_content,
+                user_id=user_id,
+                direction='input'  # 检测输入
+            )
+            logger.info(f"Data leak detection result: {data_detection_result}")
+
+            # 构造数据安全结果
+            data_result = DataSecurityResult(
+                risk_level=data_detection_result.get('risk_level', '无风险'),
+                categories=data_detection_result.get('categories', [])
+            )
+
             # 4. 确定建议动作和回答（传入 user_id 以按用户选择代答模板，传入用户查询以支持知识库搜索）
             overall_risk_level, suggest_action, suggest_answer = await self._determine_action(
-                compliance_result, security_result, user_id, user_content
+                compliance_result, security_result, user_id, user_content, data_result
             )
             
             # 5. 异步记录检测结果到日志
@@ -140,9 +157,10 @@ class GuardrailService:
             # 6. 构造响应
             result = GuardrailResult(
                 compliance=compliance_result,
-                security=security_result
+                security=security_result,
+                data=data_result
             )
-            
+
             return GuardrailResponse(
                 id=request_id,
                 result=result,
@@ -242,10 +260,11 @@ class GuardrailService:
         compliance_result: ComplianceResult,
         security_result: SecurityResult,
         user_id: Optional[str] = None,
-        user_query: Optional[str] = None
+        user_query: Optional[str] = None,
+        data_result: Optional[DataSecurityResult] = None
     ) -> Tuple[str, str, Optional[str]]:
         """确定建议动作和回答"""
-        
+
         # 定义风险等级优先级（数值越高优先级越高）
         risk_priority = {
             "无风险": 0,
@@ -253,21 +272,24 @@ class GuardrailService:
             "中风险": 2,
             "高风险": 3
         }
-        
-        # 获取最高风险等级
+
+        # 获取最高风险等级（包括数据防泄漏）
         compliance_priority = risk_priority.get(compliance_result.risk_level, 0)
         security_priority = risk_priority.get(security_result.risk_level, 0)
-        
+        data_priority = risk_priority.get(data_result.risk_level, 0) if data_result else 0
+
         # 取最高优先级对应的风险等级
-        max_priority = max(compliance_priority, security_priority)
+        max_priority = max(compliance_priority, security_priority, data_priority)
         overall_risk_level = next(level for level, priority in risk_priority.items() if priority == max_priority)
-        
+
         # 收集所有风险类别
         risk_categories = []
         if compliance_result.risk_level != "无风险":
             risk_categories.extend(compliance_result.categories)
         if security_result.risk_level != "无风险":
             risk_categories.extend(security_result.categories)
+        if data_result and data_result.risk_level != "无风险":
+            risk_categories.extend(data_result.categories)
         
         # 根据综合风险等级确定动作
         if overall_risk_level == "无风险":

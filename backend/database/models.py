@@ -58,6 +58,9 @@ class DetectionResult(Base):
     security_categories = Column(JSON, default=list)  # 提示词攻击类别
     compliance_risk_level = Column(String(10), default='无风险')  # 内容合规风险等级
     compliance_categories = Column(JSON, default=list)  # 内容合规类别
+    # 数据安全检测结果
+    data_risk_level = Column(String(10), default='无风险')  # 数据泄漏风险等级
+    data_categories = Column(JSON, default=list)  # 数据泄漏类别
     # 敏感度相关字段
     sensitivity_level = Column(String(10))  # 敏感度等级: '高', '中', '低'
     sensitivity_score = Column(Float)  # 原始敏感度分数 (0.0-1.0)
@@ -331,3 +334,24 @@ class OnlineTestModelSelection(Base):
     __table_args__ = (
         UniqueConstraint('user_id', 'proxy_model_id', name='_user_proxy_model_selection_uc'),
     )
+
+class DataSecurityEntityType(Base):
+    """数据安全实体类型配置表"""
+    __tablename__ = "data_security_entity_types"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    entity_type = Column(String(100), nullable=False, index=True)  # 实体类型代码，如 ID_CARD_NUMBER
+    display_name = Column(String(200), nullable=False)  # 显示名称，如 "身份证号"
+    category = Column(String(50), nullable=False, index=True)  # 风险等级: 低、中、高
+    recognition_method = Column(String(20), nullable=False)  # 识别方法: regex
+    recognition_config = Column(JSON, nullable=False)  # 识别配置，如 {"pattern": "...", "check_input": true, "check_output": true}
+    anonymization_method = Column(String(20), default='replace')  # 脱敏方法: replace, mask, hash, encrypt, shuffle, random
+    anonymization_config = Column(JSON)  # 脱敏配置，如 {"replacement": "<ID_CARD>"}
+    is_active = Column(Boolean, default=True, index=True)  # 是否启用
+    is_global = Column(Boolean, default=False, index=True)  # 是否为全局配置
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # 关联关系
+    user = relationship("User")

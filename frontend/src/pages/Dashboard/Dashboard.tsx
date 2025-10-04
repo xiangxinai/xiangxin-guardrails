@@ -6,6 +6,7 @@ import {
   CheckCircleOutlined,
   WarningOutlined,
   FileProtectOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import { dashboardApi } from '../../services/api';
@@ -190,6 +191,21 @@ const Dashboard: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
+              title="发现数据泄漏"
+              value={stats.data_leaks}
+              prefix={<LockOutlined />}
+              valueStyle={{ color: '#eb2f96' }}
+              suffix="次"
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 风险类型分布 */}
+      <Row gutter={16} style={{ marginBottom: 24 }}>
+        <Col span={8}>
+          <Card>
+            <Statistic
               title="总风险检出"
               value={stats.high_risk_count + stats.medium_risk_count + stats.low_risk_count}
               prefix={<ExclamationCircleOutlined />}
@@ -198,44 +214,7 @@ const Dashboard: React.FC = () => {
             />
           </Card>
         </Col>
-      </Row>
-
-      {/* 风险等级分布 */}
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="高风险检出"
-              value={stats.high_risk_count}
-              prefix={<ExclamationCircleOutlined />}
-              valueStyle={{ color: '#ff4d4f' }}
-              suffix="次"
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="中风险检出"
-              value={stats.medium_risk_count}
-              prefix={<WarningOutlined />}
-              valueStyle={{ color: '#faad14' }}
-              suffix="次"
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="低风险检出"
-              value={stats.low_risk_count}
-              prefix={<WarningOutlined />}
-              valueStyle={{ color: '#fadb14' }}
-              suffix="次"
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
+        <Col span={8}>
           <Card>
             <Statistic
               title="安全通过"
@@ -246,7 +225,19 @@ const Dashboard: React.FC = () => {
             />
           </Card>
         </Col>
+        <Col span={8}>
+          <Card>
+            <Statistic
+              title="拦截率"
+              value={stats.total_requests > 0 ? ((stats.high_risk_count + stats.medium_risk_count + stats.low_risk_count) / stats.total_requests * 100).toFixed(1) : 0}
+              prefix={<WarningOutlined />}
+              valueStyle={{ color: '#1890ff' }}
+              suffix="%"
+            />
+          </Card>
+        </Col>
       </Row>
+
 
       {/* 图表 */}
       <Row gutter={16}>

@@ -10,6 +10,141 @@ All notable changes to Xiangxin AI Guardrails platform are documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2025-10-04
+
+### 🚀 重大更新 Major Updates
+- 🔐 **敏感数据防泄漏功能 (Data Leak Detection)**
+  - 新增基于正则表达式的敏感数据检测和脱敏功能
+  - 支持检测身份证号、手机号、邮箱、银行卡号、护照号、IP地址等敏感信息
+  - 提供多种脱敏方法：替换、掩码、哈希、加密、重排、随机替换
+  - 支持自定义敏感数据类型和正则表达式规则
+  - 区分输入和输出检测，灵活配置检测范围
+  - 支持系统级和用户级配置
+
+### 新增 Added
+- 🔐 **数据安全检测**
+  - 新增数据防泄漏配置管理页面
+  - 支持自定义敏感数据类型定义（名称、正则表达式、风险等级）
+  - 三级风险等级：低风险、中风险、高风险
+  - 六种脱敏方法：替换(replace)、掩码(mask)、哈希(hash)、加密(encrypt)、重排(shuffle)、随机替换(random)
+  - 输入/输出方向检测配置
+  - 内置常见敏感数据类型：ID_CARD_NUMBER、PHONE_NUMBER、EMAIL、BANK_CARD_NUMBER、PASSPORT_NUMBER、IP_ADDRESS等
+
+- 📊 **检测结果增强**
+  - 检测结果新增 `data` 字段，包含数据安全检测结果
+  - 响应格式：`result.data.risk_level` 和 `result.data.categories`
+  - 总览页面新增"发现数据泄漏"统计
+  - 在线测试页面新增数据泄漏测试样例
+  - 检测结果列表新增"数据泄漏"列
+  - 风险报表新增数据泄漏统计
+
+- 🗄️ **数据库变更**
+  - 新增 `data_security_patterns` 表：存储敏感数据模式定义
+  - 新增 `data_security_config` 表：存储数据防泄漏配置
+  - `detection_results` 表新增 `data_risk_level` 和 `data_categories` 字段
+  - 新增数据库迁移脚本：
+    - `backend/database/migrations/add_data_security_tables.sql`
+    - `backend/database/migrations/add_data_security_fields.sql`
+
+- 🔧 **新增文件**
+  - `backend/routers/data_security.py` - 数据安全路由
+  - `backend/services/data_security_service.py` - 数据安全检测服务
+  - `frontend/src/pages/DataSecurity/` - 数据防泄漏配置页面
+  - `DATA_SECURITY_README.md` - 数据防泄漏功能文档
+
+### 变更 Changed
+- 🔄 **API响应格式更新**
+  - 检测结果统一包含三个维度：`compliance`、`security`、`data`
+  - 增强的响应格式示例：
+    ```json
+    {
+      "result": {
+        "compliance": {"risk_level": "无风险", "categories": []},
+        "security": {"risk_level": "无风险", "categories": []},
+        "data": {"risk_level": "高风险", "categories": ["PHONE_NUMBER", "ID_CARD_NUMBER"]}
+      },
+      "suggest_answer": "我的电话是<PHONE_NUMBER>，身份证是<ID_CARD_NUMBER>"
+    }
+    ```
+
+- 📱 **前端更新**
+  - 总览页面重构，新增数据泄漏风险卡片
+  - 在线测试页面新增数据泄漏样例
+  - 检测结果页面新增数据泄漏筛选和展示
+  - 风险报表页面新增数据泄漏统计图表
+  - 防护配置新增数据防泄漏子菜单
+
+- 🔧 **后端服务增强**
+  - 检测流程整合数据安全检测
+  - 支持输入和输出两个方向的数据检测
+  - 多风险类型综合决策：以最高风险等级决定最终建议行动
+  - 脱敏结果通过 `suggest_answer` 返回
+
+### 修复 Fixed
+- 🐛 **数据库连接池优化**
+  - 修复高并发场景下数据库连接池泄漏问题
+  - 优化连接池配置参数
+
+- 🔧 **正则表达式边界问题**
+  - 修复中文文本中正则表达式边界匹配问题
+  - 优化中文字符的边界检测逻辑
+
+### SDK 更新 SDK Updates
+- 📦 **所有SDK更新以支持新响应格式**
+  - Python SDK (xiangxinai)
+  - Go SDK (xiangxinai-go)
+  - Node.js SDK (xiangxinai)
+  - Java SDK (xiangxinai-java)
+
+### 使用示例 Usage Examples
+
+#### 配置敏感数据类型
+```python
+# 通过API配置敏感数据类型
+import requests
+
+response = requests.post(
+    "http://localhost:5000/api/v1/data-security/patterns",
+    headers={"Authorization": "Bearer your-api-key"},
+    json={
+        "name": "ID_CARD_NUMBER",
+        "pattern": r"\b[1-8]{2}[0-9]{4}[0-9]{4}((0[1-9])|(1[0-2]))((0[1-9])|(1[0-9])|(2[0-9])|(3[0-1]))[0-9]{3}[0-9xX]\b",
+        "risk_level": "高",
+        "masking_method": "replace"
+    }
+)
+```
+
+#### 检测响应示例
+```json
+{
+    "id": "guardrails-6048ed54e2bb482d894d6cb8c3842153",
+    "overall_risk_level": "高风险",
+    "suggest_action": "代答",
+    "suggest_answer": "我的电话号码是<PHONE_NUMBER>,银行卡号是<BANK_CARD_NUMBER>,身份证号是<ID_CARD_NUMBER>",
+    "score": 0.999998927117538,
+    "result": {
+        "compliance": {"risk_level": "无风险", "categories": []},
+        "security": {"risk_level": "无风险", "categories": []},
+        "data": {"risk_level": "高风险", "categories": ["BANK_CARD_NUMBER", "ID_CARD_NUMBER", "PHONE_NUMBER"]}
+    }
+}
+```
+
+### 技术特性 Technical Features
+- **检测方向配置**：支持仅输入检测、仅输出检测、或双向检测
+- **自定义规则**：用户可完全自定义敏感数据检测规则
+- **性能优化**：正则匹配优化，支持高并发检测
+- **隔离存储**：用户级配置完全隔离
+
+### 文档更新 Documentation Updates
+- 更新 README.md 添加数据防泄漏功能说明
+- 更新 README_ZH.md 添加数据防泄漏中文文档
+- 新增 DATA_SECURITY_README.md 详细功能文档
+- 更新 API 文档说明新的响应格式
+
+---
+
 ## [2.3.0] - 2025-09-30
 
 ### 🚀 重大更新 Major Updates

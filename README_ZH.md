@@ -17,15 +17,15 @@
 
 > 🚀 **企业级AI安全防护平台** - 为AI应用提供全方位的安全防护
 
-象信AI安全护栏是北京象信智能科技有限公司开源的免费可商用的AI安全防护解决方案。支持检测API和安全网关两种使用模式，基于先进的大语言模型，提供提示词攻击检测、内容合规检测等功能，支持完全私有化部署，为AI应用构建坚实的安全防线。
+象信AI安全护栏是北京象信智能科技有限公司开源的免费可商用的AI安全防护解决方案。支持检测API和安全网关两种使用模式，基于先进的大语言模型，提供提示词攻击检测、内容合规检测、敏感数据防泄漏等功能，支持完全私有化部署，为AI应用构建坚实的安全防线。
 
 [English](./README.md) | 中文
 
 ## ✨ 核心特性
 
 - 🪄 **两种使用模式** - 检测API + 安全网关
-- 🛡️ **双重防护** - 提示词攻击检测 + 内容合规检测
-- 🖼️ **多模态检测** - 支持文本和图片内容安全检测 🆕
+- 🛡️ **三重防护** - 提示词攻击检测 + 内容合规检测 + 敏感数据防泄漏 🆕
+- 🖼️ **多模态检测** - 支持文本和图片内容安全检测
 - 🧠 **上下文感知** - 基于对话上下文的智能安全检测
 - 📋 **合规标准** - 符合《GB/T45654—2025 生成式人工智能服务安全基本要求》
 - 🔧 **灵活配置** - 黑白名单、代答库、限速等个性化配置
@@ -183,6 +183,7 @@ async function checkConversation() {
         console.log(`所有风险类别: ${response.all_categories}`);
         console.log(`合规检测结果: ${response.result.compliance.risk_level}`);
         console.log(`安全检测结果: ${response.result.security.risk_level}`);
+        console.log(`数据防泄漏检测结果: ${response.result.data.risk_level}`);
     } catch (error) {
         console.error('检测失败:', error.message);
     }
@@ -233,6 +234,7 @@ public class GuardrailsExample {
             System.out.println("所有风险类别: " + conversationResponse.getAllCategories());
             System.out.println("合规检测结果: " + conversationResponse.getResult().getCompliance().getRiskLevel());
             System.out.println("安全检测结果: " + conversationResponse.getResult().getSecurity().getRiskLevel());
+            System.out.println("数据防泄漏检测结果: " + conversationResponse.getResult().getData().getRiskLevel());
             
         } catch (Exception e) {
             System.err.println("检测失败: " + e.getMessage());
@@ -287,6 +289,7 @@ func main() {
     fmt.Printf("所有风险类别: %v\n", conversationResponse.AllCategories)
     fmt.Printf("合规检测结果: %s\n", conversationResponse.Result.Compliance.RiskLevel)
     fmt.Printf("安全检测结果: %s\n", conversationResponse.Result.Security.RiskLevel)
+    fmt.Printf("数据防泄漏检测结果: %s\n", conversationResponse.Result.Data.RiskLevel)
 }
 ```
 
@@ -315,14 +318,17 @@ curl -X POST "https://api.xiangxinai.cn/v1/guardrails" \
         },
         "security": {
             "risk_level": "无风险",
-            "categories": [
-
-            ]
+            "categories": []
+        },
+        "data": {
+            "risk_level": "无风险",
+            "categories": []
         }
     },
     "overall_risk_level": "中风险",
     "suggest_action": "代答",
-    "suggest_answer": "很抱歉，我不能提供涉及违法犯罪的信息。"
+    "suggest_answer": "很抱歉，我不能提供涉及违法犯罪的信息。",
+    "score": 0.95
 }
 ```
 
@@ -968,9 +974,86 @@ def chat_with_openai(prompt, model="Xiangxin-Guardrails-Text"):
         logprobs=True,
     )
 
-    prob = math.exp(completion.choices[0].logprobs.content[0].logprob)
-    print("Probability:", prob)
+    score = math.exp(completion.choices[0].logprobs.content[0].logprob)
+    print("Score:", score)
 ```
+
+这个功能使得不同操作场景可以灵活管理风险，从严格的自动化流水线到全面的安全监控。
+
+## 🔐 敏感数据防泄漏 🆕
+
+象信AI安全护栏v2.4.0新增**敏感数据防泄漏**功能，检测和防止个人/企业敏感数据在使用大模型时的泄露风险。
+
+### 🎯 核心特性
+
+- **基于正则表达式的模式匹配**：灵活检测各类敏感数据类型
+- **自定义数据类型**：支持用户自定义敏感数据模式
+- **三级风险等级**：低、中、高风险分类
+- **可配置检测方向**：输入/输出检测控制
+- **多种脱敏方法**：
+  - **替换(Replace)**：替换为占位符标记（如：`<PHONE_NUMBER>`）
+  - **掩码(Mask)**：部分掩码显示（如：`139****5678`）
+  - **哈希(Hash)**：SHA256哈希加密
+  - **加密(Encrypt)**：加密处理
+  - **重排(Shuffle)**：字符重排
+  - **随机替换(Random)**：随机字符替换
+
+### 📋 内置敏感数据类型
+
+- **ID_CARD_NUMBER**：身份证号
+- **PHONE_NUMBER**：手机号
+- **EMAIL**：邮箱地址
+- **BANK_CARD_NUMBER**：银行卡号
+- **PASSPORT_NUMBER**：护照号
+- **IP_ADDRESS**：IP地址
+- **CREDIT_CARD**：信用卡号
+- **SSN**：社会保障号
+
+### 🔄 检测方向
+
+#### 输入数据防泄漏
+防止用户提供的敏感数据泄漏给大模型。
+- **企业内部部署**：保护企业内部数据不泄漏给外部大模型
+- **公共服务**：保护用户数据不被服务提供商获取
+
+#### 输出数据防泄漏
+防止模型泄漏敏感数据给用户。
+- **企业内部部署**：防止企业内部数据泄漏给企业内部用户
+- **公共服务**：保护组织机构敏感数据不泄漏给外部用户
+
+### 💻 包含数据检测的响应格式
+
+```json
+{
+    "id": "guardrails-6048ed54e2bb482d894d6cb8c3842153",
+    "overall_risk_level": "高风险",
+    "suggest_action": "代答",
+    "suggest_answer": "我的电话号码是<PHONE_NUMBER>,银行卡号是<BANK_CARD_NUMBER>,身份证号是<ID_CARD_NUMBER>",
+    "score": 0.999998927117538,
+    "result": {
+        "compliance": {
+            "risk_level": "无风险",
+            "categories": []
+        },
+        "security": {
+            "risk_level": "无风险",
+            "categories": []
+        },
+        "data": {
+            "risk_level": "高风险",
+            "categories": ["BANK_CARD_NUMBER", "ID_CARD_NUMBER", "PHONE_NUMBER"]
+        }
+    }
+}
+```
+
+### ⚙️ 配置管理
+
+用户可以通过数据防泄漏配置页面管理敏感数据定义：
+- 使用正则表达式定义自定义模式
+- 设置风险等级（低/中/高）
+- 配置脱敏方法
+- 启用/禁用输入和输出检测
 
 这个功能使得不同操作场景可以灵活管理风险，从严格的自动化流水线到全面的安全监控。
 
@@ -1341,16 +1424,16 @@ git push origin feature/amazing-feature
 
 ### 🔍 检测能力
 - ✅ **图片模态检测** (v2.3.0)：AI智能分析图片内容的安全性
+- ✅ **敏感数据防泄漏** (v2.4.0)：基于正则表达式的敏感数据检测和脱敏
 - **音频视频检测**：支持音频和视频内容安全分析（即将推出）
 - **多模态隐晦违规内容识别**：支持文本、图像、音频、视频等多模态输入，识别并拦截隐蔽的违规或违法信息。
 - **基于用户角色的越权检测**：结合上下文与用户身份，识别并拦截越权提问或敏感信息请求。
-- **个人信息与敏感数据检测**：自动识别、拦截涉及个人信息、商业秘密等敏感内容，防止数据泄露。
 - **超业务范围内容检测**：对超出业务场景或合规边界的提问/输出进行识别和干预。
 
 ### 🛡️ 平台功能
 - ✅ **多模态内容识别支持** (v2.3.0)：文本和图片安全检测已上线
-- **敏感信息拦截与脱敏**：在检测到敏感内容时，可直接拦截或基于规则进行自动脱敏后输出。
-- **脱敏规则配置**：支持用户自定义脱敏策略，灵活适配不同场景的合规需求。
+- ✅ **敏感信息拦截与脱敏** (v2.4.0)：使用多种脱敏方法检测和掩码敏感数据
+- ✅ **脱敏规则配置** (v2.4.0)：用户自定义脱敏策略，支持正则表达式模式和风险等级配置
 - **超业务范围管控**：对越权或不当提问进行拒答或代答，确保输出合规。
 - **可配置的代答知识库**：支持可配置、可扩展、可持续更新的标准代答知识库，保障应答一致性和可控性。  
 

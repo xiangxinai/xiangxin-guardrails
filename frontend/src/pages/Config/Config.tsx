@@ -9,6 +9,7 @@ import KnowledgeBaseManagement from './KnowledgeBaseManagement';
 import RiskTypeManagement from './RiskTypeManagement';
 import ProxyModelManagement from './ProxyModelManagement';
 import SensitivityThresholdManagement from './SensitivityThresholdManagement';
+import DataSecurity from '../DataSecurity';
 
 const Config: React.FC = () => {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ const Config: React.FC = () => {
     if (path.includes('/risk-types')) return 'risk-types';
     if (path.includes('/sensitivity-thresholds')) return 'sensitivity-thresholds';
     if (path.includes('/proxy-models')) return 'proxy-models';
+    if (path.includes('/data-security')) return 'data-security';
     return 'risk-types';
   };
 
@@ -41,6 +43,11 @@ const Config: React.FC = () => {
       key: 'sensitivity-thresholds',
       label: '敏感度阈值管理',
       children: <SensitivityThresholdManagement />,
+    },
+    {
+      key: 'data-security',
+      label: '敏感数据防泄漏',
+      children: <DataSecurity />,
     },
     {
       key: 'blacklist',

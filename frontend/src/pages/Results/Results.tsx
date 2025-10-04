@@ -225,10 +225,30 @@ const Results: React.FC = () => {
         const riskLevel = record.compliance_risk_level || '无风险';
         const categories = record.compliance_categories || [];
         const displayText = formatRiskDisplay(riskLevel, categories);
-        
+
         return (
-          <Tag 
-            color={getRiskLevelColor(riskLevel)} 
+          <Tag
+            color={getRiskLevelColor(riskLevel)}
+            style={{ fontSize: '12px' }}
+            title={categories.join(', ')}
+          >
+            {displayText}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: '数据泄漏',
+      key: 'data_leak',
+      width: 150,
+      render: (_: any, record: DetectionResult) => {
+        const riskLevel = record.data_risk_level || '无风险';
+        const categories = record.data_categories || [];
+        const displayText = formatRiskDisplay(riskLevel, categories);
+
+        return (
+          <Tag
+            color={getRiskLevelColor(riskLevel)}
             style={{ fontSize: '12px' }}
             title={categories.join(', ')}
           >
@@ -413,7 +433,18 @@ const Results: React.FC = () => {
                 </Tag>
               </Col>
             </Row>
-            
+
+            <Row gutter={16} style={{ marginBottom: 16 }}>
+              <Col span={8}>
+                <Text strong>数据泄漏:</Text>
+              </Col>
+              <Col span={16}>
+                <Tag color={getRiskLevelColor(selectedResult.data_risk_level || '无风险')}>
+                  {formatRiskDisplay(selectedResult.data_risk_level || '无风险', selectedResult.data_categories || [])}
+                </Tag>
+              </Col>
+            </Row>
+
             <Row gutter={16} style={{ marginBottom: 16 }}>
               <Col span={8}>
                 <Text strong>建议动作:</Text>
@@ -519,8 +550,9 @@ const Results: React.FC = () => {
               </div>
             )}
             
-            {((selectedResult.security_categories && selectedResult.security_categories.length > 0) || 
-              (selectedResult.compliance_categories && selectedResult.compliance_categories.length > 0)) && (
+            {((selectedResult.security_categories && selectedResult.security_categories.length > 0) ||
+              (selectedResult.compliance_categories && selectedResult.compliance_categories.length > 0) ||
+              (selectedResult.data_categories && selectedResult.data_categories.length > 0)) && (
               <div style={{ marginBottom: 16 }}>
                 <Text strong>风险详情:</Text>
                 <div style={{ marginTop: 8 }}>
@@ -535,10 +567,20 @@ const Results: React.FC = () => {
                     </div>
                   )}
                   {selectedResult.compliance_categories && selectedResult.compliance_categories.length > 0 && (
-                    <div>
+                    <div style={{ marginBottom: 8 }}>
                       <Text strong style={{ fontSize: '12px' }}>内容合规: </Text>
                       {selectedResult.compliance_categories.map((category, index) => (
                         <Tag key={`compliance-${index}`} color="orange" style={{ marginBottom: 4 }}>
+                          {category}
+                        </Tag>
+                      ))}
+                    </div>
+                  )}
+                  {selectedResult.data_categories && selectedResult.data_categories.length > 0 && (
+                    <div>
+                      <Text strong style={{ fontSize: '12px' }}>数据泄漏: </Text>
+                      {selectedResult.data_categories.map((category, index) => (
+                        <Tag key={`data-${index}`} color="magenta" style={{ marginBottom: 4 }}>
                           {category}
                         </Tag>
                       ))}

@@ -10,9 +10,10 @@ from services.template_cache import template_cache
 from services.async_logger import async_detection_logger
 from services.risk_config_cache import risk_config_cache
 from models.requests import GuardrailRequest, Message
-from models.responses import GuardrailResponse, GuardrailResult, ComplianceResult, SecurityResult
+from models.responses import GuardrailResponse, GuardrailResult, ComplianceResult, SecurityResult, DataSecurityResult
 from utils.logger import setup_logger
 from utils.message_truncator import MessageTruncator
+from database.connection import get_db_session
 
 logger = setup_logger()
 
@@ -166,7 +167,10 @@ class DetectionGuardrailService:
                     ip_address, user_agent, user_id
                 )
             
-            # 2. 模型检测（使用截断后的消息，获取敏感度）
+            # 2. 数据安全检测（检测输入）
+            data_result = await self._check_data_security(user_content, user_id, direction="input")
+
+            # 3. 模型检测（使用截断后的消息，获取敏感度）
             # 转换消息为字典格式，支持多模态
             from utils.image_utils import image_utils
 
@@ -202,28 +206,29 @@ class DetectionGuardrailService:
             # 根据是否包含图片选择检测模型
             model_response, sensitivity_score = await model_service.check_messages_with_sensitivity(messages_dict, use_vl_model=has_image)
 
-            # 3. 解析模型响应并应用风险类型过滤和敏感度阈值
+            # 4. 解析模型响应并应用风险类型过滤和敏感度阈值
             compliance_result, security_result, sensitivity_level = await self._parse_model_response_with_sensitivity(
                 model_response, sensitivity_score, user_id, model_sensitivity_trigger_level
             )
-            
-            # 4. 确定建议动作和回答
-            overall_risk_level, suggest_action, suggest_answer = await self._determine_action(
-                compliance_result, security_result, user_id, user_content
+
+            # 5. 确定建议动作和回答（包含数据安全结果）
+            overall_risk_level, suggest_action, suggest_answer = await self._determine_action_with_data(
+                compliance_result, security_result, data_result, user_id, user_content
             )
             
-            # 5. 异步记录检测结果到日志文件（不写数据库）
+            # 6. 异步记录检测结果到日志文件（不写数据库）
             await self._log_detection_result(
-                request_id, user_content, compliance_result, security_result,
+                request_id, user_content, compliance_result, security_result, data_result,
                 suggest_action, suggest_answer, model_response,
                 ip_address, user_agent, user_id, sensitivity_level, sensitivity_score,
                 has_image=has_image, image_count=len(saved_image_paths), image_paths=saved_image_paths
             )
 
-            # 6. 构造响应
+            # 7. 构造响应
             result = GuardrailResult(
                 compliance=compliance_result,
-                security=security_result
+                security=security_result,
+                data=data_result
             )
 
             return GuardrailResponse(
@@ -232,7 +237,7 @@ class DetectionGuardrailService:
                 overall_risk_level=overall_risk_level,
                 suggest_action=suggest_action,
                 suggest_answer=suggest_answer,
-                prob=sensitivity_score,
+                score=sensitivity_score,
             )
             
         except Exception as e:
@@ -381,18 +386,47 @@ class DetectionGuardrailService:
             sensitivity_level
         )
     
+    async def _check_data_security(self, text: str, user_id: Optional[str], direction: str = "input") -> DataSecurityResult:
+        """检测数据安全"""
+        logger.info(f"_check_data_security called for user {user_id}, direction {direction}")
+        if not user_id:
+            logger.info("No user_id, returning safe")
+            return DataSecurityResult(risk_level="无风险", categories=[])
+
+        try:
+            # 获取数据库session
+            db = get_db_session()
+            try:
+                from services.data_security_service import DataSecurityService
+                service = DataSecurityService(db)
+
+                # 执行数据安全检测
+                logger.info(f"Calling detect_sensitive_data for text: {text[:50]}...")
+                result = await service.detect_sensitive_data(text, user_id, direction)
+                logger.info(f"Data security detection result: {result}")
+
+                return DataSecurityResult(
+                    risk_level=result['risk_level'],
+                    categories=result['categories']
+                )
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"Data security check error: {e}", exc_info=True)
+            return DataSecurityResult(risk_level="无风险", categories=[])
+
     def _get_highest_risk_level(self, categories: List[str]) -> str:
         """获取最高风险等级"""
         if not categories:
             return "无风险"
-        
+
         risk_levels = []
         for category in categories:
             for code, name in CATEGORY_NAMES.items():
                 if name == category:
                     risk_levels.append(RISK_LEVEL_MAPPING[code])
                     break
-        
+
         if "高风险" in risk_levels:
             return "高风险"
         elif "中风险" in risk_levels:
@@ -401,7 +435,63 @@ class DetectionGuardrailService:
             return "低风险"
         else:
             return "无风险"
-    
+
+    async def _determine_action_with_data(
+        self,
+        compliance_result: ComplianceResult,
+        security_result: SecurityResult,
+        data_result: DataSecurityResult,
+        user_id: Optional[str] = None,
+        user_query: Optional[str] = None
+    ) -> Tuple[str, str, Optional[str]]:
+        """确定建议动作（包含数据安全检测结果）"""
+        # 收集所有风险等级和类别
+        risk_levels = [compliance_result.risk_level, security_result.risk_level, data_result.risk_level]
+        all_categories = []
+
+        if compliance_result.risk_level != "无风险":
+            all_categories.extend(compliance_result.categories)
+        if security_result.risk_level != "无风险":
+            all_categories.extend(security_result.categories)
+        if data_result.risk_level != "无风险":
+            all_categories.extend(data_result.categories)
+
+        # 确定最高风险等级
+        overall_risk_level = "无风险"
+        for level in ["高风险", "中风险", "低风险"]:
+            if level in risk_levels:
+                overall_risk_level = level
+                break
+
+        # 确定建议动作
+        if overall_risk_level == "无风险":
+            return overall_risk_level, "通过", None
+
+        # 如果有数据泄漏，获取脱敏后的文本作为建议回答
+        suggest_answer = None
+        if data_result.risk_level != "无风险" and user_query:
+            try:
+                db = get_db_session()
+                try:
+                    from services.data_security_service import DataSecurityService
+                    service = DataSecurityService(db)
+                    detection_result = await service.detect_sensitive_data(user_query, user_id, "input")
+                    suggest_answer = detection_result.get('anonymized_text', user_query)
+                finally:
+                    db.close()
+            except Exception as e:
+                logger.error(f"Error getting anonymized text: {e}")
+
+        # 如果没有数据泄漏脱敏文本，使用传统的模板回答
+        if not suggest_answer:
+            suggest_answer = await self._get_suggest_answer(all_categories, user_id, user_query)
+
+        # 根据风险等级确定动作
+        if overall_risk_level == "高风险":
+            return overall_risk_level, "拒答", suggest_answer
+        else:  # 中风险或低风险
+            return overall_risk_level, "代答", suggest_answer
+
     async def _determine_action(self, compliance_result: ComplianceResult, security_result: SecurityResult, user_id: Optional[str] = None, user_query: Optional[str] = None) -> Tuple[str, str, Optional[str]]:
         """确定建议动作"""
         overall_risk_level = "无风险"
@@ -503,12 +593,12 @@ class DetectionGuardrailService:
             return sensitivity_score >= 0.60
     
     async def _handle_blacklist_hit(
-        self, request_id: str, content: str, list_name: str, 
+        self, request_id: str, content: str, list_name: str,
         keywords: List[str], ip_address: Optional[str], user_agent: Optional[str],
         user_id: Optional[str] = None
     ) -> GuardrailResponse:
         """处理黑名单命中"""
-        
+
         detection_data = {
             "request_id": request_id,
             "user_id": user_id,
@@ -523,28 +613,31 @@ class DetectionGuardrailService:
             "security_categories": [],
             "compliance_risk_level": "高风险",
             "compliance_categories": [list_name],
+            "data_risk_level": "无风险",
+            "data_categories": [],
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await async_detection_logger.log_detection(detection_data)
-        
+
         return GuardrailResponse(
             id=request_id,
             result=GuardrailResult(
                 compliance=ComplianceResult(risk_level="高风险", categories=[list_name]),
-                security=SecurityResult(risk_level="无风险", categories=[])
+                security=SecurityResult(risk_level="无风险", categories=[]),
+                data=DataSecurityResult(risk_level="无风险", categories=[])
             ),
             overall_risk_level="高风险",
             suggest_action="拒答",
             suggest_answer=f"很抱歉，我不能提供涉及{list_name}的内容。"
         )
-    
+
     async def _handle_whitelist_hit(
         self, request_id: str, content: str, list_name: str,
         keywords: List[str], ip_address: Optional[str], user_agent: Optional[str],
         user_id: Optional[str] = None
     ) -> GuardrailResponse:
         """处理白名单命中"""
-        
+
         detection_data = {
             "request_id": request_id,
             "user_id": user_id,
@@ -559,15 +652,18 @@ class DetectionGuardrailService:
             "security_categories": [],
             "compliance_risk_level": "无风险",
             "compliance_categories": [],
+            "data_risk_level": "无风险",
+            "data_categories": [],
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await async_detection_logger.log_detection(detection_data)
-        
+
         return GuardrailResponse(
             id=request_id,
             result=GuardrailResult(
                 compliance=ComplianceResult(risk_level="无风险", categories=[]),
-                security=SecurityResult(risk_level="无风险", categories=[])
+                security=SecurityResult(risk_level="无风险", categories=[]),
+                data=DataSecurityResult(risk_level="无风险", categories=[])
             ),
             overall_risk_level="无风险",
             suggest_action="通过",
@@ -576,7 +672,8 @@ class DetectionGuardrailService:
     
     async def _log_detection_result(
         self, request_id: str, content: str, compliance_result: ComplianceResult,
-        security_result: SecurityResult, suggest_action: str, suggest_answer: Optional[str],
+        security_result: SecurityResult, data_result: DataSecurityResult,
+        suggest_action: str, suggest_answer: Optional[str],
         model_response: str, ip_address: Optional[str], user_agent: Optional[str],
         user_id: Optional[str] = None, sensitivity_level: Optional[str] = None,
         sensitivity_score: Optional[float] = None, has_image: bool = False,
@@ -600,6 +697,8 @@ class DetectionGuardrailService:
             "security_categories": security_result.categories,
             "compliance_risk_level": compliance_result.risk_level,
             "compliance_categories": compliance_result.categories,
+            "data_risk_level": data_result.risk_level,
+            "data_categories": data_result.categories,
             "sensitivity_level": sensitivity_level,
             "sensitivity_score": sensitivity_score,
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -612,7 +711,7 @@ class DetectionGuardrailService:
     
     async def _handle_error(self, request_id: str, content: str, error: str, user_id: Optional[str] = None) -> GuardrailResponse:
         """处理错误情况"""
-        
+
         detection_data = {
             "request_id": request_id,
             "user_id": user_id,
@@ -624,18 +723,21 @@ class DetectionGuardrailService:
             "security_categories": [],
             "compliance_risk_level": "无风险",
             "compliance_categories": [],
+            "data_risk_level": "无风险",
+            "data_categories": [],
             "created_at": datetime.now(timezone.utc).isoformat(),
             "hit_keywords": None,
             "ip_address": None,
             "user_agent": None
         }
         await async_detection_logger.log_detection(detection_data)
-        
+
         return GuardrailResponse(
             id=request_id,
             result=GuardrailResult(
                 compliance=ComplianceResult(risk_level="无风险", categories=[]),
-                security=SecurityResult(risk_level="无风险", categories=[])
+                security=SecurityResult(risk_level="无风险", categories=[]),
+                data=DataSecurityResult(risk_level="无风险", categories=[])
             ),
             overall_risk_level="无风险",
             suggest_action="通过",

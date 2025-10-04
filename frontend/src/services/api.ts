@@ -409,6 +409,33 @@ export const knowledgeBaseApi = {
     api.get(`/api/v1/config/categories/${category}/knowledge-bases`).then(res => res.data),
 };
 
+// 数据安全API
+export const dataSecurityApi = {
+  // 获取所有敏感数据类型
+  getEntityTypes: (): Promise<{ items: any[] }> =>
+    api.get('/api/v1/config/data-security/entity-types').then(res => res.data),
+
+  // 获取单个敏感数据类型
+  getEntityType: (id: string): Promise<any> =>
+    api.get(`/api/v1/config/data-security/entity-types/${id}`).then(res => res.data),
+
+  // 创建敏感数据类型
+  createEntityType: (data: any): Promise<any> =>
+    api.post('/api/v1/config/data-security/entity-types', data).then(res => res.data),
+
+  // 更新敏感数据类型
+  updateEntityType: (id: string, data: any): Promise<any> =>
+    api.put(`/api/v1/config/data-security/entity-types/${id}`, data).then(res => res.data),
+
+  // 删除敏感数据类型
+  deleteEntityType: (id: string): Promise<any> =>
+    api.delete(`/api/v1/config/data-security/entity-types/${id}`).then(res => res.data),
+
+  // 创建全局敏感数据类型（仅管理员）
+  createGlobalEntityType: (data: any): Promise<any> =>
+    api.post('/api/v1/config/data-security/global-entity-types', data).then(res => res.data),
+};
+
 // 便捷函数
 export const getRiskConfig = () => riskConfigApi.get();
 export const updateRiskConfig = (config: any) => riskConfigApi.update(config);

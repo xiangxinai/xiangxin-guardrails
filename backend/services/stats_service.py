@@ -40,11 +40,17 @@ class StatsService:
             compliance_risks = base_query.filter(
                 DetectionResult.compliance_risk_level != "无风险"
             ).count()
-            
+
+            # 数据泄漏风险数（data_risk_level非无风险）
+            data_leaks = base_query.filter(
+                DetectionResult.data_risk_level != "无风险"
+            ).count()
+
             # 综合统计各风险等级（取最高风险等级）
             results_query = self.db.query(
                 DetectionResult.security_risk_level,
-                DetectionResult.compliance_risk_level
+                DetectionResult.compliance_risk_level,
+                DetectionResult.data_risk_level
             )
             if user_id is not None:
                 try:
@@ -58,11 +64,11 @@ class StatsService:
             medium_risk_count = 0
             low_risk_count = 0
             safe_count = 0
-            
-            for sec_risk, comp_risk in results:
-                # 取两个风险等级中的最高值
-                overall_risk = self._get_highest_risk_level(sec_risk, comp_risk)
-                
+
+            for sec_risk, comp_risk, data_risk in results:
+                # 取三个风险等级中的最高值
+                overall_risk = self._get_highest_risk_level(sec_risk, comp_risk, data_risk)
+
                 if overall_risk == "高风险":
                     high_risk_count += 1
                 elif overall_risk == "中风险":
@@ -87,6 +93,7 @@ class StatsService:
                 "total_requests": total_requests,
                 "security_risks": security_risks,
                 "compliance_risks": compliance_risks,
+                "data_leaks": data_leaks,
                 "high_risk_count": high_risk_count,
                 "medium_risk_count": medium_risk_count,
                 "low_risk_count": low_risk_count,
@@ -99,23 +106,24 @@ class StatsService:
             logger.error(f"Get dashboard stats error: {e}")
             return self._get_empty_stats()
     
-    def _get_highest_risk_level(self, security_risk: str, compliance_risk: str) -> str:
-        """获取两个风险等级中的最高级别"""
+    def _get_highest_risk_level(self, security_risk: str, compliance_risk: str, data_risk: str = "无风险") -> str:
+        """获取三个风险等级中的最高级别"""
         risk_priority = {
             "高风险": 4,
             "中风险": 3,
             "低风险": 2,
             "无风险": 1
         }
-        
+
         sec_priority = risk_priority.get(security_risk, 1)
         comp_priority = risk_priority.get(compliance_risk, 1)
-        
-        max_priority = max(sec_priority, comp_priority)
+        data_priority = risk_priority.get(data_risk, 1)
+
+        max_priority = max(sec_priority, comp_priority, data_priority)
         for risk, priority in risk_priority.items():
             if priority == max_priority:
                 return risk
-        
+
         return "无风险"
     
     def _get_daily_trends(self, days: int, user_id: str = None) -> List[Dict[str, Any]]:
@@ -128,7 +136,8 @@ class StatsService:
             query = self.db.query(
                 func.date(DetectionResult.created_at).label('date'),
                 DetectionResult.security_risk_level,
-                DetectionResult.compliance_risk_level
+                DetectionResult.compliance_risk_level,
+                DetectionResult.data_risk_level
             ).filter(
                 func.date(DetectionResult.created_at) >= start_date
             )
@@ -158,7 +167,7 @@ class StatsService:
                     }
                 
                 # 取最高风险等级
-                overall_risk = self._get_highest_risk_level(record.security_risk_level, record.compliance_risk_level)
+                overall_risk = self._get_highest_risk_level(record.security_risk_level, record.compliance_risk_level, record.data_risk_level)
                 daily_data[date_str]['total'] += 1
                 
                 if overall_risk == '高风险':
@@ -280,6 +289,7 @@ class StatsService:
             "total_requests": 0,
             "security_risks": 0,
             "compliance_risks": 0,
+            "data_leaks": 0,
             "high_risk_count": 0,
             "medium_risk_count": 0,
             "low_risk_count": 0,

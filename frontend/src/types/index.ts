@@ -29,11 +29,15 @@ export interface GuardrailResponse {
       risk_level: string;
       categories: string[];
     };
+    data: {
+      risk_level: string;
+      categories: string[];
+    };
   };
   overall_risk_level: string;
   suggest_action: string;
   suggest_answer?: string;
-  prob?: number;  // 检测概率分数 (0.0-1.0)
+  score?: number;  // 检测概率分数 (0.0-1.0)
 }
 
 // 检测结果类型
@@ -51,8 +55,11 @@ export interface DetectionResult {
   security_categories: string[];
   compliance_risk_level: string;
   compliance_categories: string[];
+  // 数据安全检测结果
+  data_risk_level: string;
+  data_categories: string[];
   // 检测结果相关字段
-  prob?: number;  // 检测概率分数 (0.0-1.0)
+  score?: number;  // 检测概率分数 (0.0-1.0)
   // 多模态相关字段
   has_image?: boolean;
   image_count?: number;
@@ -106,6 +113,7 @@ export interface DashboardStats {
   total_requests: number;
   security_risks: number;
   compliance_risks: number;
+  data_leaks: number;
   high_risk_count: number;
   medium_risk_count: number;
   low_risk_count: number;
@@ -157,4 +165,21 @@ export interface SimilarQuestionResult {
   answer: string;
   similarity_score: number;
   rank: number;
+}
+
+// 数据安全相关类型
+export interface DataSecurityEntityType {
+  id: string;
+  entity_type: string;
+  display_name: string;
+  risk_level: string;  // 低、中、高
+  pattern: string;
+  anonymization_method: string;
+  anonymization_config: Record<string, any>;
+  check_input: boolean;
+  check_output: boolean;
+  is_active: boolean;
+  is_global: boolean;
+  created_at: string;
+  updated_at: string;
 }

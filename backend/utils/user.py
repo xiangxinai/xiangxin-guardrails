@@ -62,7 +62,7 @@ def verify_user_email(db: Session, email: str, verification_code: str) -> bool:
     if user:
         user.is_active = True
         user.is_verified = True
-        
+
         # 为新用户创建默认代答模板
         try:
             from services.template_service import create_user_default_templates
@@ -71,7 +71,16 @@ def verify_user_email(db: Session, email: str, verification_code: str) -> bool:
         except Exception as e:
             print(f"为用户 {user.email} 创建默认代答模板失败: {e}")
             # 不影响用户激活过程，只是记录错误
-    
+
+        # 为新用户创建默认实体类型配置
+        try:
+            from services.data_security_service import create_user_default_entity_types
+            entity_count = create_user_default_entity_types(db, str(user.id))
+            print(f"为用户 {user.email} 创建了 {entity_count} 个默认实体类型配置")
+        except Exception as e:
+            print(f"为用户 {user.email} 创建默认实体类型配置失败: {e}")
+            # 不影响用户激活过程，只是记录错误
+
     db.commit()
     return True
 

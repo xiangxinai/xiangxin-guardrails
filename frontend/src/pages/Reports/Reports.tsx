@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Spin, Alert, DatePicker } from 'antd';
+import { Card, Row, Col, Spin, Alert, DatePicker, Statistic } from 'antd';
+import { SafetyOutlined, LockOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import dayjs from 'dayjs';
 import { dashboardApi } from '../../services/api';
@@ -165,7 +166,46 @@ const Reports: React.FC = () => {
           placeholder={['开始日期', '结束日期']}
         />
       </div>
-      
+
+      {/* 风险统计卡片 */}
+      {stats && (
+        <Row gutter={16} style={{ marginBottom: 24 }}>
+          <Col span={8}>
+            <Card>
+              <Statistic
+                title="发现安全风险"
+                value={stats.security_risks}
+                prefix={<SafetyOutlined />}
+                valueStyle={{ color: '#fa8c16' }}
+                suffix="次"
+              />
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card>
+              <Statistic
+                title="发现合规风险"
+                value={stats.compliance_risks}
+                prefix={<SafetyOutlined />}
+                valueStyle={{ color: '#722ed1' }}
+                suffix="次"
+              />
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card>
+              <Statistic
+                title="发现数据泄漏"
+                value={stats.data_leaks}
+                prefix={<LockOutlined />}
+                valueStyle={{ color: '#eb2f96' }}
+                suffix="次"
+              />
+            </Card>
+          </Col>
+        </Row>
+      )}
+
       <Row gutter={16}>
         <Col span={12}>
           <Card title="风险类别分布">

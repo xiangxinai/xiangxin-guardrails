@@ -17,15 +17,15 @@
 
 > 🚀 **Enterprise-grade AI Safety Guardrails Platform** - Comprehensive security protection for AI applications
 
-Xiangxin AI Guardrails is an open-source and free-for-commercial-use AI security solution by Beijing Xiangxin Intelligent Technology Co., Ltd. Built on advanced large language models, it provides prompt attack detection, content compliance detection, and supports complete on-premise deployment to build robust security defenses for AI applications.
+Xiangxin AI Guardrails is an open-source and free-for-commercial-use AI security solution by Beijing Xiangxin Intelligent Technology Co., Ltd. Built on advanced large language models, it provides prompt attack detection, content compliance detection, data leak detection, and supports complete on-premise deployment to build robust security defenses for AI applications.
 
 English | [中文](./README_ZH.md)
 
 ## ✨ Core Features
 
 - 🪄 **Two Usage Modes** - Detection API + Security Gateway
-- 🛡️ **Dual Protection** - Prompt attack detection + Content compliance detection
-- 🖼️ **Multimodal Detection** - Support for text and image content safety detection 🆕
+- 🛡️ **Triple Protection** - Prompt attack detection + Content compliance detection + Data leak detection 🆕
+- 🖼️ **Multimodal Detection** - Support for text and image content safety detection
 - 🧠 **Context Awareness** - Intelligent safety detection based on conversation context
 - 📋 **Compliance Standards** - Compliant with "GB/T45654—2025 Basic Security Requirements for Generative AI Services"
 - 🔧 **Flexible Configuration** - Blacklist/whitelist, response templates, rate limiting and other personalized configurations
@@ -106,6 +106,8 @@ print(f"Compliance check result: {response.result.compliance.risk_level}")
 print(f"Compliance risk categories: {response.result.compliance.categories}")
 print(f"Security check result: {response.result.security.risk_level}")
 print(f"Security risk categories: {response.result.security.categories}")
+print(f"Data leak check result: {response.result.data.risk_level}")
+print(f"Data leak categories: {response.result.data.categories}")
 print(f"Suggested action: {response.suggest_action}")
 print(f"Suggested answer: {response.suggest_answer}")
 print(f"Is safe: {response.is_safe}")
@@ -166,6 +168,7 @@ async function checkConversation() {
         console.log(`All risk categories: ${response.all_categories}`);
         console.log(`Compliance check result: ${response.result.compliance.risk_level}`);
         console.log(`Security check result: ${response.result.security.risk_level}`);
+        console.log(`Data leak check result: ${response.result.data.risk_level}`);
     } catch (error) {
         console.error('Detection failed:', error.message);
     }
@@ -216,6 +219,7 @@ public class GuardrailsExample {
             System.out.println("All risk categories: " + conversationResponse.getAllCategories());
             System.out.println("Compliance check result: " + conversationResponse.getResult().getCompliance().getRiskLevel());
             System.out.println("Security check result: " + conversationResponse.getResult().getSecurity().getRiskLevel());
+            System.out.println("Data leak check result: " + conversationResponse.getResult().getData().getRiskLevel());
             
         } catch (Exception e) {
             System.err.println("Detection failed: " + e.getMessage());
@@ -270,6 +274,7 @@ func main() {
     fmt.Printf("All risk categories: %v\n", conversationResponse.AllCategories)
     fmt.Printf("Compliance check result: %s\n", conversationResponse.Result.Compliance.RiskLevel)
     fmt.Printf("Security check result: %s\n", conversationResponse.Result.Security.RiskLevel)
+    fmt.Printf("Data leak check result: %s\n", conversationResponse.Result.Data.RiskLevel)
 }
 ```
 
@@ -298,14 +303,17 @@ Example output:
         },
         "security": {
             "risk_level": "无风险",
-            "categories": [
-
-            ]
+            "categories": []
+        },
+        "data": {
+            "risk_level": "无风险",
+            "categories": []
         }
     },
     "overall_risk_level": "中风险",
     "suggest_action": "代答",
-    "suggest_answer": "很抱歉，我不能提供涉及违法犯罪的信息。"
+    "suggest_answer": "很抱歉，我不能提供涉及违法犯罪的信息。",
+    "score": 0.95
 }
 ```
 
@@ -953,9 +961,86 @@ def chat_with_openai(prompt, model="Xiangxin-Guardrails-Text"):
         logprobs=True,
     )
 
-    prob = math.exp(completion.choices[0].logprobs.content[0].logprob)
-    print("Confidence Score:", prob)
+    score = math.exp(completion.choices[0].logprobs.content[0].logprob)
+    print("Score:", score)
 ```
+
+This feature enables flexible risk management for different operational scenarios, from strict automated pipelines to comprehensive security monitoring.
+
+## 🔐 Data Leak Detection 🆕
+
+Xiangxin AI Guardrails v2.4.0 introduces **Data Leak Detection** capability to prevent sensitive personal/enterprise data from being leaked when using AI models.
+
+### 🎯 Key Features
+
+- **Regex-based Pattern Matching**: Flexible detection of sensitive data types using regular expressions
+- **Customizable Data Types**: Define your own sensitive data patterns
+- **Three Risk Levels**: Low, Medium, High risk classification
+- **Configurable Detection Direction**: Input/Output detection control
+- **Multiple Masking Methods**:
+  - **Replace**: Replace with placeholder tokens (e.g., `<PHONE_NUMBER>`)
+  - **Mask**: Partial masking (e.g., `139****5678`)
+  - **Hash**: SHA256 hashing
+  - **Encrypt**: Encryption processing
+  - **Shuffle**: Character rearrangement
+  - **Random**: Random character replacement
+
+### 📋 Built-in Sensitive Data Types
+
+- **ID_CARD_NUMBER**: Chinese ID card numbers
+- **PHONE_NUMBER**: Mobile phone numbers
+- **EMAIL**: Email addresses
+- **BANK_CARD_NUMBER**: Bank card numbers
+- **PASSPORT_NUMBER**: Passport numbers
+- **IP_ADDRESS**: IP addresses
+- **CREDIT_CARD**: Credit card numbers
+- **SSN**: Social Security Numbers
+
+### 🔄 Detection Directions
+
+#### Input Data Leak Detection
+Prevents user-provided sensitive data from leaking to AI models.
+- **Enterprise deployment**: Protect internal data from external AI models
+- **Public services**: Protect user data from service providers
+
+#### Output Data Leak Detection
+Prevents models from leaking sensitive data to users.
+- **Enterprise deployment**: Prevent internal data leaks to internal users
+- **Public services**: Protect organizational data from external users
+
+### 💻 Response Format with Data Detection
+
+```json
+{
+    "id": "guardrails-6048ed54e2bb482d894d6cb8c3842153",
+    "overall_risk_level": "高风险",
+    "suggest_action": "代答",
+    "suggest_answer": "我的电话号码是<PHONE_NUMBER>,银行卡号是<BANK_CARD_NUMBER>,身份证号是<ID_CARD_NUMBER>",
+    "score": 0.999998927117538,
+    "result": {
+        "compliance": {
+            "risk_level": "无风险",
+            "categories": []
+        },
+        "security": {
+            "risk_level": "无风险",
+            "categories": []
+        },
+        "data": {
+            "risk_level": "高风险",
+            "categories": ["BANK_CARD_NUMBER", "ID_CARD_NUMBER", "PHONE_NUMBER"]
+        }
+    }
+}
+```
+
+### ⚙️ Configuration
+
+Users can configure sensitive data definitions via the Data Security Configuration page:
+- Define custom patterns with regular expressions
+- Set risk levels (Low/Medium/High)
+- Configure masking methods
+- Enable/disable input and output detection
 
 This feature enables flexible risk management for different operational scenarios, from strict automated pipelines to comprehensive security monitoring.
 
@@ -1116,16 +1201,16 @@ Xiangxin AI Guardrails will continue to evolve in two directions: **Detection Ca
 
 ### 🔍 Detection Capabilities
 - ✅ **Image Modality Detection** (v2.3.0): AI-powered image content safety analysis
+- ✅ **Data Leak Detection** (v2.4.0): Regex-based sensitive data detection and masking
 - **Audio & Video Detection**: Support for audio and video content safety analysis (Coming Soon)
 - **Multimodal Subtle Violation Content Recognition**: Support multimodal inputs including text, images, audio, and video, identifying and intercepting subtle violations or illegal information.
 - **Role-based Privilege Escalation Detection**: Combined with context and user identity, identify and intercept privilege escalation questions or sensitive information requests.
-- **Personal Information & Sensitive Data Detection**: Automatically identify and intercept content involving personal information, business secrets, and other sensitive content to prevent data leaks.
 - **Out-of-business-scope Content Detection**: Identify and intervene in questions/outputs that exceed business scenarios or compliance boundaries.
 
 ### 🛡️ Platform Features
 - ✅ **Multimodal Content Recognition Support** (v2.3.0): Text and image safety detection available
-- **Sensitive Information Interception & Desensitization**: When sensitive content is detected, it can be directly intercepted or automatically desensitized based on rules before output.
-- **Desensitization Rule Configuration**: Support user-defined desensitization strategies, flexibly adapting to compliance requirements in different scenarios.
+- ✅ **Sensitive Information Interception & Desensitization** (v2.4.0): Detect and mask sensitive data using multiple masking methods
+- ✅ **Desensitization Rule Configuration** (v2.4.0): User-defined desensitization strategies with regex patterns and risk levels
 - **Out-of-business-scope Control**: Block or substitute answers for privilege escalation or inappropriate questions, ensuring compliant output.
 - **Configurable Response Knowledge Base**: Support configurable, extensible, and continuously updatable standard response knowledge bases to ensure consistency and controllability of responses.
 
