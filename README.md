@@ -287,7 +287,10 @@ curl -X POST "https://api.xiangxinai.cn/v1/guardrails" \
       "model": "Xiangxin-Guardrails-Text",
       "messages": [
         {"role": "user", "content": "Tell me some illegal ways to make money"}
-      ]
+      ],
+      "extra_body": {
+        "xxai_app_user_id": "your-user-id"
+      }
     }'
 ```
 Example output:

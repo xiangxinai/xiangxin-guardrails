@@ -10,6 +10,15 @@ All notable changes to Xiangxin AI Guardrails platform are documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 新增 Added
+- 🆔 **用户ID追踪功能**
+  - API检测接口支持通过 `extra_body.xxai_app_user_id` 参数传递租户AI应用的用户ID
+  - 支持基于用户ID的封禁策略和行为分析
+  - 所有SDK（Python、Java、Node.js、Go）增加user_id可选参数
+  - 适用于实现用户级别的风险控制和审计追踪
+
 ## [2.4.0] - 2025-10-04
 
 ### 🚀 重大更新 Major Updates

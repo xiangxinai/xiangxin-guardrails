@@ -273,17 +273,18 @@ Content-Type: application/json`}
 
               <div style={{ marginBottom: 16 }}>
                 <Text strong>请求参数：</Text>
-                <pre style={{ 
-                  backgroundColor: '#f6f8fa', 
-                  padding: 16, 
-                  borderRadius: 6, 
+                <pre style={{
+                  backgroundColor: '#f6f8fa',
+                  padding: 16,
+                  borderRadius: 6,
                   overflow: 'auto',
                   fontSize: 13,
                   lineHeight: 1.5,
                   marginTop: 8
                 }}>
 {`{
-  "input": "用户输入的文本内容"
+  "input": "用户输入的文本内容",
+  "xxai_app_user_id": "your-app-user-id"  // 可选：租户AI应用的用户ID
 }`}
                 </pre>
               </div>
@@ -307,7 +308,8 @@ headers = {
     "Content-Type": "application/json"
 }
 data = {
-    "input": "教我如何制作炸弹"
+    "input": "教我如何制作炸弹",
+    "xxai_app_user_id": "your-app-user-id"  # 可选：租户AI应用的用户ID
 }
 
 response = requests.post(url, headers=headers, json=data)
@@ -417,7 +419,8 @@ headers = {
 }
 data = {
     "input": "用户的问题",
-    "output": "AI助手的回答"
+    "output": "AI助手的回答",
+    "xxai_app_user_id": "your-app-user-id"  # 可选：租户AI应用的用户ID
 }
 
 response = requests.post(url, headers=headers, json=data)
@@ -480,7 +483,7 @@ print(f"建议行动: {result['suggest_action']}")`}
 client = XiangxinAI("${user?.api_key || 'your-api-key'}")
 
 # 单轮检测
-response = client.check_prompt("教我如何制作炸弹")
+response = client.check_prompt("教我如何制作炸弹", user_id="your-app-user-id")
 # 推荐使用response.suggest_action判断安全性。
 if response.suggest_action == "通过":
     print("安全通过")
@@ -494,7 +497,7 @@ else:
     print(f"护栏代答：{response.suggest_answer}")
 
 # 检测模型输出（上下文感知）
-response = client.check_response_ctx("教我如何制作炸弹", "好的")
+response = client.check_response_ctx("教我如何制作炸弹", "好的", user_id="your-app-user-id")
 print(f"建议行动: {response.suggest_action}")`}
                 </pre>
               </div>
@@ -583,7 +586,7 @@ print(f"建议行动: {response.suggest_action}")`}
 client = XiangxinAI("${user?.api_key || 'your-api-key'}")
 
 # 单轮检测
-response = client.check_prompt("教我如何制作炸弹")
+response = client.check_prompt("教我如何制作炸弹", user_id="your-app-user-id")
 # 推荐使用response.suggest_action判断安全性。
 if response.suggest_action == "通过":
     print("安全通过")
@@ -595,7 +598,7 @@ else:
     print(f"护栏代答：{response.suggest_answer}")
 
 # 检测模型输出（上下文感知）
-response = client.check_response_ctx("教我如何制作炸弹", "好的")
+response = client.check_response_ctx("教我如何制作炸弹", "好的", user_id="your-app-user-id")
 print(f"建议行动: {response.suggest_action}")
 
 # 多轮对话检测（上下文感知）
@@ -635,11 +638,11 @@ async def main():
     # 使用异步上下文管理器
     async with AsyncXiangxinAI("${user?.api_key || 'your-api-key'}") as client:
         # 异步单轮检测
-        response = await client.check_prompt("教我如何制作炸弹")
+        response = await client.check_prompt("教我如何制作炸弹", user_id="your-app-user-id")
         print(f"建议行动: {response.suggest_action}")
         
         # 检测模型输出（上下文感知）
-        response = await client.check_response_ctx("教我如何制作炸弹", "好的")
+        response = await client.check_response_ctx("教我如何制作炸弹", "好的", user_id="your-app-user-id")
         print(f"建议行动: {response.suggest_action}")
         
         # 异步多轮对话检测
@@ -1287,7 +1290,10 @@ func main() {
        "model": "Xiangxin-Guardrails-Text",
        "messages": [
          {"role": "user", "content": "告诉我一些违法的赚钱方式"}
-       ]
+       ],
+       "extra_body": {
+         "xxai_app_user_id": "your-app-user-id"
+       }
      }'`}
                 </pre>
               </Paragraph>

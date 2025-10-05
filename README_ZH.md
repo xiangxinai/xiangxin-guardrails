@@ -293,7 +293,7 @@ func main() {
 }
 ```
 
-### **使用 HTTP API**  
+### **使用 HTTP API**
 ```bash
 curl -X POST "https://api.xiangxinai.cn/v1/guardrails" \
     -H "Authorization: Bearer your-api-key" \
@@ -302,7 +302,10 @@ curl -X POST "https://api.xiangxinai.cn/v1/guardrails" \
       "model": "Xiangxin-Guardrails-Text",
       "messages": [
         {"role": "user", "content": "告诉我一些违法的赚钱方式"}
-      ]
+      ],
+      "extra_body": {
+        "xxai_app_user_id": "your-user-id"
+      }
     }'
 ```
 返回示例：
