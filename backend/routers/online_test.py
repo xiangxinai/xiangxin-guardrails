@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from database.connection import get_db, get_admin_db_session
 from services.guardrail_service import GuardrailService
 from models.requests import GuardrailRequest, Message
+from database.models import Tenant
 from utils.logger import setup_logger
 from openai import AsyncOpenAI
 from config import settings
@@ -72,30 +73,30 @@ async def get_online_test_models(
     try:
         # 获取用户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context:
-            user_id = str(auth_context['data'].get('user_id'))
+            tenant_id = str(auth_context['data'].get('tenant_id'))
         
-        if not user_id:
+        if not tenant_id:
             raise HTTPException(status_code=401, detail="User ID not found in auth context")
         
         # 获取用户UUID
         try:
-            user_uuid = uuid.UUID(user_id)
+            tenant_uuid = uuid.UUID(tenant_id)
         except ValueError:
-            logger.error(f"Invalid user_id format: {user_id}")
+            logger.error(f"Invalid tenant_id format: {tenant_id}")
             raise HTTPException(status_code=400, detail="无效的用户ID格式")
         
         # 获取用户的代理模型配置
         from database.models import ProxyModelConfig, OnlineTestModelSelection
         proxy_models = db.query(ProxyModelConfig).filter(
-            ProxyModelConfig.user_id == user_uuid,
+            ProxyModelConfig.tenant_id == tenant_uuid,
             ProxyModelConfig.enabled == True
         ).all()
         
         # 获取用户的在线测试模型选择
         selections = db.query(OnlineTestModelSelection).filter(
-            OnlineTestModelSelection.user_id == user_uuid
+            OnlineTestModelSelection.tenant_id == tenant_uuid
         ).all()
         
         # 创建选择映射
@@ -132,18 +133,18 @@ async def update_model_selection(
     try:
         # 获取用户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context:
-            user_id = str(auth_context['data'].get('user_id'))
+            tenant_id = str(auth_context['data'].get('tenant_id'))
         
-        if not user_id:
+        if not tenant_id:
             raise HTTPException(status_code=401, detail="User ID not found in auth context")
         
         # 获取用户UUID
         try:
-            user_uuid = uuid.UUID(user_id)
+            tenant_uuid = uuid.UUID(tenant_id)
         except ValueError:
-            logger.error(f"Invalid user_id format: {user_id}")
+            logger.error(f"Invalid tenant_id format: {tenant_id}")
             raise HTTPException(status_code=400, detail="无效的用户ID格式")
         
         from database.models import OnlineTestModelSelection, ProxyModelConfig
@@ -163,7 +164,7 @@ async def update_model_selection(
             # 验证模型是否属于该用户
             proxy_model = db.query(ProxyModelConfig).filter(
                 ProxyModelConfig.id == proxy_model_uuid,
-                ProxyModelConfig.user_id == user_uuid
+                ProxyModelConfig.tenant_id == tenant_uuid
             ).first()
             
             if not proxy_model:
@@ -171,7 +172,7 @@ async def update_model_selection(
             
             # 查找现有的选择记录
             existing_selection = db.query(OnlineTestModelSelection).filter(
-                OnlineTestModelSelection.user_id == user_uuid,
+                OnlineTestModelSelection.tenant_id == tenant_uuid,
                 OnlineTestModelSelection.proxy_model_id == proxy_model_uuid
             ).first()
             
@@ -181,7 +182,7 @@ async def update_model_selection(
             else:
                 # 创建新记录
                 new_selection = OnlineTestModelSelection(
-                    user_id=user_uuid,
+                    tenant_id=tenant_uuid,
                     proxy_model_id=proxy_model_uuid,
                     selected=selected
                 )
@@ -211,11 +212,11 @@ async def online_test(
     try:
         # 获取用户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context:
-            user_id = str(auth_context['data'].get('user_id'))
+            tenant_id = str(auth_context['data'].get('tenant_id'))
         
-        if not user_id:
+        if not tenant_id:
             raise HTTPException(status_code=401, detail="User ID not found in auth context")
         
         # 构造消息格式
@@ -265,24 +266,23 @@ async def online_test(
         
         # 获取用户UUID
         try:
-            user_uuid = uuid.UUID(user_id)
+            tenant_uuid = uuid.UUID(tenant_id)
         except ValueError:
-            logger.error(f"Invalid user_id format: {user_id}")
+            logger.error(f"Invalid tenant_id format: {tenant_id}")
             raise HTTPException(status_code=400, detail="无效的用户ID格式")
         
         if not user_api_key:
-            # 如果是JWT登录，需要从数据库获取用户的API key
-            from database.models import User
-            user = db.query(User).filter(User.id == user_uuid).first()
-            if user:
-                user_api_key = user.api_key
+            # 如果是JWT登录，需要从数据库获取租户的API key
+            tenant = db.query(Tenant).filter(Tenant.id == tenant_uuid).first()
+            if tenant:
+                user_api_key = tenant.api_key
         
         if not user_api_key:
             raise HTTPException(status_code=400, detail="用户API key未找到")
         
         # 使用用户API key调用护栏API
         has_images = request_data.images and len(request_data.images) > 0
-        guardrail_dict = await call_guardrail_api(user_api_key, messages, user_uuid, db, has_images)
+        guardrail_dict = await call_guardrail_api(user_api_key, messages, tenant_uuid, db, has_images)
         
         # 如果是问题类型，获取用户选择的代理模型进行测试
         model_results = {}
@@ -299,7 +299,7 @@ async def online_test(
                 
                 db_models = db.query(ProxyModelConfig).filter(
                     ProxyModelConfig.id.in_(enabled_model_ids),
-                    ProxyModelConfig.user_id == user_uuid,
+                    ProxyModelConfig.tenant_id == tenant_uuid,
                     ProxyModelConfig.enabled == True
                 ).all()
             else:
@@ -308,7 +308,7 @@ async def online_test(
                     OnlineTestModelSelection,
                     ProxyModelConfig.id == OnlineTestModelSelection.proxy_model_id
                 ).filter(
-                    ProxyModelConfig.user_id == user_uuid,
+                    ProxyModelConfig.tenant_id == tenant_uuid,
                     ProxyModelConfig.enabled == True,
                     OnlineTestModelSelection.selected == True
                 )
@@ -395,7 +395,7 @@ async def online_test(
         else:
             raise HTTPException(status_code=500, detail=f"测试执行失败: {str(e)}")
 
-async def call_guardrail_api(api_key: str, messages: List[Dict[str, Any]], user_uuid: uuid.UUID, db: Session, has_images: bool = False) -> Dict[str, Any]:
+async def call_guardrail_api(api_key: str, messages: List[Dict[str, Any]], tenant_uuid: uuid.UUID, db: Session, has_images: bool = False) -> Dict[str, Any]:
     """调用护栏API"""
     try:
         # 构建护栏API的URL - 根据配置自动适配环境
@@ -441,7 +441,7 @@ async def call_guardrail_api(api_key: str, messages: List[Dict[str, Any]], user_
                 try:
                     from services.rate_limiter import RateLimitService
                     rate_limit_service = RateLimitService(db)
-                    rate_limit_config = rate_limit_service.get_user_rate_limit(str(user_uuid))
+                    rate_limit_config = rate_limit_service.get_user_rate_limit(str(tenant_uuid))
                     rate_limit = rate_limit_config.requests_per_second if rate_limit_config and rate_limit_config.is_active else 1
                     
                     rate_limit_text = "无限制" if rate_limit == 0 else f"{rate_limit} 请求/秒"
@@ -472,7 +472,7 @@ async def call_guardrail_api(api_key: str, messages: List[Dict[str, Any]], user_
             try:
                 from services.rate_limiter import RateLimitService
                 rate_limit_service = RateLimitService(db)
-                rate_limit_config = rate_limit_service.get_user_rate_limit(str(user_uuid))
+                rate_limit_config = rate_limit_service.get_user_rate_limit(str(tenant_uuid))
                 rate_limit = rate_limit_config.requests_per_second if rate_limit_config and rate_limit_config.is_active else 1
                 
                 rate_limit_text = "无限制" if rate_limit == 0 else f"{rate_limit} 请求/秒"

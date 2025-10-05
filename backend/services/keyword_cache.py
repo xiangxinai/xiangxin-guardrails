@@ -13,24 +13,24 @@ class KeywordCache:
     
     def __init__(self, cache_ttl: int = 300):  # 5分钟缓存
         # 多租户缓存结构：
-        # 黑名单: {user_id: {list_name: {keyword1, keyword2, ...}}}
-        # 白名单: {user_id: {list_name: {keyword1, keyword2, ...}}}
+        # 黑名单: {tenant_id: {list_name: {keyword1, keyword2, ...}}}
+        # 白名单: {tenant_id: {list_name: {keyword1, keyword2, ...}}}
         self._blacklist_cache: Dict[str, Dict[str, Set[str]]] = {}
         self._whitelist_cache: Dict[str, Dict[str, Set[str]]] = {}
         self._cache_timestamp = 0
         self._cache_ttl = cache_ttl
         self._lock = asyncio.Lock()
         
-    async def check_blacklist(self, content: str, user_id: Optional[str]) -> Tuple[bool, Optional[str], List[str]]:
+    async def check_blacklist(self, content: str, tenant_id: Optional[str]) -> Tuple[bool, Optional[str], List[str]]:
         """检查黑名单（内存缓存版）"""
         await self._ensure_cache_fresh()
         
-        if not user_id:
+        if not tenant_id:
             return False, None, []
 
         content_lower = content.lower()
         
-        user_blacklists = self._blacklist_cache.get(str(user_id), {})
+        user_blacklists = self._blacklist_cache.get(str(tenant_id), {})
         for list_name, keywords in user_blacklists.items():
             matched_keywords = []
             
@@ -44,16 +44,16 @@ class KeywordCache:
         
         return False, None, []
     
-    async def check_whitelist(self, content: str, user_id: Optional[str]) -> Tuple[bool, Optional[str], List[str]]:
+    async def check_whitelist(self, content: str, tenant_id: Optional[str]) -> Tuple[bool, Optional[str], List[str]]:
         """检查白名单（内存缓存版）"""
         await self._ensure_cache_fresh()
         
-        if not user_id:
+        if not tenant_id:
             return False, None, []
 
         content_lower = content.lower()
         
-        user_whitelists = self._whitelist_cache.get(str(user_id), {})
+        user_whitelists = self._whitelist_cache.get(str(tenant_id), {})
         for list_name, keywords in user_whitelists.items():
             matched_keywords = []
             
@@ -86,27 +86,27 @@ class KeywordCache:
                 blacklists = db.query(Blacklist).filter_by(is_active=True).all()
                 new_blacklist_cache: Dict[str, Dict[str, Set[str]]] = {}
                 for blacklist in blacklists:
-                    user_id_str = str(blacklist.user_id)
+                    tenant_id_str = str(blacklist.tenant_id)
                     keywords = blacklist.keywords if isinstance(blacklist.keywords, list) else []
                     keyword_set = {keyword.lower() for keyword in keywords if keyword}
                     if not keyword_set:
                         continue
-                    if user_id_str not in new_blacklist_cache:
-                        new_blacklist_cache[user_id_str] = {}
-                    new_blacklist_cache[user_id_str][blacklist.name] = keyword_set
+                    if tenant_id_str not in new_blacklist_cache:
+                        new_blacklist_cache[tenant_id_str] = {}
+                    new_blacklist_cache[tenant_id_str][blacklist.name] = keyword_set
 
                 # 加载白名单（按用户分组）
                 whitelists = db.query(Whitelist).filter_by(is_active=True).all()
                 new_whitelist_cache: Dict[str, Dict[str, Set[str]]] = {}
                 for whitelist in whitelists:
-                    user_id_str = str(whitelist.user_id)
+                    tenant_id_str = str(whitelist.tenant_id)
                     keywords = whitelist.keywords if isinstance(whitelist.keywords, list) else []
                     keyword_set = {keyword.lower() for keyword in keywords if keyword}
                     if not keyword_set:
                         continue
-                    if user_id_str not in new_whitelist_cache:
-                        new_whitelist_cache[user_id_str] = {}
-                    new_whitelist_cache[user_id_str][whitelist.name] = keyword_set
+                    if tenant_id_str not in new_whitelist_cache:
+                        new_whitelist_cache[tenant_id_str] = {}
+                    new_whitelist_cache[tenant_id_str][whitelist.name] = keyword_set
 
                 # 原子性更新缓存
                 self._blacklist_cache = new_blacklist_cache

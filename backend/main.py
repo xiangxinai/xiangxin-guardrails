@@ -56,7 +56,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         
         # 缓存未命中，执行原有逻辑
         from database.connection import get_db_session
-        from database.models import User
+        from database.models import Tenant
         from utils.user import get_user_by_api_key
         from utils.auth import verify_token
         
@@ -72,12 +72,12 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                 # 管理员token：通过邮箱查找管理员用户
                 if role == 'admin':
                     subject_email = user_data.get('username') or user_data.get('sub')
-                    admin_user = db.query(User).filter(User.email == subject_email).first()
+                    admin_user = db.query(Tenant).filter(Tenant.email == subject_email).first()
                     if admin_user:
                         auth_context = {
                             "type": "jwt_admin",
                             "data": {
-                                "user_id": str(admin_user.id),
+                                "tenant_id": str(admin_user.id),
                                 "email": admin_user.email,
                                 "is_super_admin": admin_service.is_super_admin(admin_user)
                             }
@@ -87,23 +87,23 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                         auth_context = {
                             "type": "jwt_admin",
                             "data": {
-                                "user_id": None,
+                                "tenant_id": None,
                                 "email": subject_email,
                                 "is_super_admin": True
                             }
                         }
                 else:
-                    # 普通用户：从token解析 user_id
-                    raw_user_id = user_data.get('user_id') or user_data.get('sub')
-                    user_uuid = None
-                    if isinstance(raw_user_id, uuid.UUID):
-                        user_uuid = raw_user_id
-                    elif isinstance(raw_user_id, str):
+                    # 普通用户：从token解析 tenant_id
+                    raw_tenant_id = user_data.get('tenant_id') or user_data.get('sub')
+                    tenant_uuid = None
+                    if isinstance(raw_tenant_id, uuid.UUID):
+                        tenant_uuid = raw_tenant_id
+                    elif isinstance(raw_tenant_id, str):
                         try:
-                            user_uuid = uuid.UUID(raw_user_id)
+                            tenant_uuid = uuid.UUID(raw_tenant_id)
                         except ValueError:
-                            user_uuid = None
-                    user = db.query(User).filter(User.id == user_uuid).first() if user_uuid else None
+                            tenant_uuid = None
+                    user = db.query(Tenant).filter(Tenant.id == tenant_uuid).first() if tenant_uuid else None
                     if user:
                         # 检查是否有用户切换会话
                         if switch_session and admin_service.is_super_admin(user):
@@ -112,7 +112,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                                 auth_context = {
                                     "type": "jwt_switched",
                                     "data": {
-                                        "user_id": str(switched_user.id),
+                                        "tenant_id": str(switched_user.id),
                                         "email": switched_user.email,
                                         "original_admin_id": str(user.id),
                                         "original_admin_email": user.email,
@@ -124,7 +124,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                             auth_context = {
                                 "type": "jwt", 
                                 "data": {
-                                    "user_id": str(user.id),
+                                    "tenant_id": str(user.id),
                                     "email": user.email,
                                     # 仅依据 .env 判断超级管理员
                                     "is_super_admin": admin_service.is_super_admin(user)
@@ -135,7 +135,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                         auth_context = {
                             "type": "jwt",
                             "data": {
-                                "user_id": str(raw_user_id) if raw_user_id else None,
+                                "tenant_id": str(raw_tenant_id) if raw_tenant_id else None,
                                 "email": user_data.get('email'),
                                 "is_super_admin": bool(user_data.get('is_super_admin', False))
                             }
@@ -151,7 +151,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                             auth_context = {
                                 "type": "api_key_switched",
                                 "data": {
-                                    "user_id": str(switched_user.id),
+                                    "tenant_id": str(switched_user.id),
                                     "email": switched_user.email,
                                     "api_key": switched_user.api_key,
                                     "original_admin_id": str(user.id),
@@ -164,7 +164,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                         auth_context = {
                             "type": "api_key", 
                             "data": {
-                                "user_id": str(user.id),
+                                "tenant_id": str(user.id),
                                 "email": user.email,
                                 "api_key": user.api_key,
                                 # 仅依据 .env 判断超级管理员
@@ -278,7 +278,7 @@ async def verify_user_auth(
 ):
     """验证用户认证（JWT token或API key）"""
     from database.connection import get_db_session
-    from database.models import User
+    from database.models import Tenant
     from utils.user import get_user_by_api_key
     from utils.auth import verify_token
     
@@ -298,12 +298,12 @@ async def verify_user_auth(
             role = user_data.get('role')
             if role == 'admin':
                 subject_email = user_data.get('username') or user_data.get('sub')
-                admin_user = db.query(User).filter(User.email == subject_email).first()
+                admin_user = db.query(Tenant).filter(Tenant.email == subject_email).first()
                 if admin_user and admin_user.is_active:
                     ctx = {
                         "type": "jwt_admin",
                         "data": {
-                            "user_id": str(admin_user.id),
+                            "tenant_id": str(admin_user.id),
                             "email": admin_user.email,
                             "is_super_admin": admin_service.is_super_admin(admin_user)
                         }
@@ -315,23 +315,23 @@ async def verify_user_auth(
                             pass
                     return ctx
             else:
-                # 兼容旧token：优先 user_id，回退 sub
-                raw_user_id = user_data.get('user_id') or user_data.get('sub')
-                user_uuid = None
-                if isinstance(raw_user_id, uuid.UUID):
-                    user_uuid = raw_user_id
-                elif isinstance(raw_user_id, str):
+                # 兼容旧token：优先 tenant_id，回退 sub
+                raw_tenant_id = user_data.get('tenant_id') or user_data.get('sub')
+                tenant_uuid = None
+                if isinstance(raw_tenant_id, uuid.UUID):
+                    tenant_uuid = raw_tenant_id
+                elif isinstance(raw_tenant_id, str):
                     try:
-                        user_uuid = uuid.UUID(raw_user_id)
+                        tenant_uuid = uuid.UUID(raw_tenant_id)
                     except ValueError:
-                        user_uuid = None
+                        tenant_uuid = None
 
-                user = db.query(User).filter(User.id == user_uuid).first() if user_uuid else None
+                user = db.query(Tenant).filter(Tenant.id == tenant_uuid).first() if tenant_uuid else None
                 if user and user.is_active:
                     ctx = {
                         "type": "jwt", 
                         "data": {
-                            "user_id": str(user.id),
+                            "tenant_id": str(user.id),
                             "email": user.email,
                             # 仅依据 .env 判断超级管理员
                             "is_super_admin": admin_service.is_super_admin(user)
@@ -348,7 +348,7 @@ async def verify_user_auth(
                     ctx = {
                         "type": "jwt",
                         "data": {
-                            "user_id": str(raw_user_id) if raw_user_id else None,
+                            "tenant_id": str(raw_tenant_id) if raw_tenant_id else None,
                             "email": user_data.get('email'),
                             "is_super_admin": bool(user_data.get('is_super_admin', False))
                         }
@@ -369,7 +369,7 @@ async def verify_user_auth(
             ctx = {
                 "type": "api_key", 
                 "data": {
-                    "user_id": str(user.id),
+                    "tenant_id": str(user.id),
                     "email": user.email,
                     "api_key": user.api_key,
                     # 仅依据 .env 判断超级管理员

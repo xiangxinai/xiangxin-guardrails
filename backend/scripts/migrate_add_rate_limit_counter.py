@@ -28,7 +28,7 @@ def create_rate_limit_counter_table():
             try:
                 conn.execute(text("""
                     CREATE INDEX IF NOT EXISTS idx_rate_counter_user_window 
-                    ON user_rate_limit_counters(user_id, window_start);
+                    ON tenant_rate_limit_counters(tenant_id, window_start);
                 """))
                 logger.info("Successfully created index idx_rate_counter_user_window")
             except Exception as e:

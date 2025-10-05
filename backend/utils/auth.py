@@ -65,14 +65,15 @@ def verify_token(token: str) -> dict:
         if role == "admin":
             return {"username": subject, "role": role}
 
-        # 普通用户：确保返回包含user_id（UUID字符串），兼容旧token仅有sub的情况
-        user_id = payload.get("user_id")
-        if user_id is None:
-            # 兼容旧token：将sub作为user_id（字符串）
-            user_id = subject
+        # 普通租户：确保返回包含tenant_id（UUID字符串），兼容旧token仅有sub的情况
+        tenant_id = payload.get("tenant_id") or payload.get("user_id")  # 兼容旧字段名user_id
+        if tenant_id is None:
+            # 兼容旧token：将sub作为tenant_id（字符串）
+            tenant_id = subject
 
         return {
-            "user_id": user_id,
+            "tenant_id": tenant_id,
+            "user_id": tenant_id,  # 保留向后兼容性
             "sub": subject,
             "email": payload.get("email"),
             "role": role,

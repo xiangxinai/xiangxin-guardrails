@@ -31,7 +31,7 @@ class DataSecurityService:
     async def detect_sensitive_data(
         self,
         text: str,
-        user_id: str,
+        tenant_id: str,  # tenant_id，为向后兼容保持参数名为 tenant_id
         direction: str = "input"  # input 或 output
     ) -> Dict[str, Any]:
         """
@@ -39,14 +39,14 @@ class DataSecurityService:
 
         Args:
             text: 待检测的文本
-            user_id: 用户ID
+            tenant_id: 租户ID（实际是tenant_id，参数名为向后兼容）
             direction: 检测方向，input表示输入检测，output表示输出检测
 
         Returns:
             检测结果，包含风险等级、检测到的类别和脱敏后的文本
         """
-        # 获取用户的敏感数据定义
-        entity_types = self._get_user_entity_types(user_id, direction)
+        # 获取租户的敏感数据定义
+        entity_types = self._get_user_entity_types(tenant_id, direction)
 
         if not entity_types:
             return {
@@ -82,19 +82,23 @@ class DataSecurityService:
             'anonymized_text': anonymized_text
         }
 
-    def _get_user_entity_types(self, user_id: str, direction: str) -> List[Dict[str, Any]]:
-        """获取用户的敏感数据类型配置"""
+    def _get_user_entity_types(self, tenant_id: str, direction: str) -> List[Dict[str, Any]]:
+        """获取租户的敏感数据类型配置
+
+        注意：为保持向后兼容，函数名保持为 _get_user_entity_types，参数名保持为 tenant_id，但实际处理的是 tenant_id
+        """
+        tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
         try:
-            # 获取全局配置和用户自定义配置
+            # 获取全局配置和租户自定义配置
             query = self.db.query(DataSecurityEntityType).filter(
                 and_(
                     DataSecurityEntityType.is_active == True,
-                    (DataSecurityEntityType.user_id == user_id) | (DataSecurityEntityType.is_global == True)
+                    (DataSecurityEntityType.tenant_id == tenant_id) | (DataSecurityEntityType.is_global == True)
                 )
             )
 
             entity_types_orm = query.all()
-            logger.info(f"Found {len(entity_types_orm)} entity types for user {user_id}")
+            logger.info(f"Found {len(entity_types_orm)} entity types for tenant {tenant_id}")
             entity_types = []
 
             for et in entity_types_orm:
@@ -247,7 +251,7 @@ class DataSecurityService:
 
     def create_entity_type(
         self,
-        user_id: str,
+        tenant_id: str,  # tenant_id，为向后兼容保持参数名为 tenant_id
         entity_type: str,
         display_name: str,
         risk_level: str,
@@ -258,7 +262,11 @@ class DataSecurityService:
         check_output: bool = True,
         is_global: bool = False
     ) -> DataSecurityEntityType:
-        """创建敏感数据类型配置"""
+        """创建敏感数据类型配置
+
+        注意：参数名保持为 tenant_id 以向后兼容，但实际处理的是 tenant_id
+        """
+        tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
         recognition_config = {
             'pattern': pattern,
             'check_input': check_input,
@@ -266,7 +274,7 @@ class DataSecurityService:
         }
 
         entity_type_obj = DataSecurityEntityType(
-            user_id=user_id,
+            tenant_id=tenant_id,  # 数据库字段名保持为 tenant_id，实际存储的是 tenant_id
             entity_type=entity_type,
             display_name=display_name,
             category=risk_level,  # 使用category字段存储风险等级
@@ -286,14 +294,18 @@ class DataSecurityService:
     def update_entity_type(
         self,
         entity_type_id: str,
-        user_id: str,
+        tenant_id: str,  # tenant_id，为向后兼容保持参数名为 tenant_id
         **kwargs
     ) -> Optional[DataSecurityEntityType]:
-        """更新敏感数据类型配置"""
+        """更新敏感数据类型配置
+
+        注意：参数名保持为 tenant_id 以向后兼容，但实际处理的是 tenant_id
+        """
+        tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
         entity_type = self.db.query(DataSecurityEntityType).filter(
             and_(
                 DataSecurityEntityType.id == entity_type_id,
-                (DataSecurityEntityType.user_id == user_id) | (DataSecurityEntityType.is_global == True)
+                (DataSecurityEntityType.tenant_id == tenant_id) | (DataSecurityEntityType.is_global == True)
             )
         ).first()
 
@@ -329,12 +341,16 @@ class DataSecurityService:
 
         return entity_type
 
-    def delete_entity_type(self, entity_type_id: str, user_id: str) -> bool:
-        """删除敏感数据类型配置"""
+    def delete_entity_type(self, entity_type_id: str, tenant_id: str) -> bool:
+        """删除敏感数据类型配置
+
+        注意：参数名保持为 tenant_id 以向后兼容，但实际处理的是 tenant_id
+        """
+        tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
         entity_type = self.db.query(DataSecurityEntityType).filter(
             and_(
                 DataSecurityEntityType.id == entity_type_id,
-                DataSecurityEntityType.user_id == user_id
+                DataSecurityEntityType.tenant_id == tenant_id
             )
         ).first()
 
@@ -348,13 +364,17 @@ class DataSecurityService:
 
     def get_entity_types(
         self,
-        user_id: str,
+        tenant_id: str,  # tenant_id，为向后兼容保持参数名为 tenant_id
         risk_level: Optional[str] = None,
         is_active: Optional[bool] = None
     ) -> List[DataSecurityEntityType]:
-        """获取敏感数据类型配置列表"""
+        """获取敏感数据类型配置列表
+
+        注意：参数名保持为 tenant_id 以向后兼容，但实际处理的是 tenant_id
+        """
+        tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
         query = self.db.query(DataSecurityEntityType).filter(
-            (DataSecurityEntityType.user_id == user_id) | (DataSecurityEntityType.is_global == True)
+            (DataSecurityEntityType.tenant_id == tenant_id) | (DataSecurityEntityType.is_global == True)
         )
 
         if risk_level:
@@ -365,8 +385,12 @@ class DataSecurityService:
         return query.order_by(DataSecurityEntityType.created_at.desc()).all()
 
 
-def create_user_default_entity_types(db: Session, user_id: str) -> int:
-    """为新用户创建默认实体类型配置"""
+def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
+    """为新租户创建默认实体类型配置
+
+    注意：为保持向后兼容，函数名保持为 create_user_default_entity_types，参数名保持为 tenant_id，但实际处理的是 tenant_id
+    """
+    tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
     service = DataSecurityService(db)
 
     # 定义默认实体类型
@@ -440,13 +464,13 @@ def create_user_default_entity_types(db: Session, user_id: str) -> int:
             existing = db.query(DataSecurityEntityType).filter(
                 and_(
                     DataSecurityEntityType.entity_type == entity_data['entity_type'],
-                    DataSecurityEntityType.user_id == user_id
+                    DataSecurityEntityType.tenant_id == tenant_id
                 )
             ).first()
 
             if not existing:
                 service.create_entity_type(
-                    user_id=user_id,
+                    tenant_id=tenant_id, 
                     entity_type=entity_data['entity_type'],
                     display_name=entity_data['display_name'],
                     risk_level=entity_data['risk_level'],

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Dict
 import uuid
 from database.connection import get_db
-from database.models import User
+from database.models import Tenant
 from services.risk_config_service import RiskConfigService
 from services.risk_config_cache import risk_config_cache
 from services.admin_service import admin_service
@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 logger = setup_logger()
 router = APIRouter(prefix="/api/v1/config", tags=["风险类型配置"])
 
-def get_current_user_from_request(request: Request, db: Session) -> User:
+def get_current_user_from_request(request: Request, db: Session) -> Tenant:
     """从请求获取当前用户（支持用户切换）"""
     # 1) 优先检查是否有用户切换会话
     switch_token = request.headers.get('x-switch-session')
@@ -29,14 +29,14 @@ def get_current_user_from_request(request: Request, db: Session) -> User:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     data = auth_context['data']
-    user_id_value = data.get('user_id')
+    tenant_id_value = data.get('tenant_id')
     user_email_value = data.get('email')
 
-    # 2a) 尝试通过 user_id 解析为 UUID 并查询
-    if user_id_value:
+    # 2a) 尝试通过 tenant_id 解析为 UUID 并查询
+    if tenant_id_value:
         try:
-            user_uuid = uuid.UUID(str(user_id_value))
-            user = db.query(User).filter(User.id == user_uuid).first()
+            tenant_uuid = uuid.UUID(str(tenant_id_value))
+            user = db.query(Tenant).filter(Tenant.id == tenant_uuid).first()
             if user:
                 return user
         except ValueError:
@@ -44,7 +44,7 @@ def get_current_user_from_request(request: Request, db: Session) -> User:
 
     # 2b) 退化为使用 email 查找
     if user_email_value:
-        user = db.query(User).filter(User.email == user_email_value).first()
+        user = db.query(Tenant).filter(Tenant.email == user_email_value).first()
         if user:
             return user
 
@@ -54,18 +54,18 @@ def get_current_user_from_request(request: Request, db: Session) -> User:
         token = auth_header.split(' ', 1)[1]
         try:
             payload = verify_token(token)
-            raw_user_id = payload.get('user_id') or payload.get('sub')
-            if raw_user_id:
+            raw_tenant_id = payload.get('tenant_id') or payload.get('sub')
+            if raw_tenant_id:
                 try:
-                    user_uuid = uuid.UUID(str(raw_user_id))
-                    user = db.query(User).filter(User.id == user_uuid).first()
+                    tenant_uuid = uuid.UUID(str(raw_tenant_id))
+                    user = db.query(Tenant).filter(Tenant.id == tenant_uuid).first()
                     if user:
                         return user
                 except ValueError:
                     pass
             email_claim = payload.get('email') or payload.get('username')
             if email_claim:
-                user = db.query(User).filter(User.email == email_claim).first()
+                user = db.query(Tenant).filter(Tenant.email == email_claim).first()
                 if user:
                     return user
         except Exception:

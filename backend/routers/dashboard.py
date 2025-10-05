@@ -10,28 +10,28 @@ from typing import Optional
 logger = setup_logger()
 router = APIRouter(tags=["Dashboard"])
 
-def get_current_user_id(request: Request) -> str:
+def get_current_tenant_id(request: Request) -> str:
     """从请求上下文获取当前用户ID"""
     auth_context = getattr(request.state, 'auth_context', None)
     if not auth_context:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    user_id = str(auth_context['data'].get('user_id'))
-    if not user_id:
+    tenant_id = str(auth_context['data'].get('tenant_id'))
+    if not tenant_id:
         raise HTTPException(status_code=401, detail="User ID not found in auth context")
     
-    return user_id
+    return tenant_id
 
 @router.get("/dashboard/stats", response_model=DashboardStats)
 async def get_dashboard_stats(request: Request, db: Session = Depends(get_db)):
     """获取仪表板统计数据"""
     try:
-        current_user_id = get_current_user_id(request)
+        current_tenant_id = get_current_tenant_id(request)
         
         stats_service = StatsService(db)
-        stats = stats_service.get_dashboard_stats(user_id=current_user_id)
+        stats = stats_service.get_dashboard_stats(tenant_id=current_tenant_id)
         
-        logger.info(f"Dashboard stats retrieved successfully for user {current_user_id}")
+        logger.info(f"Dashboard stats retrieved successfully for user {current_tenant_id}")
         return DashboardStats(**stats)
         
     except Exception as e:
@@ -47,12 +47,12 @@ async def get_category_distribution(
 ):
     """获取风险类别分布统计"""
     try:
-        current_user_id = get_current_user_id(request)
+        current_tenant_id = get_current_tenant_id(request)
         
         stats_service = StatsService(db) 
-        category_data = stats_service.get_category_distribution(start_date, end_date, user_id=current_user_id)
+        category_data = stats_service.get_category_distribution(start_date, end_date, tenant_id=current_tenant_id)
         
-        logger.info(f"Category distribution retrieved successfully for user {current_user_id}")
+        logger.info(f"Category distribution retrieved successfully for user {current_tenant_id}")
         return {"categories": category_data}
         
     except Exception as e:

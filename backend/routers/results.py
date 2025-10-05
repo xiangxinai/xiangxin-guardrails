@@ -33,21 +33,21 @@ async def get_detection_results(
     try:
         # 获取用户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context and auth_context.get('data'):
-            user_id = auth_context['data'].get('user_id')
+            tenant_id = auth_context['data'].get('tenant_id')
         
         # 构建查询条件
         filters = []
         
         # 添加用户过滤条件
-        if user_id is not None:
+        if tenant_id is not None:
             try:
                 import uuid
-                user_uuid = uuid.UUID(str(user_id))
-                filters.append(DetectionResult.user_id == user_uuid)
+                tenant_uuid = uuid.UUID(str(tenant_id))
+                filters.append(DetectionResult.tenant_id == tenant_uuid)
             except ValueError:
-                # 如果user_id格式无效，返回空结果
+                # 如果tenant_id格式无效，返回空结果
                 raise HTTPException(status_code=400, detail="Invalid user ID format")
         
         # 风险等级过滤 - 支持整体风险等级或具体类型风险等级
@@ -90,13 +90,13 @@ async def get_detection_results(
             base_query = base_query.filter(and_(*filters))
         else:
             # 如果无过滤条件也必须限定用户
-            if user_id is not None:
+            if tenant_id is not None:
                 try:
                     import uuid
-                    user_uuid = uuid.UUID(str(user_id))
-                    base_query = base_query.filter(DetectionResult.user_id == user_uuid)
+                    tenant_uuid = uuid.UUID(str(tenant_id))
+                    base_query = base_query.filter(DetectionResult.tenant_id == tenant_uuid)
                 except ValueError:
-                    # 如果user_id格式无效，返回空结果
+                    # 如果tenant_id格式无效，返回空结果
                     raise HTTPException(status_code=400, detail="Invalid user ID format")
         
         # 获取总数
@@ -116,15 +116,15 @@ async def get_detection_results(
             if hasattr(result, 'image_paths') and result.image_paths:
                 for image_path in result.image_paths:
                     try:
-                        # 从路径提取 user_id 和 filename
-                        # 路径格式: /mnt/data/xiangxin-guardrails-data/media/{user_id}/{filename}
+                        # 从路径提取 tenant_id 和 filename
+                        # 路径格式: /mnt/data/xiangxin-guardrails-data/media/{tenant_id}/{filename}
                         path_parts = Path(image_path).parts
                         filename = path_parts[-1]
-                        extracted_user_id = path_parts[-2]
+                        extracted_tenant_id = path_parts[-2]
 
                         # 生成带签名的URL
                         signed_url = generate_signed_media_url(
-                            user_id=extracted_user_id,
+                            tenant_id=extracted_tenant_id,
                             filename=filename,
                             expires_in_seconds=86400  # 24小时有效期
                         )
@@ -171,21 +171,21 @@ async def get_detection_result(result_id: int, request: Request, db: Session = D
     try:
         # 获取用户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context and auth_context.get('data'):
-            user_id = auth_context['data'].get('user_id')
+            tenant_id = auth_context['data'].get('tenant_id')
         
         result = db.query(DetectionResult).filter_by(id=result_id).first()
         if not result:
             raise HTTPException(status_code=404, detail="Detection result not found")
         
         # 权限校验：只能查看自己的记录
-        if user_id is not None:
-            # 将字符串类型的user_id转换为UUID进行比较
+        if tenant_id is not None:
+            # 将字符串类型的tenant_id转换为UUID进行比较
             try:
                 import uuid
-                user_uuid = uuid.UUID(str(user_id))
-                if result.user_id != user_uuid:
+                tenant_uuid = uuid.UUID(str(tenant_id))
+                if result.tenant_id != tenant_uuid:
                     raise HTTPException(status_code=403, detail="Forbidden")
             except ValueError:
                 raise HTTPException(status_code=403, detail="Invalid user ID format")
@@ -195,15 +195,15 @@ async def get_detection_result(result_id: int, request: Request, db: Session = D
         if hasattr(result, 'image_paths') and result.image_paths:
             for image_path in result.image_paths:
                 try:
-                    # 从路径提取 user_id 和 filename
-                    # 路径格式: /mnt/data/xiangxin-guardrails-data/media/{user_id}/{filename}
+                    # 从路径提取 tenant_id 和 filename
+                    # 路径格式: /mnt/data/xiangxin-guardrails-data/media/{tenant_id}/{filename}
                     path_parts = Path(image_path).parts
                     filename = path_parts[-1]
-                    extracted_user_id = path_parts[-2]
+                    extracted_tenant_id = path_parts[-2]
 
                     # 生成带签名的URL
                     signed_url = generate_signed_media_url(
-                        user_id=extracted_user_id,
+                        tenant_id=extracted_tenant_id,
                         filename=filename,
                         expires_in_seconds=86400  # 24小时有效期
                     )

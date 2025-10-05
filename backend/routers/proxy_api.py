@@ -47,21 +47,21 @@ def get_detection_mode(model_config, detection_type: str) -> DetectionMode:
         # 默认使用旁路模式
         return DetectionMode.ASYNC_BYPASS
 
-async def perform_input_detection(model_config, input_messages: list, user_id: str, request_id: str):
+async def perform_input_detection(model_config, input_messages: list, tenant_id: str, request_id: str):
     """执行输入检测 - 根据配置选择异步或同步模式"""
     detection_mode = get_detection_mode(model_config, 'input')
 
     if detection_mode == DetectionMode.ASYNC_BYPASS:
         # 异步旁路模式：不阻塞，同时启动检测和上游调用
-        return await _async_input_detection(input_messages, user_id, request_id, model_config)
+        return await _async_input_detection(input_messages, tenant_id, request_id, model_config)
     else:
         # 同步串行模式：先检测，再决定是否调用上游
-        return await _sync_input_detection(model_config, input_messages, user_id, request_id)
+        return await _sync_input_detection(model_config, input_messages, tenant_id, request_id)
 
-async def _async_input_detection(input_messages: list, user_id: str, request_id: str, model_config=None):
+async def _async_input_detection(input_messages: list, tenant_id: str, request_id: str, model_config=None):
     """异步输入检测 - 启动后台检测任务，立即返回通过结果"""
     # 启动后台检测任务
-    asyncio.create_task(_background_input_detection(input_messages, user_id, request_id, model_config))
+    asyncio.create_task(_background_input_detection(input_messages, tenant_id, request_id, model_config))
     
     # 立即返回通过状态，允许请求继续处理
     return {
@@ -70,12 +70,12 @@ async def _async_input_detection(input_messages: list, user_id: str, request_id:
         'suggest_answer': None
     }
 
-async def _background_input_detection(input_messages: list, user_id: str, request_id: str, model_config=None):
+async def _background_input_detection(input_messages: list, tenant_id: str, request_id: str, model_config=None):
     """后台输入检测任务 - 仅记录结果，不影响请求处理"""
     try:
         detection_result = await detection_guardrail_service.detect_messages(
             messages=input_messages,
-            user_id=user_id,
+            tenant_id=tenant_id,
             request_id=f"{request_id}_input_async"
         )
         
@@ -87,12 +87,12 @@ async def _background_input_detection(input_messages: list, user_id: str, reques
     except Exception as e:
         logger.error(f"后台输入检测失败: {e}")
 
-async def _sync_input_detection(model_config, input_messages: list, user_id: str, request_id: str):
+async def _sync_input_detection(model_config, input_messages: list, tenant_id: str, request_id: str):
     """同步输入检测 - 检测完成后再决定是否继续"""
     try:
         detection_result = await detection_guardrail_service.detect_messages(
             messages=input_messages,
-            user_id=user_id,
+            tenant_id=tenant_id,
             request_id=f"{request_id}_input_sync"
         )
         
@@ -127,21 +127,21 @@ async def _sync_input_detection(model_config, input_messages: list, user_id: str
             'suggest_answer': None
         }
 
-async def perform_output_detection(model_config, input_messages: list, response_content: str, user_id: str, request_id: str):
+async def perform_output_detection(model_config, input_messages: list, response_content: str, tenant_id: str, request_id: str):
     """执行输出检测 - 根据配置选择异步或同步模式"""
     detection_mode = get_detection_mode(model_config, 'output')
 
     if detection_mode == DetectionMode.ASYNC_BYPASS:
         # 异步旁路模式：启动后台检测，立即返回通过结果
-        return await _async_output_detection(input_messages, response_content, user_id, request_id, model_config)
+        return await _async_output_detection(input_messages, response_content, tenant_id, request_id, model_config)
     else:
         # 同步串行模式：检测完成后再返回结果
-        return await _sync_output_detection(model_config, input_messages, response_content, user_id, request_id)
+        return await _sync_output_detection(model_config, input_messages, response_content, tenant_id, request_id)
 
-async def _async_output_detection(input_messages: list, response_content: str, user_id: str, request_id: str, model_config=None):
+async def _async_output_detection(input_messages: list, response_content: str, tenant_id: str, request_id: str, model_config=None):
     """异步输出检测 - 启动后台检测任务，立即返回通过结果"""
     # 启动后台检测任务
-    asyncio.create_task(_background_output_detection(input_messages, response_content, user_id, request_id, model_config))
+    asyncio.create_task(_background_output_detection(input_messages, response_content, tenant_id, request_id, model_config))
     
     # 立即返回通过状态，允许响应直接返回给用户
     return {
@@ -151,7 +151,7 @@ async def _async_output_detection(input_messages: list, response_content: str, u
         'response_content': response_content  # 原始响应内容
     }
 
-async def _background_output_detection(input_messages: list, response_content: str, user_id: str, request_id: str, model_config=None):
+async def _background_output_detection(input_messages: list, response_content: str, tenant_id: str, request_id: str, model_config=None):
     """后台输出检测任务 - 仅记录结果，不影响响应"""
     try:
         # 构造检测messages: input + response
@@ -163,7 +163,7 @@ async def _background_output_detection(input_messages: list, response_content: s
 
         detection_result = await detection_guardrail_service.detect_messages(
             messages=detection_messages,
-            user_id=user_id,
+            tenant_id=tenant_id,
             request_id=f"{request_id}_output_async"
         )
         
@@ -175,7 +175,7 @@ async def _background_output_detection(input_messages: list, response_content: s
     except Exception as e:
         logger.error(f"后台输出检测失败: {e}")
 
-async def _sync_output_detection(model_config, input_messages: list, response_content: str, user_id: str, request_id: str):
+async def _sync_output_detection(model_config, input_messages: list, response_content: str, tenant_id: str, request_id: str):
     """同步输出检测 - 检测完成后再决定返回内容"""
     try:
         # 构造检测messages: input + response
@@ -187,7 +187,7 @@ async def _sync_output_detection(model_config, input_messages: list, response_co
 
         detection_result = await detection_guardrail_service.detect_messages(
             messages=detection_messages,
-            user_id=user_id,
+            tenant_id=tenant_id,
             request_id=f"{request_id}_output_sync"
         )
         
@@ -242,7 +242,7 @@ class StreamChunkDetector:
         self.detection_result = None
     
     async def add_chunk(self, chunk_content: str, reasoning_content: str, model_config, input_messages: list, 
-                       user_id: str, request_id: str) -> bool:
+                       tenant_id: str, request_id: str) -> bool:
         """添加chunk并检测，返回是否应该停止流"""
         if not chunk_content.strip() and not reasoning_content.strip():
             return False
@@ -262,25 +262,25 @@ class StreamChunkDetector:
         if self.chunk_count >= detection_threshold:
             if self.detection_mode == DetectionMode.ASYNC_BYPASS:
                 # 异步旁路模式：启动检测但不阻塞
-                asyncio.create_task(self._async_detection(model_config, input_messages, user_id, request_id))
+                asyncio.create_task(self._async_detection(model_config, input_messages, tenant_id, request_id))
                 return False  # 不阻断流
             else:
                 # 串行模式：同步检测
-                return await self._sync_detection(model_config, input_messages, user_id, request_id)
+                return await self._sync_detection(model_config, input_messages, tenant_id, request_id)
         
         return False
     
     async def final_detection(self, model_config, input_messages: list, 
-                            user_id: str, request_id: str) -> bool:
+                            tenant_id: str, request_id: str) -> bool:
         """最终检测剩余chunks"""
         if self.chunks_buffer and not self.risk_detected:
             if self.detection_mode == DetectionMode.ASYNC_BYPASS:
                 # 异步旁路模式：启动最终检测但不阻塞
-                asyncio.create_task(self._async_detection(model_config, input_messages, user_id, request_id, is_final=True))
+                asyncio.create_task(self._async_detection(model_config, input_messages, tenant_id, request_id, is_final=True))
                 return False
             else:
                 # 串行模式：同步最终检测，并检查是否可以释放最后的chunk
-                should_stop = await self._sync_final_detection(model_config, input_messages, user_id, request_id)
+                should_stop = await self._sync_final_detection(model_config, input_messages, tenant_id, request_id)
                 
                 # 在串行模式下，最终检测完成后标记所有chunk都安全
                 if not should_stop:
@@ -310,7 +310,7 @@ class StreamChunkDetector:
         return chunk
 
     async def _async_detection(self, model_config, input_messages: list, 
-                              user_id: str, request_id: str, is_final: bool = False):
+                              tenant_id: str, request_id: str, is_final: bool = False):
         """异步旁路检测 - 不阻塞流，仅记录检测结果"""
         if not self.chunks_buffer:
             return
@@ -327,7 +327,7 @@ class StreamChunkDetector:
             # 异步检测 - 结果仅用于记录
             detection_result = await detection_guardrail_service.detect_messages(
                 messages=detection_messages,
-                user_id=user_id,
+                tenant_id=tenant_id,
                 request_id=f"{request_id}_stream_async_{self.chunk_count}"
             )
             
@@ -344,7 +344,7 @@ class StreamChunkDetector:
             logger.error(f"异步检测失败: {e}")
 
     async def _sync_detection(self, model_config, input_messages: list, 
-                             user_id: str, request_id: str, is_final: bool = False) -> bool:
+                             tenant_id: str, request_id: str, is_final: bool = False) -> bool:
         """同步串行检测 - 可能阻塞流"""
         if not self.chunks_buffer:
             return False
@@ -361,7 +361,7 @@ class StreamChunkDetector:
             # 同步检测
             detection_result = await detection_guardrail_service.detect_messages(
                 messages=detection_messages,
-                user_id=user_id,
+                tenant_id=tenant_id,
                 request_id=f"{request_id}_stream_sync_{self.chunk_count}"
             )
             
@@ -384,7 +384,7 @@ class StreamChunkDetector:
             return False
 
     async def _sync_final_detection(self, model_config, input_messages: list, 
-                                   user_id: str, request_id: str) -> bool:
+                                   tenant_id: str, request_id: str) -> bool:
         """同步最终检测 - 用于流结束时的检测"""
         if not self.chunks_buffer:
             return False
@@ -401,7 +401,7 @@ class StreamChunkDetector:
             # 同步检测
             detection_result = await detection_guardrail_service.detect_messages(
                 messages=detection_messages,
-                user_id=user_id,
+                tenant_id=tenant_id,
                 request_id=f"{request_id}_stream_final_{self.chunk_count}"
             )
             
@@ -426,7 +426,7 @@ class StreamChunkDetector:
 
 
 async def _handle_streaming_chat_completion(
-    model_config, request_data, request_id: str, user_id: str,
+    model_config, request_data, request_id: str, tenant_id: str,
     input_messages: list, input_detection_id: str, input_blocked: bool, start_time: float
 ):
     """处理流式聊天补全"""
@@ -465,7 +465,7 @@ async def _handle_streaming_chat_completion(
                     if chunk_content or reasoning_content:
                         # 检测chunk（包含reasoning内容）
                         should_stop = await detector.add_chunk(
-                            chunk_content, reasoning_content, model_config, input_messages, user_id, request_id
+                            chunk_content, reasoning_content, model_config, input_messages, tenant_id, request_id
                         )
                         
                         if should_stop:
@@ -494,7 +494,7 @@ async def _handle_streaming_chat_completion(
                 # 最终检测
                 if not detector.should_stop and stream_ended:
                     should_stop = await detector.final_detection(
-                        model_config, input_messages, user_id, request_id
+                        model_config, input_messages, tenant_id, request_id
                     )
                     if should_stop:
                         stop_chunk = _create_stop_chunk(request_id, detector.detection_result)
@@ -523,7 +523,7 @@ async def _handle_streaming_chat_completion(
                 # 记录日志
                 await proxy_service.log_proxy_request(
                     request_id=request_id,
-                    user_id=user_id,
+                    tenant_id=tenant_id,
                     proxy_config_id=str(model_config.id),
                     model_requested=request_data.model,
                     model_used=model_config.model_name,
@@ -677,14 +677,14 @@ class CompletionRequest(BaseModel):
 
 @router.get("/v1/models")
 async def list_models(request: Request):
-    """列出用户配置的模型"""
+    """列出租户配置的模型"""
     try:
         auth_ctx = getattr(request.state, 'auth_context', None)
         if not auth_ctx:
             raise HTTPException(status_code=401, detail="Authentication required")
-        
-        user_id = auth_ctx['data']['user_id']
-        models = await proxy_service.get_user_models(user_id)
+
+        tenant_id = auth_ctx['data'].get('tenant_id') or auth_ctx['data'].get('tenant_id')
+        models = await proxy_service.get_user_models(tenant_id)
         
         return {
             "object": "list",
@@ -719,14 +719,14 @@ async def create_chat_completion(
         auth_ctx = getattr(request.state, 'auth_context', None)
         if not auth_ctx:
             raise HTTPException(status_code=401, detail="Authentication required")
-        
-        user_id = auth_ctx['data']['user_id']
+
+        tenant_id = auth_ctx['data'].get('tenant_id') or auth_ctx['data'].get('tenant_id')
         request_id = str(uuid.uuid4())
-        
-        logger.info(f"Chat completion request {request_id} from user {user_id} for model {request_data.model}")
-        
-        # 获取用户的模型配置
-        model_config = await proxy_service.get_user_model_config(user_id, request_data.model)
+
+        logger.info(f"Chat completion request {request_id} from tenant {tenant_id} for model {request_data.model}")
+
+        # 获取租户的模型配置
+        model_config = await proxy_service.get_user_model_config(tenant_id, request_data.model)
         if not model_config:
             return JSONResponse(
                 status_code=404,
@@ -750,7 +750,7 @@ async def create_chat_completion(
         try:
             # 输入检测 - 根据配置选择异步/同步模式
             input_detection_result = await perform_input_detection(
-                model_config, input_messages, user_id, request_id
+                model_config, input_messages, tenant_id, request_id
             )
             
             input_detection_id = input_detection_result.get('detection_id')
@@ -762,7 +762,7 @@ async def create_chat_completion(
                 # 记录日志
                 await proxy_service.log_proxy_request(
                         request_id=request_id,
-                        user_id=user_id,
+                        tenant_id=tenant_id,
                         proxy_config_id=str(model_config.id),
                         model_requested=request_data.model,
                         model_used=model_config.model_name,
@@ -850,7 +850,7 @@ async def create_chat_completion(
             if request_data.stream:
                 # 流式请求处理（输入未被阻断的情况）
                 return await _handle_streaming_chat_completion(
-                    model_config, request_data, request_id, user_id, 
+                    model_config, request_data, request_id, tenant_id, 
                     input_messages, input_detection_id, input_blocked, start_time
                 )
             
@@ -867,7 +867,7 @@ async def create_chat_completion(
                 
                 # 执行输出检测
                 output_detection_result = await perform_output_detection(
-                    model_config, input_messages, output_content, user_id, request_id
+                    model_config, input_messages, output_content, tenant_id, request_id
                 )
                 
                 output_detection_id = output_detection_result.get('detection_id')
@@ -883,7 +883,7 @@ async def create_chat_completion(
             usage = model_response.get('usage', {})
             await proxy_service.log_proxy_request(
                 request_id=request_id,
-                user_id=user_id,
+                tenant_id=tenant_id,
                 proxy_config_id=str(model_config.id),
                 model_requested=request_data.model,
                 model_used=model_config.model_name,
@@ -910,7 +910,7 @@ async def create_chat_completion(
             # 记录错误日志
             await proxy_service.log_proxy_request(
                 request_id=request_id,
-                user_id=user_id,
+                tenant_id=tenant_id,
                 proxy_config_id=str(model_config.id),
                 model_requested=request_data.model,
                 model_used=model_config.model_name,
@@ -951,14 +951,14 @@ async def create_completion(
         auth_ctx = getattr(request.state, 'auth_context', None)
         if not auth_ctx:
             raise HTTPException(status_code=401, detail="Authentication required")
-        
-        user_id = auth_ctx['data']['user_id']
+
+        tenant_id = auth_ctx['data'].get('tenant_id') or auth_ctx['data'].get('tenant_id')
         request_id = str(uuid.uuid4())
-        
-        logger.info(f"Completion request {request_id} from user {user_id} for model {request_data.model}")
-        
-        # 获取用户的模型配置
-        model_config = await proxy_service.get_user_model_config(user_id, request_data.model)
+
+        logger.info(f"Completion request {request_id} from tenant {tenant_id} for model {request_data.model}")
+
+        # 获取租户的模型配置
+        model_config = await proxy_service.get_user_model_config(tenant_id, request_data.model)
         if not model_config:
             return JSONResponse(
                 status_code=404,
@@ -988,7 +988,7 @@ async def create_completion(
         try:
             # 输入检测 - 根据配置选择异步/同步模式
             input_detection_result = await perform_input_detection(
-                model_config, input_messages, user_id, request_id
+                model_config, input_messages, tenant_id, request_id
             )
             
             input_detection_id = input_detection_result.get('detection_id')
@@ -1000,7 +1000,7 @@ async def create_completion(
                 # 记录日志
                 await proxy_service.log_proxy_request(
                     request_id=request_id,
-                    user_id=user_id,
+                    tenant_id=tenant_id,
                     proxy_config_id=str(model_config.id),
                     model_requested=request_data.model,
                     model_used=model_config.model_name,
@@ -1044,7 +1044,7 @@ async def create_completion(
                 
                 # 执行输出检测
                 output_detection_result = await perform_output_detection(
-                    model_config, input_messages, output_text, user_id, request_id
+                    model_config, input_messages, output_text, tenant_id, request_id
                 )
                 
                 output_detection_id = output_detection_result.get('detection_id')
@@ -1060,7 +1060,7 @@ async def create_completion(
             usage = model_response.get('usage', {})
             await proxy_service.log_proxy_request(
                 request_id=request_id,
-                user_id=user_id,
+                tenant_id=tenant_id,
                 proxy_config_id=str(model_config.id),
                 model_requested=request_data.model,
                 model_used=model_config.model_name,
@@ -1087,7 +1087,7 @@ async def create_completion(
             # 记录错误日志
             await proxy_service.log_proxy_request(
                 request_id=request_id,
-                user_id=user_id,
+                tenant_id=tenant_id,
                 proxy_config_id=str(model_config.id),
                 model_requested=request_data.model,
                 model_used=model_config.model_name,

@@ -24,25 +24,25 @@ async def check_guardrails(
         # 获取客户端信息
         ip_address = request.client.host if request.client else None
         user_agent = request.headers.get("user-agent")
-        
-        # 获取用户上下文
+
+        # 获取租户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context:
-            user_id = str(auth_context['data'].get('user_id'))
-        
-        if not user_id:
-            raise HTTPException(status_code=401, detail="User ID not found in auth context")
-        
+            tenant_id = str(auth_context['data'].get('tenant_id') or auth_context['data'].get('tenant_id'))
+
+        if not tenant_id:
+            raise HTTPException(status_code=401, detail="Tenant ID not found in auth context")
+
         # 创建护栏服务
         guardrail_service = GuardrailService(db)
-        
-        # 执行检测（将 user_id 传入以实现按用户隔离的黑白名单和代答）
+
+        # 执行检测（将 tenant_id 传入以实现按租户隔离的黑白名单和代答）
         result = await guardrail_service.check_guardrails(
-            request_data, 
+            request_data,
             ip_address=ip_address,
             user_agent=user_agent,
-            user_id=user_id
+            tenant_id=tenant_id
         )
         
         logger.info(f"Guardrail check completed: {result.id}, action: {result.suggest_action}")
@@ -95,37 +95,37 @@ async def check_input_guardrails(
     try:
         # 将输入转换为messages格式
         messages = [Message(role="user", content=request_data.input)]
-        
+
         # 构造标准的GuardrailRequest
         guardrail_request = GuardrailRequest(
             model=request_data.model,
             messages=messages
         )
-        
+
         # 获取客户端信息
         ip_address = request.client.host if request.client else None
         user_agent = request.headers.get("user-agent")
-        
-        # 获取用户上下文
+
+        # 获取租户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context:
-            user_id = str(auth_context['data'].get('user_id'))
-        
-        if not user_id:
-            raise HTTPException(status_code=401, detail="User ID not found in auth context")
-        
+            tenant_id = str(auth_context['data'].get('tenant_id') or auth_context['data'].get('tenant_id'))
+
+        if not tenant_id:
+            raise HTTPException(status_code=401, detail="Tenant ID not found in auth context")
+
         # 创建护栏服务
         guardrail_service = GuardrailService(db)
-        
+
         # 执行检测
         result = await guardrail_service.check_guardrails(
-            guardrail_request, 
+            guardrail_request,
             ip_address=ip_address,
             user_agent=user_agent,
-            user_id=user_id
+            tenant_id=tenant_id
         )
-        
+
         logger.info(f"Input guardrail check completed: {result.id}, action: {result.suggest_action}")
         
         return result
@@ -158,31 +158,31 @@ async def check_output_guardrails(
             model="Xiangxin-Guardrails-Text",
             messages=messages
         )
-        
+
         # 获取客户端信息
         ip_address = request.client.host if request.client else None
         user_agent = request.headers.get("user-agent")
-        
-        # 获取用户上下文
+
+        # 获取租户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context:
-            user_id = str(auth_context['data'].get('user_id'))
-        
-        if not user_id:
-            raise HTTPException(status_code=401, detail="User ID not found in auth context")
-        
+            tenant_id = str(auth_context['data'].get('tenant_id') or auth_context['data'].get('tenant_id'))
+
+        if not tenant_id:
+            raise HTTPException(status_code=401, detail="Tenant ID not found in auth context")
+
         # 创建护栏服务
         guardrail_service = GuardrailService(db)
-        
+
         # 执行检测
         result = await guardrail_service.check_guardrails(
-            guardrail_request, 
+            guardrail_request,
             ip_address=ip_address,
             user_agent=user_agent,
-            user_id=user_id
+            tenant_id=tenant_id
         )
-        
+
         logger.info(f"Output guardrail check completed: {result.id}, action: {result.suggest_action}")
         
         return result

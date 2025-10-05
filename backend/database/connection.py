@@ -98,7 +98,7 @@ async def init_db(minimal=False):
     Args:
         minimal: 是否最小化初始化（检测服务用）
     """
-    from database.models import DetectionResult, Blacklist, Whitelist, ResponseTemplate, SystemConfig, User, EmailVerification, UserSwitch
+    from database.models import DetectionResult, Blacklist, Whitelist, ResponseTemplate, SystemConfig, Tenant, EmailVerification, TenantSwitch
     from services.admin_service import admin_service
 
     lock_key = 0x5A6F_5858_4941_4752  # 固定 64-bit 锁键

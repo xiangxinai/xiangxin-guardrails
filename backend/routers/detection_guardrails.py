@@ -22,11 +22,11 @@ async def check_guardrails(
         
         # 获取用户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context:
-            user_id = str(auth_context['data'].get('user_id'))
+            tenant_id = str(auth_context['data'].get('tenant_id'))
         
-        if not user_id:
+        if not tenant_id:
             raise HTTPException(status_code=401, detail="User ID not found in auth context")
         
         # 创建检测服务（不需要数据库连接）
@@ -37,7 +37,7 @@ async def check_guardrails(
             request_data, 
             ip_address=ip_address,
             user_agent=user_agent,
-            user_id=user_id
+            tenant_id=tenant_id
         )
         
         logger.info(f"Detection completed: {result.id}, action: {result.suggest_action}")
@@ -99,11 +99,11 @@ async def check_input_guardrails(
         
         # 获取用户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context:
-            user_id = str(auth_context['data'].get('user_id'))
+            tenant_id = str(auth_context['data'].get('tenant_id'))
         
-        if not user_id:
+        if not tenant_id:
             raise HTTPException(status_code=401, detail="User ID not found in auth context")
         
         # 创建检测服务（不需要数据库连接）
@@ -114,7 +114,7 @@ async def check_input_guardrails(
             guardrail_request, 
             ip_address=ip_address,
             user_agent=user_agent,
-            user_id=user_id
+            tenant_id=tenant_id
         )
         
         logger.info(f"Input detection completed: {result.id}, action: {result.suggest_action}")
@@ -152,11 +152,11 @@ async def check_output_guardrails(
         
         # 获取用户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context:
-            user_id = str(auth_context['data'].get('user_id'))
+            tenant_id = str(auth_context['data'].get('tenant_id'))
         
-        if not user_id:
+        if not tenant_id:
             raise HTTPException(status_code=401, detail="User ID not found in auth context")
         
         # 创建检测服务（不需要数据库连接）
@@ -167,7 +167,7 @@ async def check_output_guardrails(
             guardrail_request, 
             ip_address=ip_address,
             user_agent=user_agent,
-            user_id=user_id
+            tenant_id=tenant_id
         )
         
         logger.info(f"Output detection completed: {result.id}, action: {result.suggest_action}")

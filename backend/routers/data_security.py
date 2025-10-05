@@ -10,7 +10,7 @@ import uuid
 import logging
 
 from database.connection import get_db
-from database.models import User, DataSecurityEntityType
+from database.models import Tenant, DataSecurityEntityType
 from services.data_security_service import DataSecurityService
 from utils.auth import verify_token
 
@@ -42,17 +42,17 @@ class EntityTypeUpdate(BaseModel):
     check_output: Optional[bool] = None
     is_active: Optional[bool] = None
 
-def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> Tenant:
     """获取当前用户"""
     auth_context = getattr(request.state, 'auth_context', None)
     if not auth_context:
         raise HTTPException(status_code=401, detail="未授权")
 
-    user_id = auth_context.get("data", {}).get("user_id")
-    if not user_id:
+    tenant_id = auth_context.get("data", {}).get("tenant_id")
+    if not tenant_id:
         raise HTTPException(status_code=401, detail="无效的用户ID")
 
-    user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
+    user = db.query(Tenant).filter(Tenant.id == uuid.UUID(tenant_id)).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
@@ -71,7 +71,7 @@ async def create_entity_type(
     existing = db.query(DataSecurityEntityType).filter(
         and_(
             DataSecurityEntityType.entity_type == entity_data.entity_type,
-            DataSecurityEntityType.user_id == current_user.id
+            DataSecurityEntityType.tenant_id == current_user.id
         )
     ).first()
 
@@ -83,7 +83,7 @@ async def create_entity_type(
 
     # 创建新配置
     entity_type = service.create_entity_type(
-        user_id=str(current_user.id),
+        tenant_id=str(current_user.id),
         entity_type=entity_data.entity_type,
         display_name=entity_data.display_name,
         risk_level=entity_data.risk_level,
@@ -127,7 +127,7 @@ async def list_entity_types(
 
     # 获取实体类型列表
     entity_types = service.get_entity_types(
-        user_id=str(current_user.id),
+        tenant_id=str(current_user.id),
         risk_level=risk_level
     )
 
@@ -172,7 +172,7 @@ async def get_entity_type(
         raise HTTPException(status_code=404, detail="实体类型配置不存在")
 
     # 检查权限：只能查看全局配置或自己的配置
-    if not entity_type.is_global and entity_type.user_id != current_user.id:
+    if not entity_type.is_global and entity_type.tenant_id != current_user.id:
         raise HTTPException(status_code=403, detail="无权访问该配置")
 
     recognition_config = entity_type.recognition_config or {}
@@ -215,7 +215,7 @@ async def update_entity_type(
         # 只有管理员可以修改全局配置
         if not current_user.is_super_admin:
             raise HTTPException(status_code=403, detail="只有管理员可以修改全局配置")
-    elif entity_type.user_id != current_user.id:
+    elif entity_type.tenant_id != current_user.id:
         raise HTTPException(status_code=403, detail="无权修改该配置")
 
     # 创建服务实例
@@ -243,7 +243,7 @@ async def update_entity_type(
     # 更新
     updated_entity = service.update_entity_type(
         entity_type_id=entity_type_id,
-        user_id=str(current_user.id),
+        tenant_id=str(current_user.id),
         **update_kwargs
     )
 
@@ -289,7 +289,7 @@ async def delete_entity_type(
         # 只有管理员可以删除全局配置
         if not current_user.is_super_admin:
             raise HTTPException(status_code=403, detail="只有管理员可以删除全局配置")
-    elif entity_type.user_id != current_user.id:
+    elif entity_type.tenant_id != current_user.id:
         raise HTTPException(status_code=403, detail="无权删除该配置")
 
     # 创建服务实例
@@ -332,7 +332,7 @@ async def create_global_entity_type(
 
     # 创建新的全局配置
     entity_type = service.create_entity_type(
-        user_id=str(current_user.id),
+        tenant_id=str(current_user.id),
         entity_type=entity_data.entity_type,
         display_name=entity_data.display_name,
         risk_level=entity_data.risk_level,

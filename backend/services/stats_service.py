@@ -14,18 +14,21 @@ class StatsService:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_dashboard_stats(self, user_id: str = None) -> Dict[str, Any]:
-        """获取仪表板统计数据"""
+    def get_dashboard_stats(self, tenant_id: str = None) -> Dict[str, Any]:
+        """获取仪表板统计数据
+
+        注意：参数名保持为 tenant_id 以向后兼容，但实际处理的是 tenant_id
+        """
         try:
-            # 构建基础查询，支持用户过滤
+            # 构建基础查询，支持租户过滤
             base_query = self.db.query(DetectionResult)
-            if user_id is not None:
-                # 将传入的 user_id 转换为 UUID 进行比较
+            if tenant_id is not None:
+                # 将传入的 tenant_id（实际是tenant_id）转换为 UUID 进行比较
                 try:
-                    user_uuid = uuid.UUID(str(user_id))
-                    base_query = base_query.filter(DetectionResult.user_id == user_uuid)
+                    tenant_uuid = uuid.UUID(str(tenant_id))
+                    base_query = base_query.filter(DetectionResult.tenant_id == tenant_uuid)
                 except ValueError:
-                    # 非法的 user_id，直接返回空统计
+                    # 非法的 tenant_id，直接返回空统计
                     return self._get_empty_stats()
             
             # 总请求数
@@ -52,10 +55,10 @@ class StatsService:
                 DetectionResult.compliance_risk_level,
                 DetectionResult.data_risk_level
             )
-            if user_id is not None:
+            if tenant_id is not None:
                 try:
-                    user_uuid = uuid.UUID(str(user_id))
-                    results_query = results_query.filter(DetectionResult.user_id == user_uuid)
+                    tenant_uuid = uuid.UUID(str(tenant_id))
+                    results_query = results_query.filter(DetectionResult.tenant_id == tenant_uuid)
                 except ValueError:
                     return self._get_empty_stats()
             results = results_query.all()
@@ -87,7 +90,7 @@ class StatsService:
             }
             
             # 最近7天趋势
-            daily_trends = self._get_daily_trends(7, user_id)
+            daily_trends = self._get_daily_trends(7, tenant_id)
             
             return {
                 "total_requests": total_requests,
@@ -126,13 +129,16 @@ class StatsService:
 
         return "无风险"
     
-    def _get_daily_trends(self, days: int, user_id: str = None) -> List[Dict[str, Any]]:
-        """获取每日趋势数据"""
+    def _get_daily_trends(self, days: int, tenant_id: str = None) -> List[Dict[str, Any]]:
+        """获取每日趋势数据
+
+        注意：参数名保持为 tenant_id 以向后兼容，但实际处理的是 tenant_id
+        """
         try:
             end_date = datetime.now().date()
             start_date = end_date - timedelta(days=days-1)
-            
-            # 获取指定日期范围内的记录，支持用户过滤
+
+            # 获取指定日期范围内的记录，支持租户过滤
             query = self.db.query(
                 func.date(DetectionResult.created_at).label('date'),
                 DetectionResult.security_risk_level,
@@ -141,14 +147,14 @@ class StatsService:
             ).filter(
                 func.date(DetectionResult.created_at) >= start_date
             )
-            
-            # 如果提供了用户ID，则进行用户过滤
-            if user_id is not None:
+
+            # 如果提供了租户ID，则进行租户过滤
+            if tenant_id is not None:
                 try:
-                    user_uuid = uuid.UUID(str(user_id))
-                    query = query.filter(DetectionResult.user_id == user_uuid)
+                    tenant_uuid = uuid.UUID(str(tenant_id))
+                    query = query.filter(DetectionResult.tenant_id == tenant_uuid)
                 except ValueError:
-                    # 非法的 user_id，返回空数据
+                    # 非法的 tenant_id，返回空数据
                     return []
             
             daily_records = query.all()
@@ -210,19 +216,22 @@ class StatsService:
             logger.error(f"Get daily trends error: {e}")
             return []
     
-    def get_category_distribution(self, start_date: str = None, end_date: str = None, user_id: str = None) -> List[Dict[str, Any]]:
-        """获取风险类别分布统计"""
+    def get_category_distribution(self, start_date: str = None, end_date: str = None, tenant_id: str = None) -> List[Dict[str, Any]]:
+        """获取风险类别分布统计
+
+        注意：参数名保持为 tenant_id 以向后兼容，但实际处理的是 tenant_id
+        """
         try:
             # 构建查询条件 - 查询有安全或合规风险的记录
             query = self.db.query(DetectionResult).filter(
                 (DetectionResult.security_risk_level != "无风险") |
                 (DetectionResult.compliance_risk_level != "无风险")
             )
-            
-            if user_id is not None:
+
+            if tenant_id is not None:
                 try:
-                    user_uuid = uuid.UUID(str(user_id))
-                    query = query.filter(DetectionResult.user_id == user_uuid)
+                    tenant_uuid = uuid.UUID(str(tenant_id))
+                    query = query.filter(DetectionResult.tenant_id == tenant_uuid)
                 except ValueError:
                     return []
             if start_date:

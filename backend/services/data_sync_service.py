@@ -198,28 +198,27 @@ class DataSyncService:
                     created_at = datetime.now(timezone.utc)
             
             # 创建检测结果记录
-            user_id = detection_data.get('user_id')
-            # 如果user_id不是UUID格式，尝试转换为UUID
-            if user_id is not None:
+            tenant_id = detection_data.get('tenant_id')
+            if tenant_id is not None:
                 import uuid
                 try:
                     # 如果是字符串数字，则转换为UUID
-                    if isinstance(user_id, str) and user_id.isdigit():
+                    if isinstance(tenant_id, str) and tenant_id.isdigit():
                         # 简单的数字ID不能直接转换为UUID，需要查找对应的实际UUID
                         # 这里先设置为None，避免错误
-                        user_id = None
-                    elif isinstance(user_id, str):
+                        tenant_id = None
+                    elif isinstance(tenant_id, str):
                         # 尝试解析为UUID
-                        user_id = uuid.UUID(user_id)
-                    elif isinstance(user_id, int):
+                        tenant_id = uuid.UUID(tenant_id)
+                    elif isinstance(tenant_id, int):
                         # 数字ID不能直接转换为UUID
-                        user_id = None
+                        tenant_id = None
                 except (ValueError, TypeError):
-                    user_id = None
+                    tenant_id = None
             
             detection_result = DetectionResult(
                     request_id=detection_data.get('request_id'),
-                    user_id=user_id,
+                    tenant_id=tenant_id,
                     content=detection_data.get('content'),
                     suggest_action=detection_data.get('suggest_action'),
                     suggest_answer=detection_data.get('suggest_answer'),

@@ -16,7 +16,7 @@ import numpy as np
 from openai import OpenAI
 from sqlalchemy.orm import Session
 
-from database.models import KnowledgeBase, User
+from database.models import KnowledgeBase, Tenant
 from config import settings
 
 logger = logging.getLogger(__name__)

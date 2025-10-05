@@ -18,35 +18,35 @@ class RiskConfigCache:
         self._cache_ttl = 300  # 5分钟缓存
         self._lock = asyncio.Lock()
     
-    async def get_user_risk_config(self, user_id: str) -> Dict[str, bool]:
+    async def get_user_risk_config(self, tenant_id: str) -> Dict[str, bool]:
         """获取用户风险配置（带缓存）"""
-        if not user_id:
+        if not tenant_id:
             # 无用户ID时返回默认全部启用
             return self._get_default_config()
         
         async with self._lock:
             # 检查缓存是否有效
             current_time = time.time()
-            if (user_id in self._cache and 
-                user_id in self._cache_timestamps and
-                current_time - self._cache_timestamps[user_id] < self._cache_ttl):
-                return self._cache[user_id]
+            if (tenant_id in self._cache and 
+                tenant_id in self._cache_timestamps and
+                current_time - self._cache_timestamps[tenant_id] < self._cache_ttl):
+                return self._cache[tenant_id]
             
             # 缓存失效或不存在，从数据库获取
             try:
-                config = await self._load_from_db(user_id)
-                self._cache[user_id] = config
-                self._cache_timestamps[user_id] = current_time
+                config = await self._load_from_db(tenant_id)
+                self._cache[tenant_id] = config
+                self._cache_timestamps[tenant_id] = current_time
                 return config
             except Exception as e:
-                logger.error(f"Failed to load risk config for user {user_id}: {e}")
+                logger.error(f"Failed to load risk config for user {tenant_id}: {e}")
                 # 数据库失败时返回默认配置
                 default_config = self._get_default_config()
-                self._cache[user_id] = default_config
-                self._cache_timestamps[user_id] = current_time
+                self._cache[tenant_id] = default_config
+                self._cache_timestamps[tenant_id] = current_time
                 return default_config
     
-    async def _load_from_db(self, user_id: str) -> Dict[str, bool]:
+    async def _load_from_db(self, tenant_id: str) -> Dict[str, bool]:
         """从数据库加载风险配置"""
         from database.connection import get_db
         from database.models import RiskTypeConfig
@@ -56,7 +56,7 @@ class RiskConfigCache:
         db: Session = next(get_db())
         try:
             config = db.query(RiskTypeConfig).filter(
-                RiskTypeConfig.user_id == user_id
+                RiskTypeConfig.tenant_id == tenant_id
             ).first()
             
             if config:
@@ -79,19 +79,19 @@ class RiskConfigCache:
             'S9': True, 'S10': True, 'S11': True, 'S12': True
         }
     
-    async def is_risk_type_enabled(self, user_id: str, risk_type: str) -> bool:
+    async def is_risk_type_enabled(self, tenant_id: str, risk_type: str) -> bool:
         """检查指定风险类型是否启用"""
-        config = await self.get_user_risk_config(user_id)
+        config = await self.get_user_risk_config(tenant_id)
         return config.get(risk_type, True)  # 默认启用
     
-    async def invalidate_user_cache(self, user_id: str):
+    async def invalidate_user_cache(self, tenant_id: str):
         """使指定用户的缓存失效"""
         async with self._lock:
-            if user_id in self._cache:
-                del self._cache[user_id]
-            if user_id in self._cache_timestamps:
-                del self._cache_timestamps[user_id]
-            logger.info(f"Invalidated risk config cache for user {user_id}")
+            if tenant_id in self._cache:
+                del self._cache[tenant_id]
+            if tenant_id in self._cache_timestamps:
+                del self._cache_timestamps[tenant_id]
+            logger.info(f"Invalidated risk config cache for user {tenant_id}")
     
     async def clear_cache(self):
         """清空所有缓存"""
@@ -104,34 +104,34 @@ class RiskConfigCache:
             self._trigger_level_timestamps.clear()
             logger.info("Cleared all risk config cache")
 
-    async def get_sensitivity_thresholds(self, user_id: str) -> Dict[str, float]:
+    async def get_sensitivity_thresholds(self, tenant_id: str) -> Dict[str, float]:
         """获取用户敏感度阈值配置（带缓存）- 新的全局阈值"""
-        if not user_id:
+        if not tenant_id:
             return self._get_default_sensitivity_thresholds()
 
         async with self._lock:
             # 检查缓存是否有效
             current_time = time.time()
-            if (user_id in self._sensitivity_cache and
-                user_id in self._sensitivity_timestamps and
-                current_time - self._sensitivity_timestamps[user_id] < self._cache_ttl):
-                return self._sensitivity_cache[user_id]
+            if (tenant_id in self._sensitivity_cache and
+                tenant_id in self._sensitivity_timestamps and
+                current_time - self._sensitivity_timestamps[tenant_id] < self._cache_ttl):
+                return self._sensitivity_cache[tenant_id]
 
             # 缓存失效或不存在，从数据库获取
             try:
-                config = await self._load_sensitivity_thresholds_from_db(user_id)
-                self._sensitivity_cache[user_id] = config
-                self._sensitivity_timestamps[user_id] = current_time
+                config = await self._load_sensitivity_thresholds_from_db(tenant_id)
+                self._sensitivity_cache[tenant_id] = config
+                self._sensitivity_timestamps[tenant_id] = current_time
                 return config
             except Exception as e:
-                logger.error(f"Failed to load sensitivity thresholds for user {user_id}: {e}")
+                logger.error(f"Failed to load sensitivity thresholds for user {tenant_id}: {e}")
                 # 数据库失败时返回默认配置
                 default_config = self._get_default_sensitivity_thresholds()
-                self._sensitivity_cache[user_id] = default_config
-                self._sensitivity_timestamps[user_id] = current_time
+                self._sensitivity_cache[tenant_id] = default_config
+                self._sensitivity_timestamps[tenant_id] = current_time
                 return default_config
 
-    async def _load_sensitivity_thresholds_from_db(self, user_id: str) -> Dict[str, float]:
+    async def _load_sensitivity_thresholds_from_db(self, tenant_id: str) -> Dict[str, float]:
         """从数据库加载敏感度阈值配置"""
         from database.connection import get_db
         from database.models import RiskTypeConfig
@@ -141,7 +141,7 @@ class RiskConfigCache:
         db: Session = next(get_db())
         try:
             config = db.query(RiskTypeConfig).filter(
-                RiskTypeConfig.user_id == user_id
+                RiskTypeConfig.tenant_id == tenant_id
             ).first()
 
             if config:
@@ -164,47 +164,47 @@ class RiskConfigCache:
             'high': 0.40
         }
 
-    async def invalidate_sensitivity_cache(self, user_id: str):
+    async def invalidate_sensitivity_cache(self, tenant_id: str):
         """使指定用户的敏感度缓存失效"""
         async with self._lock:
-            if user_id in self._sensitivity_cache:
-                del self._sensitivity_cache[user_id]
-            if user_id in self._sensitivity_timestamps:
-                del self._sensitivity_timestamps[user_id]
-            if user_id in self._trigger_level_cache:
-                del self._trigger_level_cache[user_id]
-            if user_id in self._trigger_level_timestamps:
-                del self._trigger_level_timestamps[user_id]
-            logger.info(f"Invalidated sensitivity config cache for user {user_id}")
+            if tenant_id in self._sensitivity_cache:
+                del self._sensitivity_cache[tenant_id]
+            if tenant_id in self._sensitivity_timestamps:
+                del self._sensitivity_timestamps[tenant_id]
+            if tenant_id in self._trigger_level_cache:
+                del self._trigger_level_cache[tenant_id]
+            if tenant_id in self._trigger_level_timestamps:
+                del self._trigger_level_timestamps[tenant_id]
+            logger.info(f"Invalidated sensitivity config cache for user {tenant_id}")
 
-    async def get_sensitivity_trigger_level(self, user_id: str) -> str:
+    async def get_sensitivity_trigger_level(self, tenant_id: str) -> str:
         """获取用户敏感度触发等级配置（带缓存）"""
-        if not user_id:
+        if not tenant_id:
             return "low"
 
         async with self._lock:
             # 检查缓存是否有效
             current_time = time.time()
-            if (user_id in self._trigger_level_cache and
-                user_id in self._trigger_level_timestamps and
-                current_time - self._trigger_level_timestamps[user_id] < self._cache_ttl):
-                return self._trigger_level_cache[user_id]
+            if (tenant_id in self._trigger_level_cache and
+                tenant_id in self._trigger_level_timestamps and
+                current_time - self._trigger_level_timestamps[tenant_id] < self._cache_ttl):
+                return self._trigger_level_cache[tenant_id]
 
             # 缓存失效或不存在，从数据库获取
             try:
-                trigger_level = await self._load_trigger_level_from_db(user_id)
-                self._trigger_level_cache[user_id] = trigger_level
-                self._trigger_level_timestamps[user_id] = current_time
+                trigger_level = await self._load_trigger_level_from_db(tenant_id)
+                self._trigger_level_cache[tenant_id] = trigger_level
+                self._trigger_level_timestamps[tenant_id] = current_time
                 return trigger_level
             except Exception as e:
-                logger.error(f"Failed to load trigger level for user {user_id}: {e}")
+                logger.error(f"Failed to load trigger level for user {tenant_id}: {e}")
                 # 数据库失败时返回默认配置
                 default_level = "low"
-                self._trigger_level_cache[user_id] = default_level
-                self._trigger_level_timestamps[user_id] = current_time
+                self._trigger_level_cache[tenant_id] = default_level
+                self._trigger_level_timestamps[tenant_id] = current_time
                 return default_level
 
-    async def _load_trigger_level_from_db(self, user_id: str) -> str:
+    async def _load_trigger_level_from_db(self, tenant_id: str) -> str:
         """从数据库加载敏感度触发等级配置"""
         from database.connection import get_db
         from database.models import RiskTypeConfig
@@ -214,7 +214,7 @@ class RiskConfigCache:
         db: Session = next(get_db())
         try:
             config = db.query(RiskTypeConfig).filter(
-                RiskTypeConfig.user_id == user_id
+                RiskTypeConfig.tenant_id == tenant_id
             ).first()
 
             if config:

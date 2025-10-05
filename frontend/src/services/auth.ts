@@ -20,7 +20,7 @@ export interface LoginResponse {
   token_type: string;
   expires_in: number;
   api_key?: string;
-  user_id?: string;
+  tenant_id?: string;
   is_super_admin?: boolean;
 }
 
@@ -31,7 +31,7 @@ export interface UserInfo {
   is_active: boolean;
   is_verified: boolean;
   is_super_admin: boolean;
-  rate_limit: number;  // 速度限制（每秒请求数，0表示无限制，默认为1）
+  rate_limit: number;  // 租户速度限制（每秒请求数，0表示无限制，默认为1）
 }
 
 // 获取base URL的辅助函数，与api.ts保持一致

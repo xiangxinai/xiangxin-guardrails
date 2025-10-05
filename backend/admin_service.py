@@ -62,7 +62,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
             return cached_auth
         
         from database.connection import get_admin_db_session
-        from database.models import User
+        from database.models import Tenant
         from utils.user import get_user_by_api_key
         from utils.auth import verify_token
         
@@ -77,26 +77,26 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                 
                 if role == 'admin':
                     subject_email = user_data.get('username') or user_data.get('sub')
-                    admin_user = db.query(User).filter(User.email == subject_email).first()
+                    admin_user = db.query(Tenant).filter(Tenant.email == subject_email).first()
                     if admin_user:
                         auth_context = {
                             "type": "jwt_admin",
                             "data": {
-                                "user_id": str(admin_user.id),
+                                "tenant_id": str(admin_user.id),
                                 "email": admin_user.email,
                                 "is_super_admin": admin_service.is_super_admin(admin_user)
                             }
                         }
                 else:
-                    raw_user_id = user_data.get('user_id') or user_data.get('sub')
-                    user_uuid = None
-                    if isinstance(raw_user_id, str):
+                    raw_tenant_id = user_data.get('tenant_id') or user_data.get('sub')
+                    tenant_uuid = None
+                    if isinstance(raw_tenant_id, str):
                         try:
-                            user_uuid = uuid.UUID(raw_user_id)
+                            tenant_uuid = uuid.UUID(raw_tenant_id)
                         except ValueError:
                             pass
                     
-                    user = db.query(User).filter(User.id == user_uuid).first() if user_uuid else None
+                    user = db.query(Tenant).filter(Tenant.id == tenant_uuid).first() if tenant_uuid else None
                     if user:
                         # 检查用户切换
                         if switch_session and admin_service.is_super_admin(user):
@@ -105,7 +105,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                                 auth_context = {
                                     "type": "jwt_switched",
                                     "data": {
-                                        "user_id": str(switched_user.id),
+                                        "tenant_id": str(switched_user.id),
                                         "email": switched_user.email,
                                         "original_admin_id": str(user.id),
                                         "original_admin_email": user.email,
@@ -117,7 +117,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                             auth_context = {
                                 "type": "jwt", 
                                 "data": {
-                                    "user_id": str(user.id),
+                                    "tenant_id": str(user.id),
                                     "email": user.email,
                                     "is_super_admin": admin_service.is_super_admin(user)
                                 }
@@ -133,7 +133,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                             auth_context = {
                                 "type": "api_key_switched",
                                 "data": {
-                                    "user_id": str(switched_user.id),
+                                    "tenant_id": str(switched_user.id),
                                     "email": switched_user.email,
                                     "api_key": switched_user.api_key,
                                     "original_admin_id": str(user.id),
@@ -146,7 +146,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                         auth_context = {
                             "type": "api_key", 
                             "data": {
-                                "user_id": str(user.id),
+                                "tenant_id": str(user.id),
                                 "email": user.email,
                                 "api_key": user.api_key,
                                 "is_super_admin": admin_service.is_super_admin(user)
@@ -265,7 +265,7 @@ async def verify_user_auth(
     # 如果中间件未解析，进行完整验证
     token = credentials.credentials
     from database.connection import get_admin_db_session
-    from database.models import User
+    from database.models import Tenant
     from utils.user import get_user_by_api_key
     from utils.auth import verify_token
     
@@ -274,16 +274,16 @@ async def verify_user_auth(
         # JWT验证
         try:
             user_data = verify_token(token)
-            raw_user_id = user_data.get('user_id') or user_data.get('sub')
-            if isinstance(raw_user_id, str):
+            raw_tenant_id = user_data.get('tenant_id') or user_data.get('sub')
+            if isinstance(raw_tenant_id, str):
                 try:
-                    user_uuid = uuid.UUID(raw_user_id)
-                    user = db.query(User).filter(User.id == user_uuid).first()
+                    tenant_uuid = uuid.UUID(raw_tenant_id)
+                    user = db.query(Tenant).filter(Tenant.id == tenant_uuid).first()
                     if user and user.is_active:
                         return {
                             "type": "jwt", 
                             "data": {
-                                "user_id": str(user.id),
+                                "tenant_id": str(user.id),
                                 "email": user.email,
                                 "is_super_admin": admin_service.is_super_admin(user)
                             }
@@ -299,7 +299,7 @@ async def verify_user_auth(
             return {
                 "type": "api_key", 
                 "data": {
-                    "user_id": str(user.id),
+                    "tenant_id": str(user.id),
                     "email": user.email,
                     "api_key": user.api_key,
                     "is_super_admin": admin_service.is_super_admin(user)
@@ -333,11 +333,11 @@ from pathlib import Path
 
 public_media_router = APIRouter(tags=["Media"])
 
-@public_media_router.get("/media/image/{user_id}/{filename}")
-async def get_image_public(user_id: str, filename: str):
+@public_media_router.get("/media/image/{tenant_id}/{filename}")
+async def get_image_public(tenant_id: str, filename: str):
     """获取图片文件（公开访问，不需要认证）"""
     try:
-        file_path = Path(settings.media_dir) / user_id / filename
+        file_path = Path(settings.media_dir) / tenant_id / filename
         if not str(file_path).startswith(str(Path(settings.media_dir))):
             raise HTTPException(status_code=403, detail="无权访问此文件")
         if not file_path.exists() or not file_path.is_file():

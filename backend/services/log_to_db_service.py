@@ -137,13 +137,13 @@ class LogToDbService:
             if existing:
                 return  # 已存在，跳过
             
-            # 解析用户ID
-            user_id = log_data.get('user_id')
-            if user_id and isinstance(user_id, str):
+            # 解析租户ID
+            tenant_id = log_data.get('tenant_id')  # 字段名保持为 tenant_id 以向后兼容
+            if tenant_id and isinstance(tenant_id, str):
                 try:
-                    user_id = uuid.UUID(user_id)
+                    tenant_id = uuid.UUID(tenant_id)
                 except ValueError:
-                    user_id = None
+                    tenant_id = None
             
             # 解析创建时间
             created_at = None
@@ -165,7 +165,7 @@ class LogToDbService:
             # 创建检测结果记录
             detection_result = DetectionResult(
                 request_id=log_data.get('request_id'),
-                user_id=user_id,
+                tenant_id=tenant_id,
                 content=log_data.get('content'),
                 suggest_action=log_data.get('suggest_action'),
                 suggest_answer=log_data.get('suggest_answer'),

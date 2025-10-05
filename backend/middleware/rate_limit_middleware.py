@@ -9,31 +9,31 @@ logger = setup_logger()
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """限速中间件"""
-    
+
     def __init__(self, app):
         super().__init__(app)
         self.protected_paths = ["/v1/guardrails"]  # 需要限速的路径
-    
+
     async def dispatch(self, request: Request, call_next):
         # 检查是否需要限速
         if not any(request.url.path.startswith(path) for path in self.protected_paths):
             return await call_next(request)
-        
-        # 获取用户ID
+
+        # 获取租户ID
         auth_context = getattr(request.state, 'auth_context', None)
         if not auth_context:
             # 没有认证信息，跳过限速（让后续认证中间件处理）
             return await call_next(request)
-        
-        user_id = auth_context['data'].get('user_id')
-        if not user_id:
+
+        tenant_id = auth_context['data'].get('tenant_id')  
+        if not tenant_id:
             return await call_next(request)
-        
+
         # 检查限速
         db = get_db_session()
         try:
-            if not await rate_limiter.is_allowed(str(user_id), db):
-                logger.warning(f"Rate limit exceeded for user {user_id} on {request.url.path}")
+            if not await rate_limiter.is_allowed(str(tenant_id), db):
+                logger.warning(f"Rate limit exceeded for tenant {tenant_id} on {request.url.path}")
                 return JSONResponse(
                     status_code=429,
                     content={

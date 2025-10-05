@@ -59,7 +59,7 @@ class DetectionGuardrailService:
     async def detect_content(
         self,
         content: str,
-        user_id: str,
+        tenant_id: str,
         request_id: str,
         model_sensitivity_trigger_level: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -76,7 +76,7 @@ class DetectionGuardrailService:
         # 调用完整的检测方法
         result = await self.check_guardrails(
             request=request,
-            user_id=user_id,
+            tenant_id=tenant_id,
             model_sensitivity_trigger_level=model_sensitivity_trigger_level
         )
         
@@ -93,7 +93,7 @@ class DetectionGuardrailService:
     async def detect_messages(
         self,
         messages: List[Dict[str, str]],
-        user_id: str,
+        tenant_id: str,
         request_id: str,
         model_sensitivity_trigger_level: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -113,7 +113,7 @@ class DetectionGuardrailService:
         # 调用完整的检测方法
         result = await self.check_guardrails(
             request=request,
-            user_id=user_id,
+            tenant_id=tenant_id,
             model_sensitivity_trigger_level=model_sensitivity_trigger_level
         )
         
@@ -132,7 +132,7 @@ class DetectionGuardrailService:
         request: GuardrailRequest,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
-        user_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
         model_sensitivity_trigger_level: Optional[str] = None
     ) -> GuardrailResponse:
         """执行护栏检测（只写日志文件）"""
@@ -146,29 +146,29 @@ class DetectionGuardrailService:
         # 如果截断后没有消息，返回错误
         if not truncated_messages:
             logger.warning(f"No valid messages after truncation for request {request_id}")
-            return await self._handle_error(request_id, "", "No valid messages after truncation", user_id)
+            return await self._handle_error(request_id, "", "No valid messages after truncation", tenant_id)
         
         # 提取用户内容（使用截断后的消息）
         user_content = self._extract_user_content(truncated_messages)
         
         try:
             # 1. 黑白名单预检（使用高性能内存缓存，按用户隔离）
-            blacklist_hit, blacklist_name, blacklist_keywords = await keyword_cache.check_blacklist(user_content, user_id)
+            blacklist_hit, blacklist_name, blacklist_keywords = await keyword_cache.check_blacklist(user_content, tenant_id)
             if blacklist_hit:
                 return await self._handle_blacklist_hit(
                     request_id, user_content, blacklist_name, blacklist_keywords,
-                    ip_address, user_agent, user_id
+                    ip_address, user_agent, tenant_id
                 )
             
-            whitelist_hit, whitelist_name, whitelist_keywords = await keyword_cache.check_whitelist(user_content, user_id)
+            whitelist_hit, whitelist_name, whitelist_keywords = await keyword_cache.check_whitelist(user_content, tenant_id)
             if whitelist_hit:
                 return await self._handle_whitelist_hit(
                     request_id, user_content, whitelist_name, whitelist_keywords,
-                    ip_address, user_agent, user_id
+                    ip_address, user_agent, tenant_id
                 )
             
             # 2. 数据安全检测（检测输入）
-            data_result = await self._check_data_security(user_content, user_id, direction="input")
+            data_result = await self._check_data_security(user_content, tenant_id, direction="input")
 
             # 3. 模型检测（使用截断后的消息，获取敏感度）
             # 转换消息为字典格式，支持多模态
@@ -193,7 +193,7 @@ class DetectionGuardrailService:
                                 has_image = True
                                 # 处理图片URL（支持base64、file://、http(s)://）
                                 original_url = part.image_url.url
-                                processed_url, saved_path = image_utils.process_image_url(original_url, user_id)
+                                processed_url, saved_path = image_utils.process_image_url(original_url, tenant_id)
 
                                 # 如果保存了图片，记录路径
                                 if saved_path:
@@ -208,19 +208,19 @@ class DetectionGuardrailService:
 
             # 4. 解析模型响应并应用风险类型过滤和敏感度阈值
             compliance_result, security_result, sensitivity_level = await self._parse_model_response_with_sensitivity(
-                model_response, sensitivity_score, user_id, model_sensitivity_trigger_level
+                model_response, sensitivity_score, tenant_id, model_sensitivity_trigger_level
             )
 
             # 5. 确定建议动作和回答（包含数据安全结果）
             overall_risk_level, suggest_action, suggest_answer = await self._determine_action_with_data(
-                compliance_result, security_result, data_result, user_id, user_content
+                compliance_result, security_result, data_result, tenant_id, user_content
             )
             
             # 6. 异步记录检测结果到日志文件（不写数据库）
             await self._log_detection_result(
                 request_id, user_content, compliance_result, security_result, data_result,
                 suggest_action, suggest_answer, model_response,
-                ip_address, user_agent, user_id, sensitivity_level, sensitivity_score,
+                ip_address, user_agent, tenant_id, sensitivity_level, sensitivity_score,
                 has_image=has_image, image_count=len(saved_image_paths), image_paths=saved_image_paths
             )
 
@@ -243,7 +243,7 @@ class DetectionGuardrailService:
         except Exception as e:
             logger.error(f"Guardrail check error: {e}")
             # 发生错误时返回安全的默认响应
-            return await self._handle_error(request_id, user_content, str(e), user_id)
+            return await self._handle_error(request_id, user_content, str(e), tenant_id)
     
     def _extract_user_content(self, messages: List[Message]) -> str:
         """提取完整对话内容"""
@@ -279,7 +279,7 @@ class DetectionGuardrailService:
                     conversation_parts.append(f"[{role_label}]: {content_str}")
             return '\n'.join(conversation_parts)
     
-    async def _parse_model_response(self, response: str, user_id: Optional[str] = None) -> Tuple[ComplianceResult, SecurityResult]:
+    async def _parse_model_response(self, response: str, tenant_id: Optional[str] = None) -> Tuple[ComplianceResult, SecurityResult]:
         """解析模型响应并应用风险类型过滤"""
         response = response.strip()
 
@@ -293,8 +293,8 @@ class DetectionGuardrailService:
             category = response.split('\n')[1] if '\n' in response else ""
 
             # 检查用户是否禁用了此风险类型
-            if user_id and not await risk_config_cache.is_risk_type_enabled(user_id, category):
-                logger.info(f"Risk type {category} is disabled for user {user_id}, treating as safe")
+            if tenant_id and not await risk_config_cache.is_risk_type_enabled(tenant_id, category):
+                logger.info(f"Risk type {category} is disabled for user {tenant_id}, treating as safe")
                 return (
                     ComplianceResult(risk_level="无风险", categories=[]),
                     SecurityResult(risk_level="无风险", categories=[])
@@ -321,14 +321,14 @@ class DetectionGuardrailService:
         )
 
     async def _parse_model_response_with_sensitivity(
-        self, response: str, sensitivity_score: Optional[float], user_id: Optional[str] = None,
+        self, response: str, sensitivity_score: Optional[float], tenant_id: Optional[str] = None,
         model_sensitivity_trigger_level: Optional[str] = None
     ) -> Tuple[ComplianceResult, SecurityResult, Optional[str]]:
         """解析模型响应并应用风险类型过滤和敏感度阈值"""
         response = response.strip()
 
         if response == "无风险":
-            sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, user_id) if sensitivity_score else None
+            sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id) if sensitivity_score else None
             return (
                 ComplianceResult(risk_level="无风险", categories=[]),
                 SecurityResult(risk_level="无风险", categories=[]),
@@ -339,9 +339,9 @@ class DetectionGuardrailService:
             category = response.split('\n')[1] if '\n' in response else ""
 
             # 检查用户是否禁用了此风险类型
-            if user_id and not await risk_config_cache.is_risk_type_enabled(user_id, category):
-                logger.info(f"Risk type {category} is disabled for user {user_id}, treating as safe")
-                sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, user_id) if sensitivity_score else None
+            if tenant_id and not await risk_config_cache.is_risk_type_enabled(tenant_id, category):
+                logger.info(f"Risk type {category} is disabled for user {tenant_id}, treating as safe")
+                sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id) if sensitivity_score else None
                 return (
                     ComplianceResult(risk_level="无风险", categories=[]),
                     SecurityResult(risk_level="无风险", categories=[]),
@@ -349,11 +349,11 @@ class DetectionGuardrailService:
                 )
 
             # 检查敏感度触发等级（优先使用模型特定配置）
-            if sensitivity_score is not None and user_id:
-                sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, user_id)
-                trigger_level = model_sensitivity_trigger_level or await self._get_sensitivity_trigger_level(user_id)
+            if sensitivity_score is not None and tenant_id:
+                sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id)
+                trigger_level = model_sensitivity_trigger_level or await self._get_sensitivity_trigger_level(tenant_id)
 
-                if not await self._should_trigger_detection(sensitivity_score, user_id):
+                if not await self._should_trigger_detection(sensitivity_score, tenant_id):
                     logger.info(f"Sensitivity score {sensitivity_score} below current threshold for {category}, treating as safe")
                     return (
                         ComplianceResult(risk_level="无风险", categories=[]),
@@ -363,7 +363,7 @@ class DetectionGuardrailService:
 
             risk_level = RISK_LEVEL_MAPPING.get(category, "中风险")
             category_name = CATEGORY_NAMES.get(category, category)
-            sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, user_id) if sensitivity_score else None
+            sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id) if sensitivity_score else None
 
             if category == "S9":  # 提示词攻击
                 return (
@@ -379,18 +379,18 @@ class DetectionGuardrailService:
                 )
 
         # 默认返回安全
-        sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, user_id) if sensitivity_score else None
+        sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id) if sensitivity_score else None
         return (
             ComplianceResult(risk_level="无风险", categories=[]),
             SecurityResult(risk_level="无风险", categories=[]),
             sensitivity_level
         )
     
-    async def _check_data_security(self, text: str, user_id: Optional[str], direction: str = "input") -> DataSecurityResult:
+    async def _check_data_security(self, text: str, tenant_id: Optional[str], direction: str = "input") -> DataSecurityResult:
         """检测数据安全"""
-        logger.info(f"_check_data_security called for user {user_id}, direction {direction}")
-        if not user_id:
-            logger.info("No user_id, returning safe")
+        logger.info(f"_check_data_security called for user {tenant_id}, direction {direction}")
+        if not tenant_id:
+            logger.info("No tenant_id, returning safe")
             return DataSecurityResult(risk_level="无风险", categories=[])
 
         try:
@@ -402,7 +402,7 @@ class DetectionGuardrailService:
 
                 # 执行数据安全检测
                 logger.info(f"Calling detect_sensitive_data for text: {text[:50]}...")
-                result = await service.detect_sensitive_data(text, user_id, direction)
+                result = await service.detect_sensitive_data(text, tenant_id, direction)
                 logger.info(f"Data security detection result: {result}")
 
                 return DataSecurityResult(
@@ -441,7 +441,7 @@ class DetectionGuardrailService:
         compliance_result: ComplianceResult,
         security_result: SecurityResult,
         data_result: DataSecurityResult,
-        user_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
         user_query: Optional[str] = None
     ) -> Tuple[str, str, Optional[str]]:
         """确定建议动作（包含数据安全检测结果）"""
@@ -475,7 +475,7 @@ class DetectionGuardrailService:
                 try:
                     from services.data_security_service import DataSecurityService
                     service = DataSecurityService(db)
-                    detection_result = await service.detect_sensitive_data(user_query, user_id, "input")
+                    detection_result = await service.detect_sensitive_data(user_query, tenant_id, "input")
                     suggest_answer = detection_result.get('anonymized_text', user_query)
                 finally:
                     db.close()
@@ -484,7 +484,7 @@ class DetectionGuardrailService:
 
         # 如果没有数据泄漏脱敏文本，使用传统的模板回答
         if not suggest_answer:
-            suggest_answer = await self._get_suggest_answer(all_categories, user_id, user_query)
+            suggest_answer = await self._get_suggest_answer(all_categories, tenant_id, user_query)
 
         # 根据风险等级确定动作
         if overall_risk_level == "高风险":
@@ -492,7 +492,7 @@ class DetectionGuardrailService:
         else:  # 中风险或低风险
             return overall_risk_level, "代答", suggest_answer
 
-    async def _determine_action(self, compliance_result: ComplianceResult, security_result: SecurityResult, user_id: Optional[str] = None, user_query: Optional[str] = None) -> Tuple[str, str, Optional[str]]:
+    async def _determine_action(self, compliance_result: ComplianceResult, security_result: SecurityResult, tenant_id: Optional[str] = None, user_query: Optional[str] = None) -> Tuple[str, str, Optional[str]]:
         """确定建议动作"""
         overall_risk_level = "无风险"
         risk_categories = []
@@ -509,23 +509,23 @@ class DetectionGuardrailService:
         if overall_risk_level == "无风险":
             return overall_risk_level, "通过", None
         elif overall_risk_level == "高风险":
-            suggest_answer = await self._get_suggest_answer(risk_categories, user_id, user_query)
+            suggest_answer = await self._get_suggest_answer(risk_categories, tenant_id, user_query)
             return overall_risk_level, "拒答", suggest_answer
         elif overall_risk_level == "中风险":
-            suggest_answer = await self._get_suggest_answer(risk_categories, user_id, user_query)
+            suggest_answer = await self._get_suggest_answer(risk_categories, tenant_id, user_query)
             return overall_risk_level, "代答", suggest_answer
         else:  # 低风险
-            suggest_answer = await self._get_suggest_answer(risk_categories, user_id, user_query)
+            suggest_answer = await self._get_suggest_answer(risk_categories, tenant_id, user_query)
             return overall_risk_level, "代答", suggest_answer
     
-    async def _get_suggest_answer(self, categories: List[str], user_id: Optional[str] = None, user_query: Optional[str] = None) -> str:
+    async def _get_suggest_answer(self, categories: List[str], tenant_id: Optional[str] = None, user_query: Optional[str] = None) -> str:
         """获取建议回答（使用增强的模板服务，支持知识库搜索）"""
         from services.enhanced_template_service import enhanced_template_service
-        return await enhanced_template_service.get_suggest_answer(categories, user_id, user_query)
+        return await enhanced_template_service.get_suggest_answer(categories, tenant_id, user_query)
 
-    async def _calculate_sensitivity_level(self, sensitivity_score: float, user_id: Optional[str] = None) -> str:
+    async def _calculate_sensitivity_level(self, sensitivity_score: float, tenant_id: Optional[str] = None) -> str:
         """根据敏感度分数和用户配置计算敏感度等级"""
-        if not user_id:
+        if not tenant_id:
             # 使用默认阈值
             if sensitivity_score >= 0.95:
                 return "低"
@@ -536,7 +536,7 @@ class DetectionGuardrailService:
 
         try:
             # 获取用户的敏感度阈值配置
-            thresholds = await risk_config_cache.get_sensitivity_thresholds(user_id)
+            thresholds = await risk_config_cache.get_sensitivity_thresholds(tenant_id)
 
             if sensitivity_score >= thresholds.get("low", 0.95):
                 return "低"
@@ -545,7 +545,7 @@ class DetectionGuardrailService:
             else:
                 return "高"
         except Exception as e:
-            logger.warning(f"Failed to get sensitivity thresholds for user {user_id}: {e}")
+            logger.warning(f"Failed to get sensitivity thresholds for user {tenant_id}: {e}")
             # 使用默认阈值
             if sensitivity_score >= 0.95:
                 return "低"
@@ -555,24 +555,24 @@ class DetectionGuardrailService:
                 return "高"
 
 
-    async def _get_sensitivity_trigger_level(self, user_id: str) -> str:
+    async def _get_sensitivity_trigger_level(self, tenant_id: str) -> str:
         """获取用户配置的敏感度触发等级"""
         try:
             from services.risk_config_cache import risk_config_cache
-            trigger_level = await risk_config_cache.get_sensitivity_trigger_level(user_id)
+            trigger_level = await risk_config_cache.get_sensitivity_trigger_level(tenant_id)
             return trigger_level if trigger_level else "medium"  # 默认中敏感度触发
         except Exception as e:
-            logger.warning(f"Failed to get sensitivity trigger level for user {user_id}: {e}")
+            logger.warning(f"Failed to get sensitivity trigger level for user {tenant_id}: {e}")
             return "medium"  # 默认中敏感度触发
 
-    async def _should_trigger_detection(self, sensitivity_score: float, user_id: str) -> bool:
+    async def _should_trigger_detection(self, sensitivity_score: float, tenant_id: str) -> bool:
         """判断是否应该触发检测基于敏感度分数和当前敏感度等级阈值"""
         try:
             # 获取用户当前敏感度等级
-            current_level = await self._get_sensitivity_trigger_level(user_id)
+            current_level = await self._get_sensitivity_trigger_level(tenant_id)
 
             # 获取敏感度阈值配置
-            thresholds = await risk_config_cache.get_sensitivity_thresholds(user_id)
+            thresholds = await risk_config_cache.get_sensitivity_thresholds(tenant_id)
 
             # 根据当前敏感度等级获取对应阈值
             if current_level == "low":
@@ -588,20 +588,20 @@ class DetectionGuardrailService:
             return sensitivity_score >= threshold
 
         except Exception as e:
-            logger.warning(f"Failed to check sensitivity trigger for user {user_id}: {e}")
+            logger.warning(f"Failed to check sensitivity trigger for user {tenant_id}: {e}")
             # 默认使用中敏感度阈值
             return sensitivity_score >= 0.60
     
     async def _handle_blacklist_hit(
         self, request_id: str, content: str, list_name: str,
         keywords: List[str], ip_address: Optional[str], user_agent: Optional[str],
-        user_id: Optional[str] = None
+        tenant_id: Optional[str] = None
     ) -> GuardrailResponse:
         """处理黑名单命中"""
 
         detection_data = {
             "request_id": request_id,
-            "user_id": user_id,
+            "tenant_id": tenant_id,
             "content": content,
             "suggest_action": "拒答",
             "suggest_answer": f"很抱歉，我不能提供涉及{list_name}的内容。",
@@ -634,13 +634,13 @@ class DetectionGuardrailService:
     async def _handle_whitelist_hit(
         self, request_id: str, content: str, list_name: str,
         keywords: List[str], ip_address: Optional[str], user_agent: Optional[str],
-        user_id: Optional[str] = None
+        tenant_id: Optional[str] = None
     ) -> GuardrailResponse:
         """处理白名单命中"""
 
         detection_data = {
             "request_id": request_id,
-            "user_id": user_id,
+            "tenant_id": tenant_id,
             "content": content,
             "suggest_action": "通过",
             "suggest_answer": None,
@@ -675,7 +675,7 @@ class DetectionGuardrailService:
         security_result: SecurityResult, data_result: DataSecurityResult,
         suggest_action: str, suggest_answer: Optional[str],
         model_response: str, ip_address: Optional[str], user_agent: Optional[str],
-        user_id: Optional[str] = None, sensitivity_level: Optional[str] = None,
+        tenant_id: Optional[str] = None, sensitivity_level: Optional[str] = None,
         sensitivity_score: Optional[float] = None, has_image: bool = False,
         image_count: int = 0, image_paths: List[str] = None
     ):
@@ -686,7 +686,7 @@ class DetectionGuardrailService:
 
         detection_data = {
             "request_id": request_id,
-            "user_id": user_id,
+            "tenant_id": tenant_id,
             "content": clean_null_characters(content) if content else content,
             "suggest_action": suggest_action,
             "suggest_answer": clean_null_characters(suggest_answer) if suggest_answer else suggest_answer,
@@ -709,12 +709,12 @@ class DetectionGuardrailService:
         }
         await async_detection_logger.log_detection(detection_data)
     
-    async def _handle_error(self, request_id: str, content: str, error: str, user_id: Optional[str] = None) -> GuardrailResponse:
+    async def _handle_error(self, request_id: str, content: str, error: str, tenant_id: Optional[str] = None) -> GuardrailResponse:
         """处理错误情况"""
 
         detection_data = {
             "request_id": request_id,
-            "user_id": user_id,
+            "tenant_id": tenant_id,
             "content": content,
             "suggest_action": "通过",
             "suggest_answer": None,

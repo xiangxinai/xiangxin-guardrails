@@ -51,13 +51,13 @@ class ImageUtils:
             return None, None
 
     @staticmethod
-    def save_base64_image(url: str, user_id: str) -> Optional[str]:
+    def save_base64_image(url: str, tenant_id: str) -> Optional[str]:
         """
         保存base64编码的图片到用户目录
 
         Args:
             url: base64 data URL
-            user_id: 用户UUID
+            tenant_id: 用户UUID
 
         Returns:
             保存后的文件绝对路径，失败返回None
@@ -69,7 +69,7 @@ class ImageUtils:
                 return None
 
             # 创建用户媒体目录
-            user_media_dir = Path(settings.media_dir) / user_id
+            user_media_dir = Path(settings.media_dir) / tenant_id
             user_media_dir.mkdir(parents=True, exist_ok=True)
 
             # 生成唯一文件名
@@ -89,13 +89,13 @@ class ImageUtils:
             return None
 
     @staticmethod
-    def process_image_url(url: str, user_id: Optional[str] = None) -> Tuple[str, Optional[str]]:
+    def process_image_url(url: str, tenant_id: Optional[str] = None) -> Tuple[str, Optional[str]]:
         """
         处理图片URL - 仅支持base64编码格式
 
         Args:
             url: 图片URL（必须是base64格式）
-            user_id: 用户UUID（保存base64图片时需要）
+            tenant_id: 用户UUID（保存base64图片时需要）
 
         Returns:
             (processed_url, saved_file_path)
@@ -108,8 +108,8 @@ class ImageUtils:
         # 只支持Base64图片
         if ImageUtils.is_base64_image(url):
             saved_path = None
-            if user_id:
-                saved_path = ImageUtils.save_base64_image(url, user_id)
+            if tenant_id:
+                saved_path = ImageUtils.save_base64_image(url, tenant_id)
             return url, saved_path  # 返回原始base64 URL给模型使用
         else:
             raise ValueError(f"仅支持base64编码格式的图片，格式应为: data:image/[jpeg|png|...];base64,{{base64_string}}")

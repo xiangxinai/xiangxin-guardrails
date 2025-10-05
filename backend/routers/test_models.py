@@ -5,7 +5,7 @@ from typing import List, Optional
 import uuid
 from sqlalchemy.orm import Session
 from database.connection import get_db
-from database.models import TestModelConfig, User
+from database.models import TestModelConfig, Tenant
 from utils.logger import setup_logger
 
 logger = setup_logger()
@@ -40,12 +40,12 @@ async def get_test_models(
         if not auth_context:
             raise HTTPException(status_code=401, detail="用户未认证")
         
-        user_id = str(auth_context['data'].get('user_id'))
-        user_uuid = uuid.UUID(user_id)
+        tenant_id = str(auth_context['data'].get('tenant_id'))
+        tenant_uuid = uuid.UUID(tenant_id)
         
         # 查询用户的模型配置
         models = db.query(TestModelConfig).filter(
-            TestModelConfig.user_id == user_uuid
+            TestModelConfig.tenant_id == tenant_uuid
         ).all()
         
         # 返回时不包含API Key（安全考虑）
@@ -74,12 +74,12 @@ async def create_test_model(
         if not auth_context:
             raise HTTPException(status_code=401, detail="用户未认证")
         
-        user_id = str(auth_context['data'].get('user_id'))
-        user_uuid = uuid.UUID(user_id)
+        tenant_id = str(auth_context['data'].get('tenant_id'))
+        tenant_uuid = uuid.UUID(tenant_id)
         
         # 创建新的模型配置
         new_model = TestModelConfig(
-            user_id=user_uuid,
+            tenant_id=tenant_uuid,
             name=model_data.name,
             base_url=model_data.base_url,
             api_key=model_data.api_key,
@@ -118,13 +118,13 @@ async def update_test_model(
         if not auth_context:
             raise HTTPException(status_code=401, detail="用户未认证")
         
-        user_id = str(auth_context['data'].get('user_id'))
-        user_uuid = uuid.UUID(user_id)
+        tenant_id = str(auth_context['data'].get('tenant_id'))
+        tenant_uuid = uuid.UUID(tenant_id)
         
         # 查询模型配置
         model = db.query(TestModelConfig).filter(
             TestModelConfig.id == model_id,
-            TestModelConfig.user_id == user_uuid
+            TestModelConfig.tenant_id == tenant_uuid
         ).first()
         
         if not model:
@@ -166,13 +166,13 @@ async def delete_test_model(
         if not auth_context:
             raise HTTPException(status_code=401, detail="用户未认证")
         
-        user_id = str(auth_context['data'].get('user_id'))
-        user_uuid = uuid.UUID(user_id)
+        tenant_id = str(auth_context['data'].get('tenant_id'))
+        tenant_uuid = uuid.UUID(tenant_id)
         
         # 查询并删除模型配置
         model = db.query(TestModelConfig).filter(
             TestModelConfig.id == model_id,
-            TestModelConfig.user_id == user_uuid
+            TestModelConfig.tenant_id == tenant_uuid
         ).first()
         
         if not model:
@@ -201,13 +201,13 @@ async def toggle_test_model(
         if not auth_context:
             raise HTTPException(status_code=401, detail="用户未认证")
         
-        user_id = str(auth_context['data'].get('user_id'))
-        user_uuid = uuid.UUID(user_id)
+        tenant_id = str(auth_context['data'].get('tenant_id'))
+        tenant_uuid = uuid.UUID(tenant_id)
         
         # 查询模型配置
         model = db.query(TestModelConfig).filter(
             TestModelConfig.id == model_id,
-            TestModelConfig.user_id == user_uuid
+            TestModelConfig.tenant_id == tenant_uuid
         ).first()
         
         if not model:

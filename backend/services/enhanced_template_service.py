@@ -19,7 +19,7 @@ class EnhancedTemplateService:
     def __init__(self, cache_ttl: int = 600):
         # 模板缓存
         self._template_cache: Dict[str, Dict[str, Dict[bool, str]]] = {}
-        # 知识库缓存: {user_id: {category: [knowledge_base_ids]}}
+        # 知识库缓存: {tenant_id: {category: [knowledge_base_ids]}}
         self._knowledge_base_cache: Dict[str, Dict[str, List[int]]] = {}
         # 全局知识库缓存: {category: [knowledge_base_ids]}
         self._global_knowledge_base_cache: Dict[str, List[int]] = {}
@@ -27,12 +27,12 @@ class EnhancedTemplateService:
         self._cache_ttl = cache_ttl
         self._lock = asyncio.Lock()
 
-    async def get_suggest_answer(self, categories: List[str], user_id: Optional[str] = None, user_query: Optional[str] = None) -> str:
+    async def get_suggest_answer(self, categories: List[str], tenant_id: Optional[str] = None, user_query: Optional[str] = None) -> str:
         """
         获取建议回答，优先从知识库搜索，找不到则使用默认模板
         Args:
             categories: 风险类别列表
-            user_id: 用户ID
+            tenant_id: 用户ID
             user_query: 用户原始问题（用于知识库搜索）
         Returns:
             建议回答内容
@@ -40,26 +40,26 @@ class EnhancedTemplateService:
         await self._ensure_cache_fresh()
 
         if not categories:
-            return self._get_default_answer(user_id)
+            return self._get_default_answer(tenant_id)
 
         try:
             # 1. 尝试从知识库获取答案
             if user_query and user_query.strip():
-                kb_answer = await self._search_knowledge_base_answer(categories, user_id, user_query.strip())
+                kb_answer = await self._search_knowledge_base_answer(categories, tenant_id, user_query.strip())
                 if kb_answer:
-                    logger.info(f"Found answer from knowledge base for user {user_id}, category: {categories}")
+                    logger.info(f"Found answer from knowledge base for user {tenant_id}, category: {categories}")
                     return kb_answer
 
             # 2. 知识库没有找到答案，使用传统模板逻辑
-            return await self._get_template_answer(categories, user_id)
+            return await self._get_template_answer(categories, tenant_id)
 
         except Exception as e:
             logger.error(f"Get suggest answer error: {e}")
-            return self._get_default_answer(user_id)
+            return self._get_default_answer(tenant_id)
 
-    async def _search_knowledge_base_answer(self, categories: List[str], user_id: Optional[str], user_query: str) -> Optional[str]:
+    async def _search_knowledge_base_answer(self, categories: List[str], tenant_id: Optional[str], user_query: str) -> Optional[str]:
         """从知识库搜索答案"""
-        if not user_id:
+        if not tenant_id:
             return None
 
         try:
@@ -104,7 +104,7 @@ class EnhancedTemplateService:
             category_risk_mapping.sort(key=lambda x: x[2], reverse=True)
 
             # 按最高风险等级搜索知识库
-            user_cache = self._knowledge_base_cache.get(str(user_id), {})
+            user_cache = self._knowledge_base_cache.get(str(tenant_id), {})
 
             for category_key, risk_level, priority in category_risk_mapping:
                 # 收集要搜索的知识库ID: 用户自己的 + 全局的
@@ -136,7 +136,7 @@ class EnhancedTemplateService:
             logger.error(f"Search knowledge base answer error: {e}")
             return None
 
-    async def _get_template_answer(self, categories: List[str], user_id: Optional[str]) -> str:
+    async def _get_template_answer(self, categories: List[str], tenant_id: Optional[str]) -> str:
         """使用传统模板获取答案"""
         try:
             # 定义风险等级优先级
@@ -182,7 +182,7 @@ class EnhancedTemplateService:
             # 按最高风险等级查找模板
             for category_key, risk_level, priority in category_risk_mapping:
                 # 优先查找"当前用户"的模板（非默认优先），找不到再回退到全局默认
-                user_cache = self._template_cache.get(str(user_id or "__none__"), {})
+                user_cache = self._template_cache.get(str(tenant_id or "__none__"), {})
                 if category_key in user_cache:
                     templates = user_cache[category_key]
                     if False in templates:  # 非默认模板
@@ -197,16 +197,16 @@ class EnhancedTemplateService:
                     if True in templates:
                         return templates[True]
 
-            return self._get_default_answer(user_id)
+            return self._get_default_answer(tenant_id)
 
         except Exception as e:
             logger.error(f"Get template answer error: {e}")
-            return self._get_default_answer(user_id)
+            return self._get_default_answer(tenant_id)
 
-    def _get_default_answer(self, user_id: Optional[str] = None) -> str:
+    def _get_default_answer(self, tenant_id: Optional[str] = None) -> str:
         """获取默认回答"""
         # 先找用户自定义的 default
-        user_cache = self._template_cache.get(str(user_id or "__none__"), {})
+        user_cache = self._template_cache.get(str(tenant_id or "__none__"), {})
         if "default" in user_cache and True in user_cache["default"]:
             return user_cache["default"][True]
         # 再回退到全局 default
@@ -235,7 +235,7 @@ class EnhancedTemplateService:
                 new_template_cache: Dict[str, Dict[str, Dict[bool, str]]] = {}
 
                 for template in templates:
-                    user_key = str(template.user_id) if template.user_id is not None else "__global__"
+                    user_key = str(template.tenant_id) if template.tenant_id is not None else "__global__"
                     category = template.category
                     is_default = template.is_default
                     content = template.template_content
@@ -253,7 +253,7 @@ class EnhancedTemplateService:
                 global_kb_cache: Dict[str, List[int]] = {}
 
                 for kb in knowledge_bases:
-                    user_key = str(kb.user_id)
+                    user_key = str(kb.tenant_id)
                     category = kb.category
 
                     # 用户自己的知识库

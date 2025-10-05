@@ -3,7 +3,7 @@ import string
 import uuid
 from typing import Optional, Union
 from sqlalchemy.orm import Session
-from database.models import User, EmailVerification
+from database.models import Tenant, EmailVerification
 from utils.auth import get_password_hash
 from utils.logger import setup_logger
 from datetime import datetime
@@ -19,30 +19,30 @@ def generate_api_key() -> str:
     random_part = ''.join(secrets.choice(alphabet) for _ in range(56))
     return prefix + random_part
 
-def create_user(db: Session, email: str, password: str) -> User:
-    """创建新用户"""
+def create_user(db: Session, email: str, password: str) -> Tenant:
+    """创建新租户"""
     hashed_password = get_password_hash(password)
     api_key = generate_api_key()
-    
+
     # 确保API密钥唯一
-    while db.query(User).filter(User.api_key == api_key).first():
+    while db.query(Tenant).filter(Tenant.api_key == api_key).first():
         api_key = generate_api_key()
-    
-    user = User(
+
+    tenant = Tenant(
         email=email,
         password_hash=hashed_password,
         api_key=api_key,
         is_active=False,  # 需要邮箱验证
         is_verified=False
     )
-    
-    db.add(user)
+
+    db.add(tenant)
     db.commit()
-    db.refresh(user)
-    return user
+    db.refresh(tenant)
+    return tenant
 
 def verify_user_email(db: Session, email: str, verification_code: str) -> bool:
-    """验证用户邮箱"""
+    """验证租户邮箱"""
     # 查找有效的验证码
     verification = db.query(EmailVerification).filter(
         EmailVerification.email == email,
@@ -50,74 +50,74 @@ def verify_user_email(db: Session, email: str, verification_code: str) -> bool:
         EmailVerification.is_used == False,
         EmailVerification.expires_at > datetime.utcnow()
     ).first()
-    
+
     if not verification:
         return False
-    
+
     # 标记验证码为已使用
     verification.is_used = True
-    
-    # 激活用户
-    user = db.query(User).filter(User.email == email).first()
-    if user:
-        user.is_active = True
-        user.is_verified = True
 
-        # 为新用户创建默认代答模板
+    # 激活租户
+    tenant = db.query(Tenant).filter(Tenant.email == email).first()
+    if tenant:
+        tenant.is_active = True
+        tenant.is_verified = True
+
+        # 为新租户创建默认代答模板
         try:
             from services.template_service import create_user_default_templates
-            template_count = create_user_default_templates(db, user.id)
-            print(f"为用户 {user.email} 创建了 {template_count} 个默认代答模板")
+            template_count = create_user_default_templates(db, tenant.id)
+            print(f"为租户 {tenant.email} 创建了 {template_count} 个默认代答模板")
         except Exception as e:
-            print(f"为用户 {user.email} 创建默认代答模板失败: {e}")
-            # 不影响用户激活过程，只是记录错误
+            print(f"为租户 {tenant.email} 创建默认代答模板失败: {e}")
+            # 不影响租户激活过程，只是记录错误
 
-        # 为新用户创建默认实体类型配置
+        # 为新租户创建默认实体类型配置
         try:
             from services.data_security_service import create_user_default_entity_types
-            entity_count = create_user_default_entity_types(db, str(user.id))
-            print(f"为用户 {user.email} 创建了 {entity_count} 个默认实体类型配置")
+            entity_count = create_user_default_entity_types(db, str(tenant.id))
+            print(f"为租户 {tenant.email} 创建了 {entity_count} 个默认实体类型配置")
         except Exception as e:
-            print(f"为用户 {user.email} 创建默认实体类型配置失败: {e}")
-            # 不影响用户激活过程，只是记录错误
+            print(f"为租户 {tenant.email} 创建默认实体类型配置失败: {e}")
+            # 不影响租户激活过程，只是记录错误
 
     db.commit()
     return True
 
-def regenerate_api_key(db: Session, user_id: Union[str, uuid.UUID]) -> Optional[str]:
-    """重新生成用户API密钥"""
-    if isinstance(user_id, str):
+def regenerate_api_key(db: Session, tenant_id: Union[str, uuid.UUID]) -> Optional[str]:
+    """重新生成租户API密钥"""
+    if isinstance(tenant_id, str):
         try:
-            user_id = uuid.UUID(user_id)
+            tenant_id = uuid.UUID(tenant_id)
         except ValueError:
             return None
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
         return None
-    
+
     new_api_key = generate_api_key()
-    
+
     # 确保API密钥唯一
-    while db.query(User).filter(User.api_key == new_api_key).first():
+    while db.query(Tenant).filter(Tenant.api_key == new_api_key).first():
         new_api_key = generate_api_key()
-    
-    user.api_key = new_api_key
+
+    tenant.api_key = new_api_key
     db.commit()
-    db.refresh(user)
-    
+    db.refresh(tenant)
+
     return new_api_key
 
-def get_user_by_api_key(db: Session, api_key: str) -> Optional[User]:
-    """通过API密钥获取用户（仅返回已验证用户）"""
-    return db.query(User).filter(
-        User.api_key == api_key,
-        User.is_verified == True,
-        User.is_active == True
+def get_user_by_api_key(db: Session, api_key: str) -> Optional[Tenant]:
+    """通过API密钥获取租户（仅返回已验证租户）"""
+    return db.query(Tenant).filter(
+        Tenant.api_key == api_key,
+        Tenant.is_verified == True,
+        Tenant.is_active == True
     ).first()
 
-def get_user_by_email(db: Session, email: str) -> Optional[User]:
-    """通过邮箱获取用户"""
-    return db.query(User).filter(User.email == email).first()
+def get_user_by_email(db: Session, email: str) -> Optional[Tenant]:
+    """通过邮箱获取租户"""
+    return db.query(Tenant).filter(Tenant.email == email).first()
 
 def record_login_attempt(db: Session, email: str, ip_address: str, user_agent: str, success: bool):
     """记录登录尝试"""

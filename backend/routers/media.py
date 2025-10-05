@@ -35,17 +35,17 @@ async def upload_image(
     """
     上传图片文件
 
-    用户上传的图片将存储在 /mnt/data/xiangxin-guardrails-data/media/{user_id}/ 目录下
+    用户上传的图片将存储在 /mnt/data/xiangxin-guardrails-data/media/{tenant_id}/ 目录下
     返回图片的相对路径，可用于后续的检测请求
     """
     try:
         # 获取用户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context:
-            user_id = str(auth_context['data'].get('user_id'))
+            tenant_id = str(auth_context['data'].get('tenant_id'))
 
-        if not user_id:
+        if not tenant_id:
             raise HTTPException(status_code=401, detail="User ID not found in auth context")
 
         # 验证文件类型
@@ -70,7 +70,7 @@ async def upload_image(
             raise HTTPException(status_code=400, detail="文件内容为空")
 
         # 创建用户媒体目录
-        user_media_dir = Path(settings.media_dir) / user_id
+        user_media_dir = Path(settings.media_dir) / tenant_id
         user_media_dir.mkdir(parents=True, exist_ok=True)
 
         # 生成唯一的文件名
@@ -86,7 +86,7 @@ async def upload_image(
 
         # 生成带签名的访问URL
         signed_url = generate_signed_media_url(
-            user_id=user_id,
+            tenant_id=tenant_id,
             filename=unique_filename,
             expires_in_seconds=86400  # 24小时有效期
         )
@@ -95,7 +95,7 @@ async def upload_image(
         return {
             "success": True,
             "file_path": str(file_path),
-            "relative_path": f"{user_id}/{unique_filename}",
+            "relative_path": f"{tenant_id}/{unique_filename}",
             "filename": unique_filename,
             "size": len(file_content),
             "content_type": file.content_type,
@@ -119,18 +119,18 @@ async def delete_image(
     try:
         # 获取用户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context:
-            user_id = str(auth_context['data'].get('user_id'))
+            tenant_id = str(auth_context['data'].get('tenant_id'))
 
-        if not user_id:
+        if not tenant_id:
             raise HTTPException(status_code=401, detail="User ID not found in auth context")
 
         # 构建文件路径
-        file_path = Path(settings.media_dir) / user_id / filename
+        file_path = Path(settings.media_dir) / tenant_id / filename
 
         # 安全检查：确保文件在用户目录下
-        if not str(file_path).startswith(str(Path(settings.media_dir) / user_id)):
+        if not str(file_path).startswith(str(Path(settings.media_dir) / tenant_id)):
             raise HTTPException(status_code=403, detail="无权访问此文件")
 
         # 删除文件
@@ -155,15 +155,15 @@ async def list_images(request: Request):
     try:
         # 获取用户上下文
         auth_context = getattr(request.state, 'auth_context', None)
-        user_id = None
+        tenant_id = None
         if auth_context:
-            user_id = str(auth_context['data'].get('user_id'))
+            tenant_id = str(auth_context['data'].get('tenant_id'))
 
-        if not user_id:
+        if not tenant_id:
             raise HTTPException(status_code=401, detail="User ID not found in auth context")
 
         # 用户媒体目录
-        user_media_dir = Path(settings.media_dir) / user_id
+        user_media_dir = Path(settings.media_dir) / tenant_id
 
         # 如果目录不存在，返回空列表
         if not user_media_dir.exists():
@@ -176,14 +176,14 @@ async def list_images(request: Request):
                 stat = file_path.stat()
                 # 生成带签名的访问URL
                 signed_url = generate_signed_media_url(
-                    user_id=user_id,
+                    tenant_id=tenant_id,
                     filename=file_path.name,
                     expires_in_seconds=86400  # 24小时有效期
                 )
                 images.append({
                     "filename": file_path.name,
                     "file_path": str(file_path),
-                    "relative_path": f"{user_id}/{file_path.name}",
+                    "relative_path": f"{tenant_id}/{file_path.name}",
                     "size": stat.st_size,
                     "created_at": stat.st_ctime,
                     "url": signed_url  # 带签名的访问URL
@@ -197,9 +197,9 @@ async def list_images(request: Request):
         logger.error(f"List images error: {e}")
         raise HTTPException(status_code=500, detail=f"获取图片列表失败: {str(e)}")
 
-@router.get("/media/image/{user_id}/{filename}")
+@router.get("/media/image/{tenant_id}/{filename}")
 async def get_image(
-    user_id: str,
+    tenant_id: str,
     filename: str,
     token: str = Query(..., description="签名token"),
     expires: int = Query(..., description="过期时间戳")
@@ -208,7 +208,7 @@ async def get_image(
     获取图片文件（需要签名验证）
 
     根据用户ID和文件名返回图片，需要提供有效的签名token和过期时间
-    图片存储路径: /mnt/data/xiangxin-guardrails-data/media/{user_id}/{filename}
+    图片存储路径: /mnt/data/xiangxin-guardrails-data/media/{tenant_id}/{filename}
 
     Query参数:
         - token: 签名token
@@ -216,14 +216,14 @@ async def get_image(
     """
     try:
         # 验证签名
-        if not verify_media_url_signature(user_id, filename, token, expires):
+        if not verify_media_url_signature(tenant_id, filename, token, expires):
             raise HTTPException(
                 status_code=403,
                 detail="签名无效或已过期"
             )
 
         # 构建文件路径
-        file_path = Path(settings.media_dir) / user_id / filename
+        file_path = Path(settings.media_dir) / tenant_id / filename
 
         # 安全检查：确保文件在media目录下
         if not str(file_path).startswith(str(Path(settings.media_dir))):

@@ -12,18 +12,18 @@ class TemplateCache:
     """响应模板缓存服务"""
     
     def __init__(self, cache_ttl: int = 600):  # 10分钟缓存，模板变化不频繁
-        # 多租户模板缓存结构：{user_id: {category: {is_default: template_content}}}
+        # 多租户模板缓存结构：{tenant_id: {category: {is_default: template_content}}}
         self._template_cache: Dict[str, Dict[str, Dict[bool, str]]] = {}
         self._cache_timestamp = 0
         self._cache_ttl = cache_ttl
         self._lock = asyncio.Lock()
         
-    async def get_suggest_answer(self, categories: List[str], user_id: Optional[str] = None) -> str:
+    async def get_suggest_answer(self, categories: List[str], tenant_id: Optional[str] = None) -> str:
         """获取建议回答（内存缓存版）"""
         await self._ensure_cache_fresh()
         
         if not categories:
-            return self._get_default_answer(user_id)
+            return self._get_default_answer(tenant_id)
         
         try:
             # 定义风险等级优先级
@@ -69,7 +69,7 @@ class TemplateCache:
             # 按最高风险等级查找模板
             for category_key, risk_level, priority in category_risk_mapping:
                 # 优先查找“当前用户”的模板（非默认优先），找不到再回退到全局默认
-                user_cache = self._template_cache.get(str(user_id or "__none__"), {})
+                user_cache = self._template_cache.get(str(tenant_id or "__none__"), {})
                 if category_key in user_cache:
                     templates = user_cache[category_key]
                     if False in templates:  # 非默认模板
@@ -84,16 +84,16 @@ class TemplateCache:
                     if True in templates:
                         return templates[True]
 
-            return self._get_default_answer(user_id)
+            return self._get_default_answer(tenant_id)
             
         except Exception as e:
             logger.error(f"Get suggest answer error: {e}")
             return self._get_default_answer()
     
-    def _get_default_answer(self, user_id: Optional[str]) -> str:
+    def _get_default_answer(self, tenant_id: Optional[str]) -> str:
         """获取默认回答"""
         # 先找用户自定义的 default
-        user_cache = self._template_cache.get(str(user_id or "__none__"), {})
+        user_cache = self._template_cache.get(str(tenant_id or "__none__"), {})
         if "default" in user_cache and True in user_cache["default"]:
             return user_cache["default"][True]
         # 再回退到全局 default
@@ -121,7 +121,7 @@ class TemplateCache:
                 templates = db.query(ResponseTemplate).filter_by(is_active=True).all()
                 new_cache: Dict[str, Dict[str, Dict[bool, str]]] = {}
                 for template in templates:
-                    user_key = str(template.user_id) if template.user_id is not None else "__global__"
+                    user_key = str(template.tenant_id) if template.tenant_id is not None else "__global__"
                     category = template.category
                     is_default = template.is_default
                     content = template.template_content

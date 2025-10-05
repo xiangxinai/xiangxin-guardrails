@@ -1,6 +1,6 @@
 from typing import Optional, Dict
 from sqlalchemy.orm import Session
-from database.models import RiskTypeConfig, User
+from database.models import RiskTypeConfig, Tenant
 from utils.logger import setup_logger
 
 logger = setup_logger()
@@ -11,37 +11,37 @@ class RiskConfigService:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_user_risk_config(self, user_id: str) -> Optional[RiskTypeConfig]:
+    def get_user_risk_config(self, tenant_id: str) -> Optional[RiskTypeConfig]:
         """获取用户风险配置"""
         try:
             config = self.db.query(RiskTypeConfig).filter(
-                RiskTypeConfig.user_id == user_id
+                RiskTypeConfig.tenant_id == tenant_id
             ).first()
             return config
         except Exception as e:
-            logger.error(f"Failed to get user risk config for {user_id}: {e}")
+            logger.error(f"Failed to get user risk config for {tenant_id}: {e}")
             return None
     
-    def create_default_risk_config(self, user_id: str) -> RiskTypeConfig:
+    def create_default_risk_config(self, tenant_id: str) -> RiskTypeConfig:
         """为用户创建默认风险配置（所有类型默认启用）"""
         try:
-            config = RiskTypeConfig(user_id=user_id)
+            config = RiskTypeConfig(tenant_id=tenant_id)
             self.db.add(config)
             self.db.commit()
             self.db.refresh(config)
-            logger.info(f"Created default risk config for user {user_id}")
+            logger.info(f"Created default risk config for user {tenant_id}")
             return config
         except Exception as e:
-            logger.error(f"Failed to create default risk config for {user_id}: {e}")
+            logger.error(f"Failed to create default risk config for {tenant_id}: {e}")
             self.db.rollback()
             raise
     
-    def update_risk_config(self, user_id: str, config_data: Dict) -> Optional[RiskTypeConfig]:
+    def update_risk_config(self, tenant_id: str, config_data: Dict) -> Optional[RiskTypeConfig]:
         """更新用户风险配置"""
         try:
-            config = self.get_user_risk_config(user_id)
+            config = self.get_user_risk_config(tenant_id)
             if not config:
-                config = self.create_default_risk_config(user_id)
+                config = self.create_default_risk_config(tenant_id)
             
             # 更新配置字段
             for field, value in config_data.items():
@@ -50,16 +50,16 @@ class RiskConfigService:
             
             self.db.commit()
             self.db.refresh(config)
-            logger.info(f"Updated risk config for user {user_id}")
+            logger.info(f"Updated risk config for user {tenant_id}")
             return config
         except Exception as e:
-            logger.error(f"Failed to update risk config for {user_id}: {e}")
+            logger.error(f"Failed to update risk config for {tenant_id}: {e}")
             self.db.rollback()
             return None
     
-    def get_enabled_risk_types(self, user_id: str) -> Dict[str, bool]:
+    def get_enabled_risk_types(self, tenant_id: str) -> Dict[str, bool]:
         """获取用户启用的风险类型映射"""
-        config = self.get_user_risk_config(user_id)
+        config = self.get_user_risk_config(tenant_id)
         if not config:
             # 如果没有配置，返回默认全部启用
             return {
@@ -83,14 +83,14 @@ class RiskConfigService:
             'S12': config.s12_enabled,
         }
     
-    def is_risk_type_enabled(self, user_id: str, risk_type: str) -> bool:
+    def is_risk_type_enabled(self, tenant_id: str, risk_type: str) -> bool:
         """检查指定风险类型是否启用"""
-        enabled_types = self.get_enabled_risk_types(user_id)
+        enabled_types = self.get_enabled_risk_types(tenant_id)
         return enabled_types.get(risk_type, True)  # 默认启用
     
-    def get_risk_config_dict(self, user_id: str) -> Dict:
+    def get_risk_config_dict(self, tenant_id: str) -> Dict:
         """获取用户风险配置的字典格式"""
-        config = self.get_user_risk_config(user_id)
+        config = self.get_user_risk_config(tenant_id)
         if not config:
             return {
                 's1_enabled': True, 's2_enabled': True, 's3_enabled': True, 's4_enabled': True,
@@ -113,12 +113,12 @@ class RiskConfigService:
             's12_enabled': config.s12_enabled,
         }
 
-    def update_sensitivity_thresholds(self, user_id: str, threshold_data: Dict) -> Optional[RiskTypeConfig]:
+    def update_sensitivity_thresholds(self, tenant_id: str, threshold_data: Dict) -> Optional[RiskTypeConfig]:
         """更新用户敏感度阈值配置"""
         try:
-            config = self.get_user_risk_config(user_id)
+            config = self.get_user_risk_config(tenant_id)
             if not config:
-                config = self.create_default_risk_config(user_id)
+                config = self.create_default_risk_config(tenant_id)
 
             # 更新敏感度阈值字段
             for field, value in threshold_data.items():
@@ -127,16 +127,16 @@ class RiskConfigService:
 
             self.db.commit()
             self.db.refresh(config)
-            logger.info(f"Updated sensitivity thresholds for user {user_id}")
+            logger.info(f"Updated sensitivity thresholds for user {tenant_id}")
             return config
         except Exception as e:
-            logger.error(f"Failed to update sensitivity thresholds for {user_id}: {e}")
+            logger.error(f"Failed to update sensitivity thresholds for {tenant_id}: {e}")
             self.db.rollback()
             return None
 
-    def get_sensitivity_threshold_dict(self, user_id: str) -> Dict:
+    def get_sensitivity_threshold_dict(self, tenant_id: str) -> Dict:
         """获取用户敏感度阈值配置的字典格式"""
-        config = self.get_user_risk_config(user_id)
+        config = self.get_user_risk_config(tenant_id)
         if not config:
             return {
                 'low_sensitivity_threshold': 0.95,
@@ -152,9 +152,9 @@ class RiskConfigService:
             'sensitivity_trigger_level': config.sensitivity_trigger_level or "medium",
         }
 
-    def get_sensitivity_thresholds(self, user_id: str) -> Dict[str, float]:
+    def get_sensitivity_thresholds(self, tenant_id: str) -> Dict[str, float]:
         """获取用户敏感度阈值映射"""
-        config = self.get_user_risk_config(user_id)
+        config = self.get_user_risk_config(tenant_id)
         if not config:
             return {
                 'low': 0.95,
@@ -168,9 +168,9 @@ class RiskConfigService:
             'high': config.high_sensitivity_threshold or 0.40
         }
 
-    def get_sensitivity_trigger_level(self, user_id: str) -> str:
+    def get_sensitivity_trigger_level(self, tenant_id: str) -> str:
         """获取用户敏感度触发等级"""
-        config = self.get_user_risk_config(user_id)
+        config = self.get_user_risk_config(tenant_id)
         if not config:
             return "medium"
         return config.sensitivity_trigger_level or "medium"

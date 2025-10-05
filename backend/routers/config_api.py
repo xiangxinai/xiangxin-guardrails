@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from database.connection import get_db
-from database.models import Blacklist, Whitelist, ResponseTemplate, KnowledgeBase, User
+from database.models import Blacklist, Whitelist, ResponseTemplate, KnowledgeBase, Tenant
 from models.requests import BlacklistRequest, WhitelistRequest, ResponseTemplateRequest, KnowledgeBaseRequest
 from models.responses import (
     BlacklistResponse, WhitelistResponse, ResponseTemplateResponse, ApiResponse,
@@ -23,40 +23,40 @@ logger = setup_logger()
 router = APIRouter(tags=["Configuration"])
 security = HTTPBearer()
 
-def get_current_user_from_request(request: Request, db: Session) -> User:
-    """从请求获取当前用户（更健壮，兼容admin token与无切换状态）。"""
-    # 1) 优先检查是否有用户切换会话
+def get_current_user_from_request(request: Request, db: Session) -> Tenant:
+    """从请求获取当前租户（更健壮，兼容admin token与无切换状态）。"""
+    # 1) 优先检查是否有租户切换会话
     switch_token = request.headers.get('x-switch-session')
     if switch_token:
-        switched_user = admin_service.get_switched_user(db, switch_token)
-        if switched_user:
-            return switched_user
+        switched_tenant = admin_service.get_switched_user(db, switch_token)
+        if switched_tenant:
+            return switched_tenant
 
-    # 2) 从认证上下文获取用户
+    # 2) 从认证上下文获取租户
     auth_context = getattr(request.state, 'auth_context', None)
     if not auth_context or 'data' not in auth_context:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     data = auth_context['data']
-    user_id_value = data.get('user_id')
-    user_email_value = data.get('email')
+    tenant_id_value = data.get('tenant_id') or data.get('tenant_id')  # 兼容旧字段
+    tenant_email_value = data.get('email')
 
-    # 2a) 尝试通过 user_id 解析为 UUID 并查询
-    if user_id_value:
+    # 2a) 尝试通过 tenant_id 解析为 UUID 并查询
+    if tenant_id_value:
         try:
-            user_uuid = uuid.UUID(str(user_id_value))
-            user = db.query(User).filter(User.id == user_uuid).first()
-            if user:
-                return user
+            tenant_uuid = uuid.UUID(str(tenant_id_value))
+            tenant = db.query(Tenant).filter(Tenant.id == tenant_uuid).first()
+            if tenant:
+                return tenant
         except ValueError:
             # 继续尝试通过邮箱查找
             pass
 
     # 2b) 退化为使用 email 查找（兼容 admin token 或回退上下文）
-    if user_email_value:
-        user = db.query(User).filter(User.email == user_email_value).first()
-        if user:
-            return user
+    if tenant_email_value:
+        tenant = db.query(Tenant).filter(Tenant.email == tenant_email_value).first()
+        if tenant:
+            return tenant
 
     # 2c) 最后手段：解析 Authorization 头部的JWT，再次尝试
     auth_header = request.headers.get('authorization') or request.headers.get('Authorization')
@@ -64,24 +64,24 @@ def get_current_user_from_request(request: Request, db: Session) -> User:
         token = auth_header.split(' ', 1)[1]
         try:
             payload = verify_token(token)
-            raw_user_id = payload.get('user_id') or payload.get('sub')
-            if raw_user_id:
+            raw_tenant_id = payload.get('tenant_id') or payload.get('tenant_id') or payload.get('sub')
+            if raw_tenant_id:
                 try:
-                    user_uuid = uuid.UUID(str(raw_user_id))
-                    user = db.query(User).filter(User.id == user_uuid).first()
-                    if user:
-                        return user
+                    tenant_uuid = uuid.UUID(str(raw_tenant_id))
+                    tenant = db.query(Tenant).filter(Tenant.id == tenant_uuid).first()
+                    if tenant:
+                        return tenant
                 except ValueError:
                     pass
             email_claim = payload.get('email') or payload.get('username')
             if email_claim:
-                user = db.query(User).filter(User.email == email_claim).first()
-                if user:
-                    return user
+                tenant = db.query(Tenant).filter(Tenant.email == email_claim).first()
+                if tenant:
+                    return tenant
         except Exception:
             pass
 
-    # 无法定位到有效用户
+    # 无法定位到有效租户
     raise HTTPException(status_code=401, detail="User not found or invalid context")
 
 # 黑名单管理
@@ -90,7 +90,7 @@ async def get_blacklist(request: Request, db: Session = Depends(get_db)):
     """获取黑名单配置"""
     try:
         current_user = get_current_user_from_request(request, db)
-        blacklists = db.query(Blacklist).filter(Blacklist.user_id == current_user.id).order_by(Blacklist.created_at.desc()).all()
+        blacklists = db.query(Blacklist).filter(Blacklist.tenant_id == current_user.id).order_by(Blacklist.created_at.desc()).all()
         return [BlacklistResponse(
             id=bl.id,
             name=bl.name,
@@ -112,7 +112,7 @@ async def create_blacklist(blacklist_request: BlacklistRequest, request: Request
     try:
         current_user = get_current_user_from_request(request, db)
         blacklist = Blacklist(
-            user_id=current_user.id,
+            tenant_id=current_user.id,
             name=blacklist_request.name,
             keywords=blacklist_request.keywords,
             description=blacklist_request.description,
@@ -137,7 +137,7 @@ async def update_blacklist(blacklist_id: int, blacklist_request: BlacklistReques
     """更新黑名单"""
     try:
         current_user = get_current_user_from_request(request, db)
-        blacklist = db.query(Blacklist).filter_by(id=blacklist_id, user_id=current_user.id).first()
+        blacklist = db.query(Blacklist).filter_by(id=blacklist_id, tenant_id=current_user.id).first()
         if not blacklist:
             raise HTTPException(status_code=404, detail="Blacklist not found")
         
@@ -164,7 +164,7 @@ async def delete_blacklist(blacklist_id: int, request: Request, db: Session = De
     """删除黑名单"""
     try:
         current_user = get_current_user_from_request(request, db)
-        blacklist = db.query(Blacklist).filter_by(id=blacklist_id, user_id=current_user.id).first()
+        blacklist = db.query(Blacklist).filter_by(id=blacklist_id, tenant_id=current_user.id).first()
         if not blacklist:
             raise HTTPException(status_code=404, detail="Blacklist not found")
         
@@ -188,11 +188,11 @@ async def get_whitelist(request: Request, db: Session = Depends(get_db)):
     """获取白名单配置"""
     try:
         current_user = get_current_user_from_request(request, db)
-        # 若列缺失（升级前数据库），尝试无 user_id 过滤，回退支持
+        # 若列缺失（升级前数据库），尝试无 tenant_id 过滤，回退支持
         try:
-            whitelists = db.query(Whitelist).filter(Whitelist.user_id == current_user.id).order_by(Whitelist.created_at.desc()).all()
+            whitelists = db.query(Whitelist).filter(Whitelist.tenant_id == current_user.id).order_by(Whitelist.created_at.desc()).all()
         except Exception as e:
-            logger.warning(f"Whitelist query failed with user_id filter, falling back: {e}")
+            logger.warning(f"Whitelist query failed with tenant_id filter, falling back: {e}")
             whitelists = db.query(Whitelist).order_by(Whitelist.created_at.desc()).all()
         return [WhitelistResponse(
             id=wl.id,
@@ -215,7 +215,7 @@ async def create_whitelist(whitelist_request: WhitelistRequest, request: Request
     try:
         current_user = get_current_user_from_request(request, db)
         whitelist = Whitelist(
-            user_id=current_user.id,
+            tenant_id=current_user.id,
             name=whitelist_request.name,
             keywords=whitelist_request.keywords,
             description=whitelist_request.description,
@@ -240,7 +240,7 @@ async def update_whitelist(whitelist_id: int, whitelist_request: WhitelistReques
     """更新白名单"""
     try:
         current_user = get_current_user_from_request(request, db)
-        whitelist = db.query(Whitelist).filter_by(id=whitelist_id, user_id=current_user.id).first()
+        whitelist = db.query(Whitelist).filter_by(id=whitelist_id, tenant_id=current_user.id).first()
         if not whitelist:
             raise HTTPException(status_code=404, detail="Whitelist not found")
         
@@ -267,7 +267,7 @@ async def delete_whitelist(whitelist_id: int, request: Request, db: Session = De
     """删除白名单"""
     try:
         current_user = get_current_user_from_request(request, db)
-        whitelist = db.query(Whitelist).filter_by(id=whitelist_id, user_id=current_user.id).first()
+        whitelist = db.query(Whitelist).filter_by(id=whitelist_id, tenant_id=current_user.id).first()
         if not whitelist:
             raise HTTPException(status_code=404, detail="Whitelist not found")
         
@@ -293,9 +293,9 @@ async def get_response_templates(request: Request, db: Session = Depends(get_db)
         current_user = get_current_user_from_request(request, db)
         # 若列缺失（升级前数据库），尝试全局模板回退
         try:
-            templates = db.query(ResponseTemplate).filter(ResponseTemplate.user_id == current_user.id).order_by(ResponseTemplate.created_at.desc()).all()
+            templates = db.query(ResponseTemplate).filter(ResponseTemplate.tenant_id == current_user.id).order_by(ResponseTemplate.created_at.desc()).all()
         except Exception as e:
-            logger.warning(f"ResponseTemplate query failed with user_id filter, falling back: {e}")
+            logger.warning(f"ResponseTemplate query failed with tenant_id filter, falling back: {e}")
             templates = db.query(ResponseTemplate).order_by(ResponseTemplate.created_at.desc()).all()
         return [ResponseTemplateResponse(
             id=rt.id,
@@ -319,7 +319,7 @@ async def create_response_template(template_request: ResponseTemplateRequest, re
     try:
         current_user = get_current_user_from_request(request, db)
         template = ResponseTemplate(
-            user_id=current_user.id,
+            tenant_id=current_user.id,
             category=template_request.category,
             risk_level=template_request.risk_level,
             template_content=template_request.template_content,
@@ -346,7 +346,7 @@ async def update_response_template(template_id: int, template_request: ResponseT
     """更新代答模板"""
     try:
         current_user = get_current_user_from_request(request, db)
-        template = db.query(ResponseTemplate).filter_by(id=template_id, user_id=current_user.id).first()
+        template = db.query(ResponseTemplate).filter_by(id=template_id, tenant_id=current_user.id).first()
         if not template:
             raise HTTPException(status_code=404, detail="Response template not found")
         
@@ -375,7 +375,7 @@ async def delete_response_template(template_id: int, request: Request, db: Sessi
     """删除代答模板"""
     try:
         current_user = get_current_user_from_request(request, db)
-        template = db.query(ResponseTemplate).filter_by(id=template_id, user_id=current_user.id).first()
+        template = db.query(ResponseTemplate).filter_by(id=template_id, tenant_id=current_user.id).first()
         if not template:
             raise HTTPException(status_code=404, detail="Response template not found")
         
@@ -462,7 +462,7 @@ async def get_knowledge_bases(
 
         # 查询用户自己的知识库 + 全局知识库
         query = db.query(KnowledgeBase).filter(
-            (KnowledgeBase.user_id == current_user.id) | (KnowledgeBase.is_global == True)
+            (KnowledgeBase.tenant_id == current_user.id) | (KnowledgeBase.is_global == True)
         )
 
         if category:
@@ -527,7 +527,7 @@ async def create_knowledge_base(
 
         # 检查是否已存在同名知识库
         existing = db.query(KnowledgeBase).filter(
-            KnowledgeBase.user_id == current_user.id,
+            KnowledgeBase.tenant_id == current_user.id,
             KnowledgeBase.category == category,
             KnowledgeBase.name == name
         ).first()
@@ -543,7 +543,7 @@ async def create_knowledge_base(
 
         # 创建数据库记录
         knowledge_base = KnowledgeBase(
-            user_id=current_user.id,
+            tenant_id=current_user.id,
             category=category,
             name=name,
             description=description,
@@ -599,7 +599,7 @@ async def update_knowledge_base(
             raise HTTPException(status_code=404, detail="Knowledge base not found")
 
         # 权限检查：只能编辑自己的知识库，或者管理员可以编辑全局知识库
-        if knowledge_base.user_id != current_user.id and not (current_user.is_super_admin and knowledge_base.is_global):
+        if knowledge_base.tenant_id != current_user.id and not (current_user.is_super_admin and knowledge_base.is_global):
             raise HTTPException(status_code=403, detail="Permission denied")
 
         # 检查全局权限（仅管理员可设置全局知识库）
@@ -608,7 +608,7 @@ async def update_knowledge_base(
 
         # 检查是否与其他知识库重名
         existing = db.query(KnowledgeBase).filter(
-            KnowledgeBase.user_id == current_user.id,
+            KnowledgeBase.tenant_id == current_user.id,
             KnowledgeBase.category == kb_request.category,
             KnowledgeBase.name == kb_request.name,
             KnowledgeBase.id != kb_id
@@ -650,7 +650,7 @@ async def delete_knowledge_base(
 
         knowledge_base = db.query(KnowledgeBase).filter(
             KnowledgeBase.id == kb_id,
-            KnowledgeBase.user_id == current_user.id
+            KnowledgeBase.tenant_id == current_user.id
         ).first()
 
         if not knowledge_base:
@@ -689,7 +689,7 @@ async def replace_knowledge_base_file(
 
         knowledge_base = db.query(KnowledgeBase).filter(
             KnowledgeBase.id == kb_id,
-            KnowledgeBase.user_id == current_user.id
+            KnowledgeBase.tenant_id == current_user.id
         ).first()
 
         if not knowledge_base:
@@ -746,7 +746,7 @@ async def get_knowledge_base_info(
 
         knowledge_base = db.query(KnowledgeBase).filter(
             KnowledgeBase.id == kb_id,
-            KnowledgeBase.user_id == current_user.id
+            KnowledgeBase.tenant_id == current_user.id
         ).first()
 
         if not knowledge_base:
@@ -777,7 +777,7 @@ async def search_similar_questions(
         # 查找知识库（用户自己的或者全局的）
         knowledge_base = db.query(KnowledgeBase).filter(
             KnowledgeBase.id == kb_id,
-            ((KnowledgeBase.user_id == current_user.id) | (KnowledgeBase.is_global == True)),
+            ((KnowledgeBase.tenant_id == current_user.id) | (KnowledgeBase.is_global == True)),
             KnowledgeBase.is_active == True
         ).first()
 
@@ -812,7 +812,7 @@ async def get_knowledge_bases_by_category(
 
         # 查询用户自己的知识库 + 全局知识库
         knowledge_bases = db.query(KnowledgeBase).filter(
-            ((KnowledgeBase.user_id == current_user.id) | (KnowledgeBase.is_global == True)),
+            ((KnowledgeBase.tenant_id == current_user.id) | (KnowledgeBase.is_global == True)),
             KnowledgeBase.category == category,
             KnowledgeBase.is_active == True
         ).order_by(KnowledgeBase.created_at.desc()).all()

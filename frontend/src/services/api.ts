@@ -46,8 +46,8 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
-    // 添加用户切换会话token
+
+    // 添加租户切换会话token
     const switchToken = localStorage.getItem('switch_session_token');
     if (switchToken) {
       config.headers['X-Switch-Session'] = switchToken;
@@ -174,37 +174,37 @@ export const configApi = {
 // 管理员API
 export const adminApi = {
   // 获取管理员统计信息
-  getAdminStats: (): Promise<{ 
-    status: string; 
-    data: { 
-      total_users: number; 
-      total_detections: number; 
+  getAdminStats: (): Promise<{
+    status: string;
+    data: {
+      total_users: number;
+      total_detections: number;
       user_detection_counts: Array<{
-        user_id: string;
+        tenant_id: string;
         email: string;
         detection_count: number;
       }>
-    } 
+    }
   }> =>
     api.get('/api/v1/admin/stats').then(res => res.data),
-  
-  // 获取所有用户列表
+
+  // 获取所有租户列表
   getUsers: (): Promise<{ status: string; users: any[]; total: number }> =>
     api.get('/api/v1/admin/users').then(res => res.data),
-  
-  // 切换到指定用户视角
-  switchToUser: (userId: string): Promise<{ 
-    status: string; 
-    message: string; 
-    switch_session_token: string; 
-    target_user: { id: string; email: string; api_key: string } 
+
+  // 切换到指定租户视角
+  switchToUser: (tenantId: string): Promise<{
+    status: string;
+    message: string;
+    switch_session_token: string;
+    target_user: { id: string; email: string; api_key: string }
   }> =>
-    api.post(`/api/v1/admin/switch-user/${userId}`).then(res => res.data),
-  
-  // 退出用户切换
+    api.post(`/api/v1/admin/switch-user/${tenantId}`).then(res => res.data),
+
+  // 退出租户切换
   exitSwitch: (): Promise<{ status: string; message: string }> =>
     api.post('/api/v1/admin/exit-switch').then(res => res.data),
-  
+
   // 获取当前切换状态
   getCurrentSwitch: (): Promise<{
     is_switched: boolean;
@@ -212,8 +212,8 @@ export const adminApi = {
     target_user?: { id: string; email: string; api_key: string };
   }> =>
     api.get('/api/v1/admin/current-switch').then(res => res.data),
-  
-  // 用户管理
+
+  // 租户管理
   createUser: (data: {
     email: string;
     password: string;
@@ -222,33 +222,33 @@ export const adminApi = {
     is_super_admin?: boolean;
   }): Promise<ApiResponse> =>
     api.post('/api/v1/admin/create-user', data).then(res => res.data),
-  
-  updateUser: (userId: string, data: {
+
+  updateUser: (tenantId: string, data: {
     email?: string;
     is_active?: boolean;
     is_verified?: boolean;
     is_super_admin?: boolean;
   }): Promise<ApiResponse> =>
-    api.put(`/api/v1/admin/users/${userId}`, data).then(res => res.data),
-  
-  deleteUser: (userId: string): Promise<ApiResponse> =>
-    api.delete(`/api/v1/admin/users/${userId}`).then(res => res.data),
-  
-  resetUserApiKey: (userId: string): Promise<ApiResponse> =>
-    api.post(`/api/v1/admin/users/${userId}/reset-api-key`).then(res => res.data),
-  
-  // 限速管理
+    api.put(`/api/v1/admin/users/${tenantId}`, data).then(res => res.data),
+
+  deleteUser: (tenantId: string): Promise<ApiResponse> =>
+    api.delete(`/api/v1/admin/users/${tenantId}`).then(res => res.data),
+
+  resetUserApiKey: (tenantId: string): Promise<ApiResponse> =>
+    api.post(`/api/v1/admin/users/${tenantId}/reset-api-key`).then(res => res.data),
+
+  // 租户限速管理
   getRateLimits: (): Promise<{ status: string; data: any[]; total: number }> =>
     api.get('/api/v1/admin/rate-limits').then(res => res.data),
-  
+
   setUserRateLimit: (data: {
-    user_id: string;
+    tenant_id: string;
     requests_per_second: number;
   }): Promise<{ status: string; message: string; data: any }> =>
     api.post('/api/v1/admin/rate-limits', data).then(res => res.data),
-  
-  removeUserRateLimit: (userId: string): Promise<{ status: string; message: string }> =>
-    api.delete(`/api/v1/admin/rate-limits/${userId}`).then(res => res.data),
+
+  removeUserRateLimit: (tenantId: string): Promise<{ status: string; message: string }> =>
+    api.delete(`/api/v1/admin/rate-limits/${tenantId}`).then(res => res.data),
 };
 
 // 在线测试模型API - 使用代理模型配置

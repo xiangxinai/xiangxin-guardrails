@@ -58,7 +58,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         
         # 缓存未命中，验证token
         from database.connection import get_detection_db_session
-        from database.models import User
+        from database.models import Tenant
         from utils.user import get_user_by_api_key
         from utils.auth import verify_token
         
@@ -69,17 +69,17 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
             # JWT验证
             try:
                 user_data = verify_token(token)
-                raw_user_id = user_data.get('user_id') or user_data.get('sub')
+                raw_tenant_id = user_data.get('tenant_id') or user_data.get('sub')
                 
-                if isinstance(raw_user_id, str):
+                if isinstance(raw_tenant_id, str):
                     try:
-                        user_uuid = uuid.UUID(raw_user_id)
-                        user = db.query(User).filter(User.id == user_uuid).first()
+                        tenant_uuid = uuid.UUID(raw_tenant_id)
+                        user = db.query(Tenant).filter(Tenant.id == tenant_uuid).first()
                         if user:
                             auth_context = {
                                 "type": "jwt", 
                                 "data": {
-                                    "user_id": str(user.id),
+                                    "tenant_id": str(user.id),
                                     "email": user.email
                                 }
                             }
@@ -92,7 +92,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                     auth_context = {
                         "type": "api_key", 
                         "data": {
-                            "user_id": str(user.id),
+                            "tenant_id": str(user.id),
                             "email": user.email,
                             "api_key": user.api_key
                         }

@@ -44,7 +44,7 @@ interface AdminStats {
   total_users: number;
   total_detections: number;
   user_detection_counts: Array<{
-    user_id: string;
+    tenant_id: string;
     email: string;
     detection_count: number;
   }>;
@@ -78,7 +78,7 @@ const UserManagement: React.FC = () => {
       setUsers(response.users || []);
     } catch (error) {
       console.error('Failed to load users:', error);
-      message.error('加载用户列表失败');
+      message.error('加载租户列表失败');
     } finally {
       setLoading(false);
     }
@@ -112,15 +112,15 @@ const UserManagement: React.FC = () => {
   const handleSave = async (values: any) => {
     try {
       if (editingUser) {
-        // 更新用户
+        // 更新租户
         await adminApi.updateUser(editingUser.id, values);
-        message.success('用户更新成功');
+        message.success('租户更新成功');
       } else {
-        // 创建新用户
+        // 创建新租户
         await adminApi.createUser(values);
-        message.success('用户创建成功');
+        message.success('租户创建成功');
       }
-      
+
       setModalVisible(false);
       // 延迟重置表单，避免用户看到按钮状态变化
       setTimeout(() => {
@@ -133,10 +133,10 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleDelete = async (userId: string) => {
+  const handleDelete = async (tenantId: string) => {
     try {
-      await adminApi.deleteUser(userId);
-      message.success('用户删除成功');
+      await adminApi.deleteUser(tenantId);
+      message.success('租户删除成功');
       loadUsers();
     } catch (error: any) {
       console.error('Delete user failed:', error);
@@ -144,9 +144,9 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleResetApiKey = async (userId: string) => {
+  const handleResetApiKey = async (tenantId: string) => {
     try {
-      await adminApi.resetUserApiKey(userId);
+      await adminApi.resetUserApiKey(tenantId);
       message.success('API Key重置成功');
       loadUsers();
     } catch (error: any) {
@@ -155,39 +155,39 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleSwitchToUser = async (userId: string, email: string) => {
+  const handleSwitchToUser = async (tenantId: string, email: string) => {
     try {
-      await switchToUser(userId);
-      message.success(`已切换到用户 ${email} 的视角`);
+      await switchToUser(tenantId);
+      message.success(`已切换到租户 ${email} 的视角`);
       // 刷新当前页面以更新状态
       window.location.reload();
     } catch (error: any) {
       console.error('Switch user failed:', error);
-      message.error(error.response?.data?.detail || '切换用户失败');
+      message.error(error.response?.data?.detail || '切换租户失败');
     }
   };
 
   const columns = [
     {
-      title: '用户邮箱',
+      title: '租户邮箱',
       dataIndex: 'email',
       key: 'email',
       render: (email: string, record: User) => (
         <Space>
           <UserOutlined />
-          {/* 只有超级管理员且不是当前用户且未在切换状态时才可点击切换 */}
+          {/* 只有超级管理员且不是当前租户且未在切换状态时才可点击切换 */}
           {currentUser?.is_super_admin && record.id !== currentUser?.id && !switchInfo.is_switched ? (
-            <Text 
+            <Text
               style={{ cursor: 'pointer', color: '#1890ff' }}
               onClick={() => handleSwitchToUser(record.id, record.email)}
-              title="点击切换到此用户视角"
+              title="点击切换到此租户视角"
             >
               {email}
             </Text>
           ) : (
             <Text>{email}</Text>
           )}
-          {record.id === currentUser?.id && <Tag color="blue">当前用户</Tag>}
+          {record.id === currentUser?.id && <Tag color="blue">当前租户</Tag>}
           {switchInfo.is_switched && switchInfo.target_user?.id === record.id && (
             <Tag color="orange">切换中</Tag>
           )}
@@ -266,7 +266,7 @@ const UserManagement: React.FC = () => {
       key: 'actions',
       render: (_: any, record: User) => (
         <Space>
-          <Tooltip title="编辑用户">
+          <Tooltip title="编辑租户">
             <Button
               type="link"
               size="small"
@@ -276,13 +276,13 @@ const UserManagement: React.FC = () => {
           </Tooltip>
           {record.id !== currentUser?.id && (
             <Popconfirm
-              title="确定要删除这个用户吗？"
+              title="确定要删除这个租户吗？"
               description="此操作不可恢复"
               onConfirm={() => handleDelete(record.id)}
               okText="确定"
               cancelText="取消"
             >
-              <Tooltip title="删除用户">
+              <Tooltip title="删除租户">
                 <Button
                   type="link"
                   size="small"
@@ -304,14 +304,14 @@ const UserManagement: React.FC = () => {
           <div>
             <Title level={4} style={{ margin: 0 }}>
               <UserOutlined style={{ marginRight: 8 }} />
-              用户管理
+              租户管理
             </Title>
-            <Text type="secondary">管理系统中的所有用户账号</Text>
+            <Text type="secondary">管理系统中的所有租户账号</Text>
             {adminStats && (
               <div style={{ marginTop: 8 }}>
                 <Space split={<Text type="secondary">|</Text>}>
                   <Text>
-                    <strong>{adminStats.total_users}</strong> 个用户
+                    <strong>{adminStats.total_users}</strong> 个租户
                   </Text>
                   <Text>
                     总检测次数: <strong>{adminStats.total_detections}</strong>
@@ -333,7 +333,7 @@ const UserManagement: React.FC = () => {
               icon={<PlusOutlined />}
               onClick={handleAdd}
             >
-              添加用户
+              添加租户
             </Button>
           </Space>
         </div>
@@ -341,7 +341,7 @@ const UserManagement: React.FC = () => {
         {/* 搜索框 */}
         <div style={{ marginBottom: 16 }}>
           <Input.Search
-            placeholder="按用户邮箱或 UUID 搜索"
+            placeholder="按租户邮箱或 UUID 搜索"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             style={{ width: 300 }}
@@ -351,8 +351,8 @@ const UserManagement: React.FC = () => {
 
         <Table
           columns={columns}
-          dataSource={users.filter(user => 
-            !searchText || 
+          dataSource={users.filter(user =>
+            !searchText ||
             user.email.toLowerCase().includes(searchText.toLowerCase()) ||
             user.id.toLowerCase().includes(searchText.toLowerCase())
           )}
@@ -361,13 +361,13 @@ const UserManagement: React.FC = () => {
           pagination={{
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 个用户`,
+            showTotal: (total) => `共 ${total} 个租户`,
           }}
         />
       </Card>
 
       <Modal
-        title={editingUser ? '编辑用户' : '添加用户'}
+        title={editingUser ? '编辑租户' : '添加租户'}
         open={modalVisible}
         onCancel={() => {
           setModalVisible(false);
@@ -387,15 +387,15 @@ const UserManagement: React.FC = () => {
         >
           <Form.Item
             name="email"
-            label="用户邮箱"
+            label="租户邮箱"
             rules={[
-              { required: true, message: '请输入用户邮箱' },
+              { required: true, message: '请输入租户邮箱' },
               { type: 'email', message: '请输入有效的邮箱地址' }
             ]}
           >
             <Input
               prefix={<MailOutlined />}
-              placeholder="用户邮箱"
+              placeholder="租户邮箱"
               disabled={!!editingUser}
             />
           </Form.Item>

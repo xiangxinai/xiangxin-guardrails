@@ -81,16 +81,16 @@ class ProxyService:
         """解密API密钥"""
         return self.cipher_suite.decrypt(encrypted_api_key.encode()).decode()
     
-    async def get_user_models(self, user_id: str) -> List[ProxyModelConfig]:
+    async def get_user_models(self, tenant_id: str) -> List[ProxyModelConfig]:
         """获取用户的模型配置列表"""
-        # 确保user_id是UUID对象
-        if isinstance(user_id, str):
-            user_id = uuid.UUID(user_id)
+        # 确保tenant_id是UUID对象
+        if isinstance(tenant_id, str):
+            tenant_id = uuid.UUID(tenant_id)
 
         db = get_admin_db_session()
         try:
             models = db.query(ProxyModelConfig).filter(
-                ProxyModelConfig.user_id == user_id,
+                ProxyModelConfig.tenant_id == tenant_id,
                 ProxyModelConfig.enabled == True
             ).order_by(ProxyModelConfig.created_at).all()
 
@@ -109,17 +109,17 @@ class ProxyService:
         finally:
             db.close()
     
-    async def get_user_model_config(self, user_id: str, model_name: str) -> Optional[ProxyModelConfig]:
+    async def get_user_model_config(self, tenant_id: str, model_name: str) -> Optional[ProxyModelConfig]:
         """获取用户的特定模型配置"""
-        # 确保user_id是UUID对象
-        if isinstance(user_id, str):
-            user_id = uuid.UUID(user_id)
+        # 确保tenant_id是UUID对象
+        if isinstance(tenant_id, str):
+            tenant_id = uuid.UUID(tenant_id)
 
         db = get_admin_db_session()
         try:
             # 先按config_name精确匹配
             model = db.query(ProxyModelConfig).filter(
-                ProxyModelConfig.user_id == user_id,
+                ProxyModelConfig.tenant_id == tenant_id,
                 ProxyModelConfig.config_name == model_name,
                 ProxyModelConfig.enabled == True
             ).first()
@@ -127,7 +127,7 @@ class ProxyService:
             # 如果没找到，尝试获取第一个启用的模型
             if not model:
                 model = db.query(ProxyModelConfig).filter(
-                    ProxyModelConfig.user_id == user_id,
+                    ProxyModelConfig.tenant_id == tenant_id,
                     ProxyModelConfig.enabled == True
                 ).first()
 
@@ -148,11 +148,11 @@ class ProxyService:
         finally:
             db.close()
     
-    async def create_user_model(self, user_id: str, model_data: Dict[str, Any]) -> ProxyModelConfig:
+    async def create_user_model(self, tenant_id: str, model_data: Dict[str, Any]) -> ProxyModelConfig:
         """创建用户模型配置"""
-        # 确保user_id是UUID对象
-        if isinstance(user_id, str):
-            user_id = uuid.UUID(user_id)
+        # 确保tenant_id是UUID对象
+        if isinstance(tenant_id, str):
+            tenant_id = uuid.UUID(tenant_id)
 
         db = get_admin_db_session()
         try:
@@ -164,7 +164,7 @@ class ProxyService:
 
             # 检查配置名称是否已存在
             existing = db.query(ProxyModelConfig).filter(
-                ProxyModelConfig.user_id == user_id,
+                ProxyModelConfig.tenant_id == tenant_id,
                 ProxyModelConfig.config_name == model_data['config_name']
             ).first()
             if existing:
@@ -174,7 +174,7 @@ class ProxyService:
             encrypted_api_key = self._encrypt_api_key(model_data['api_key'])
             
             model_config = ProxyModelConfig(
-                user_id=user_id,
+                tenant_id=tenant_id,
                 config_name=model_data['config_name'],
                 api_base_url=model_data['api_base_url'].rstrip('/'),
                 api_key_encrypted=encrypted_api_key,
@@ -191,7 +191,7 @@ class ProxyService:
             db.commit()
             db.refresh(model_config)
             
-            logger.info(f"Created proxy model config '{model_config.config_name}' for user {user_id}")
+            logger.info(f"Created proxy model config '{model_config.config_name}' for user {tenant_id}")
             return model_config
         except Exception as e:
             db.rollback()
@@ -199,17 +199,17 @@ class ProxyService:
         finally:
             db.close()
     
-    async def update_user_model(self, user_id: str, model_id: str, model_data: Dict[str, Any]) -> ProxyModelConfig:
+    async def update_user_model(self, tenant_id: str, model_id: str, model_data: Dict[str, Any]) -> ProxyModelConfig:
         """更新用户模型配置"""
-        # 确保user_id是UUID对象
-        if isinstance(user_id, str):
-            user_id = uuid.UUID(user_id)
+        # 确保tenant_id是UUID对象
+        if isinstance(tenant_id, str):
+            tenant_id = uuid.UUID(tenant_id)
 
         db = get_admin_db_session()
         try:
             model_config = db.query(ProxyModelConfig).filter(
                 ProxyModelConfig.id == model_id,
-                ProxyModelConfig.user_id == user_id
+                ProxyModelConfig.tenant_id == tenant_id
             ).first()
             
             if not model_config:
@@ -230,7 +230,7 @@ class ProxyService:
             db.commit()
             db.refresh(model_config)
             
-            logger.info(f"Updated proxy model config '{model_config.config_name}' for user {user_id}")
+            logger.info(f"Updated proxy model config '{model_config.config_name}' for user {tenant_id}")
             return model_config
         except Exception as e:
             db.rollback()
@@ -238,17 +238,17 @@ class ProxyService:
         finally:
             db.close()
     
-    async def delete_user_model(self, user_id: str, model_id: str):
+    async def delete_user_model(self, tenant_id: str, model_id: str):
         """删除用户模型配置"""
-        # 确保user_id是UUID对象
-        if isinstance(user_id, str):
-            user_id = uuid.UUID(user_id)
+        # 确保tenant_id是UUID对象
+        if isinstance(tenant_id, str):
+            tenant_id = uuid.UUID(tenant_id)
 
         db = get_admin_db_session()
         try:
             model_config = db.query(ProxyModelConfig).filter(
                 ProxyModelConfig.id == model_id,
-                ProxyModelConfig.user_id == user_id
+                ProxyModelConfig.tenant_id == tenant_id
             ).first()
             
             if not model_config:
@@ -268,7 +268,7 @@ class ProxyService:
             db.delete(model_config)
             db.commit()
             
-            logger.info(f"Deleted proxy model config '{model_config.config_name}' for user {user_id}. "
+            logger.info(f"Deleted proxy model config '{model_config.config_name}' for user {tenant_id}. "
                        f"Also deleted {deleted_logs_count} request logs and {deleted_selections_count} model selections.")
         except Exception as e:
             db.rollback()
@@ -474,7 +474,7 @@ class ProxyService:
     async def log_proxy_request(
         self,
         request_id: str,
-        user_id: str,
+        tenant_id: str,
         proxy_config_id: str,
         model_requested: str,
         model_used: str,
@@ -495,7 +495,7 @@ class ProxyService:
         try:
             log_entry = ProxyRequestLog(
                 request_id=request_id,
-                user_id=user_id,
+                tenant_id=tenant_id,
                 proxy_config_id=proxy_config_id,
                 model_requested=model_requested,
                 model_used=model_used,
