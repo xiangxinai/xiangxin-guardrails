@@ -89,15 +89,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       children: [
         {
           key: '/config/risk-types',
-          label: '风险类型配置',
+          label: '风险类型',
         },
         {
           key: '/config/sensitivity-thresholds',
-          label: '敏感度阈值管理',
+          label: '敏感度阈值',
         },
         {
           key: '/config/data-security',
-          label: '敏感数据防泄漏',
+          label: '数据防泄漏',
+        },
+        {
+          key: '/config/ban-policy',
+          label: '封禁策略',
         },
         {
           key: '/config/blacklist',
@@ -117,11 +121,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         },
         {
           key: '/config/proxy-models',
-          label: '代理模型配置',
+          label: '安全网关配置',
         },
       ],
     },
-    // 只有超级管理员显示用户管理
+    // 只有超级管理员显示租户管理
     ...(user?.is_super_admin ? [{
       key: '/admin',
       icon: <SettingOutlined />,
@@ -129,7 +133,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       children: [
         {
           key: '/admin/users',
-          label: '用户管理',
+          label: '租户管理',
         },
         {
           key: '/admin/rate-limits',

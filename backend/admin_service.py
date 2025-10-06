@@ -325,6 +325,10 @@ app.include_router(risk_config_api.router, dependencies=[Depends(verify_user_aut
 app.include_router(proxy_management.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
 app.include_router(concurrent_stats.router, dependencies=[Depends(verify_user_auth)])
 app.include_router(data_security.router, dependencies=[Depends(verify_user_auth)])
+
+# 导入并注册封禁策略路由
+from routers import ban_policy_api
+app.include_router(ban_policy_api.router, dependencies=[Depends(verify_user_auth)])
 # Media router: 图片上传/删除需要认证，但图片访问不需要认证
 # 先注册不需要认证的图片访问路由
 from fastapi import APIRouter

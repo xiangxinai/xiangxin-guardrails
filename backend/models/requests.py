@@ -49,7 +49,8 @@ class GuardrailRequest(BaseModel):
     model: str = Field(..., description="模型名称")
     messages: List[Message] = Field(..., description="消息列表")
     max_tokens: Optional[int] = Field(None, description="最大令牌数")
-    
+    extra_body: Optional[Dict[str, Any]] = Field(None, description="额外参数，可包含 xxai_app_user_id 等字段")
+
     @validator('messages')
     def validate_messages(cls, v):
         if not v:
@@ -137,7 +138,9 @@ class ProxyModelConfig(BaseModel):
 class InputGuardrailRequest(BaseModel):
     """输入检测请求模型 - 适用于dify/coze等平台插件"""
     input: str = Field(..., description="用户输入文本")
-    
+    model: Optional[str] = Field("Xiangxin-Guardrails-Text", description="模型名称")
+    xxai_app_user_id: Optional[str] = Field(None, description="租户AI应用的用户ID")
+
     @validator('input')
     def validate_input(cls, v):
         if not v or not v.strip():
@@ -150,6 +153,7 @@ class OutputGuardrailRequest(BaseModel):
     """输出检测请求模型 - 适用于dify/coze等平台插件"""
     input: str = Field(..., description="用户输入文本")
     output: str = Field(..., description="模型输出文本")
+    xxai_app_user_id: Optional[str] = Field(None, description="租户AI应用的用户ID")
 
     @validator('input')
     def validate_input(cls, v):

@@ -357,7 +357,7 @@ async def remove_user_rate_limit(
         logger.error(f"Remove rate limit error: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-# 用户管理API
+# 租户管理API
 from pydantic import BaseModel, EmailStr
 
 class CreateUserRequest(BaseModel):

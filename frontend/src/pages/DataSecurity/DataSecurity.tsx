@@ -13,7 +13,7 @@ const DataSecurity: React.FC = () => {
         title={
           <Space>
             <SafetyOutlined />
-            <span>敏感数据防泄漏</span>
+            <span>数据防泄漏</span>
           </Space>
         }
         bordered={false}

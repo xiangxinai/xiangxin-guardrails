@@ -169,6 +169,37 @@ export const configApi = {
   // 获取系统信息
   getSystemInfo: (): Promise<{ support_email: string | null; app_name: string; app_version: string }> =>
     api.get('/api/v1/config/system-info').then(res => res.data),
+
+  // 封禁策略管理
+  banPolicy: {
+    // 获取封禁策略
+    get: (): Promise<any> => api.get('/api/v1/ban-policy').then(res => res.data),
+
+    // 更新封禁策略
+    update: (data: {
+      enabled: boolean;
+      risk_level: string;
+      trigger_count: number;
+      time_window_minutes: number;
+      ban_duration_minutes: number;
+    }): Promise<any> => api.put('/api/v1/ban-policy', data).then(res => res.data),
+
+    // 获取封禁用户列表
+    getBannedUsers: (skip?: number, limit?: number): Promise<{ users: any[] }> =>
+      api.get('/api/v1/ban-policy/banned-users', { params: { skip, limit } }).then(res => res.data),
+
+    // 解封用户
+    unbanUser: (userId: string): Promise<any> =>
+      api.post('/api/v1/ban-policy/unban', { user_id: userId }).then(res => res.data),
+
+    // 获取用户风险历史
+    getUserHistory: (userId: string, days?: number): Promise<{ history: any[] }> =>
+      api.get(`/api/v1/ban-policy/user-history/${userId}`, { params: { days } }).then(res => res.data),
+
+    // 检查用户封禁状态
+    checkUserStatus: (userId: string): Promise<any> =>
+      api.get(`/api/v1/ban-policy/check-status/${userId}`).then(res => res.data),
+  },
 };
 
 // 管理员API

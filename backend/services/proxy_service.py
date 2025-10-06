@@ -96,7 +96,7 @@ class ProxyService:
 
             # 预加载所有模型的属性以避免session detached错误
             for model in models:
-                _ = model.user  # 触发user关系的加载
+                _ = model.tenant  # 触发tenant关系的加载
                 # 确保所有属性都被加载到内存中（只访问实际存在的字段）
                 _ = (model.id, model.config_name, model.model_name, model.api_base_url,
                      model.api_key_encrypted, model.enabled, model.created_at, model.updated_at,
@@ -133,8 +133,8 @@ class ProxyService:
 
             # 如果找到了模型，预加载所有可能用到的属性，避免lazy loading导致的session detached错误
             if model:
-                # 预加载user关系和所有属性
-                _ = model.user  # 触发user关系的加载
+                # 预加载tenant关系和所有属性
+                _ = model.tenant  # 触发tenant关系的加载
                 # 确保所有属性都被加载到内存中（只访问实际存在的字段）
                 _ = (model.id, model.config_name, model.model_name, model.api_base_url,
                      model.api_key_encrypted, model.enabled, model.created_at, model.updated_at,

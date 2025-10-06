@@ -16,11 +16,35 @@ from models.requests import ProxyCompletionRequest
 from models.responses import ProxyCompletionResponse, ProxyModelListResponse
 from services.proxy_service import proxy_service
 from services.detection_guardrail_service import detection_guardrail_service
+from services.ban_policy_service import BanPolicyService
 from utils.logger import setup_logger
 from enum import Enum
 
 router = APIRouter()
 logger = setup_logger()
+
+
+async def check_user_ban_status_proxy(tenant_id: str, user_id: str):
+    """检查用户封禁状态（代理服务专用）"""
+    if not user_id:
+        return None
+
+    ban_record = await BanPolicyService.check_user_banned(tenant_id, user_id)
+    if ban_record:
+        ban_until = ban_record['ban_until'].isoformat() if ban_record['ban_until'] else ''
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": {
+                    "message": "用户已被封禁",
+                    "type": "user_banned",
+                    "user_id": user_id,
+                    "ban_until": ban_until,
+                    "reason": ban_record.get('reason', '触发封禁策略')
+                }
+            }
+        )
+    return None
 
 class DetectionMode(Enum):
     """检测模式枚举"""
@@ -47,22 +71,22 @@ def get_detection_mode(model_config, detection_type: str) -> DetectionMode:
         # 默认使用旁路模式
         return DetectionMode.ASYNC_BYPASS
 
-async def perform_input_detection(model_config, input_messages: list, tenant_id: str, request_id: str):
+async def perform_input_detection(model_config, input_messages: list, tenant_id: str, request_id: str, user_id: str = None):
     """执行输入检测 - 根据配置选择异步或同步模式"""
     detection_mode = get_detection_mode(model_config, 'input')
 
     if detection_mode == DetectionMode.ASYNC_BYPASS:
         # 异步旁路模式：不阻塞，同时启动检测和上游调用
-        return await _async_input_detection(input_messages, tenant_id, request_id, model_config)
+        return await _async_input_detection(input_messages, tenant_id, request_id, model_config, user_id)
     else:
         # 同步串行模式：先检测，再决定是否调用上游
-        return await _sync_input_detection(model_config, input_messages, tenant_id, request_id)
+        return await _sync_input_detection(model_config, input_messages, tenant_id, request_id, user_id)
 
-async def _async_input_detection(input_messages: list, tenant_id: str, request_id: str, model_config=None):
+async def _async_input_detection(input_messages: list, tenant_id: str, request_id: str, model_config=None, user_id: str = None):
     """异步输入检测 - 启动后台检测任务，立即返回通过结果"""
     # 启动后台检测任务
-    asyncio.create_task(_background_input_detection(input_messages, tenant_id, request_id, model_config))
-    
+    asyncio.create_task(_background_input_detection(input_messages, tenant_id, request_id, model_config, user_id))
+
     # 立即返回通过状态，允许请求继续处理
     return {
         'blocked': False,
@@ -70,7 +94,7 @@ async def _async_input_detection(input_messages: list, tenant_id: str, request_i
         'suggest_answer': None
     }
 
-async def _background_input_detection(input_messages: list, tenant_id: str, request_id: str, model_config=None):
+async def _background_input_detection(input_messages: list, tenant_id: str, request_id: str, model_config=None, user_id: str = None):
     """后台输入检测任务 - 仅记录结果，不影响请求处理"""
     try:
         detection_result = await detection_guardrail_service.detect_messages(
@@ -78,16 +102,27 @@ async def _background_input_detection(input_messages: list, tenant_id: str, requ
             tenant_id=tenant_id,
             request_id=f"{request_id}_input_async"
         )
-        
+
         # 记录检测结果但不阻断
         if detection_result.get('suggest_action') in ['拒答', '代答']:
             logger.info(f"异步输入检测发现风险但未阻断 - request {request_id}")
             logger.info(f"检测结果: {detection_result}")
-            
+
+        # 异步记录风险触发（用于封禁策略）
+        if user_id and detection_result.get('overall_risk_level') in ['中风险', '高风险']:
+            asyncio.create_task(
+                BanPolicyService.check_and_apply_ban_policy(
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    risk_level=detection_result.get('overall_risk_level'),
+                    detection_result_id=detection_result.get('request_id')
+                )
+            )
+
     except Exception as e:
         logger.error(f"后台输入检测失败: {e}")
 
-async def _sync_input_detection(model_config, input_messages: list, tenant_id: str, request_id: str):
+async def _sync_input_detection(model_config, input_messages: list, tenant_id: str, request_id: str, user_id: str = None):
     """同步输入检测 - 检测完成后再决定是否继续"""
     try:
         detection_result = await detection_guardrail_service.detect_messages(
@@ -95,14 +130,23 @@ async def _sync_input_detection(model_config, input_messages: list, tenant_id: s
             tenant_id=tenant_id,
             request_id=f"{request_id}_input_sync"
         )
-        
+
         detection_id = detection_result.get('request_id')
-        
+
+        # 同步记录风险触发并应用封禁策略
+        if user_id and detection_result.get('overall_risk_level') in ['中风险', '高风险']:
+            await BanPolicyService.check_and_apply_ban_policy(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                risk_level=detection_result.get('overall_risk_level'),
+                detection_result_id=detection_id
+            )
+
         # 检查是否需要阻断
         if model_config.block_on_input_risk and detection_result.get('suggest_action') in ['拒答', '代答']:
             logger.warning(f"同步输入检测阻断请求 - request {request_id}")
             logger.warning(f"检测结果: {detection_result}")
-            
+
             # 返回完整的检测结果，并添加阻断标记
             result = detection_result.copy()
             result['blocked'] = True
@@ -110,14 +154,14 @@ async def _sync_input_detection(model_config, input_messages: list, tenant_id: s
             if 'detection_id' not in result:
                 result['detection_id'] = detection_id
             return result
-        
+
         # 检测通过
         return {
             'blocked': False,
             'detection_id': detection_id,
             'suggest_answer': None
         }
-        
+
     except Exception as e:
         logger.error(f"同步输入检测失败: {e}")
         # 检测失败时默认通过（避免服务不可用）
@@ -127,22 +171,22 @@ async def _sync_input_detection(model_config, input_messages: list, tenant_id: s
             'suggest_answer': None
         }
 
-async def perform_output_detection(model_config, input_messages: list, response_content: str, tenant_id: str, request_id: str):
+async def perform_output_detection(model_config, input_messages: list, response_content: str, tenant_id: str, request_id: str, user_id: str = None):
     """执行输出检测 - 根据配置选择异步或同步模式"""
     detection_mode = get_detection_mode(model_config, 'output')
 
     if detection_mode == DetectionMode.ASYNC_BYPASS:
         # 异步旁路模式：启动后台检测，立即返回通过结果
-        return await _async_output_detection(input_messages, response_content, tenant_id, request_id, model_config)
+        return await _async_output_detection(input_messages, response_content, tenant_id, request_id, model_config, user_id)
     else:
         # 同步串行模式：检测完成后再返回结果
-        return await _sync_output_detection(model_config, input_messages, response_content, tenant_id, request_id)
+        return await _sync_output_detection(model_config, input_messages, response_content, tenant_id, request_id, user_id)
 
-async def _async_output_detection(input_messages: list, response_content: str, tenant_id: str, request_id: str, model_config=None):
+async def _async_output_detection(input_messages: list, response_content: str, tenant_id: str, request_id: str, model_config=None, user_id: str = None):
     """异步输出检测 - 启动后台检测任务，立即返回通过结果"""
     # 启动后台检测任务
-    asyncio.create_task(_background_output_detection(input_messages, response_content, tenant_id, request_id, model_config))
-    
+    asyncio.create_task(_background_output_detection(input_messages, response_content, tenant_id, request_id, model_config, user_id))
+
     # 立即返回通过状态，允许响应直接返回给用户
     return {
         'blocked': False,
@@ -151,7 +195,7 @@ async def _async_output_detection(input_messages: list, response_content: str, t
         'response_content': response_content  # 原始响应内容
     }
 
-async def _background_output_detection(input_messages: list, response_content: str, tenant_id: str, request_id: str, model_config=None):
+async def _background_output_detection(input_messages: list, response_content: str, tenant_id: str, request_id: str, model_config=None, user_id: str = None):
     """后台输出检测任务 - 仅记录结果，不影响响应"""
     try:
         # 构造检测messages: input + response
@@ -166,16 +210,29 @@ async def _background_output_detection(input_messages: list, response_content: s
             tenant_id=tenant_id,
             request_id=f"{request_id}_output_async"
         )
-        
+
+        detection_id = detection_result.get('request_id')
+
+        # 异步记录风险触发并应用封禁策略（不阻断响应）
+        if user_id and detection_result.get('overall_risk_level') in ['中风险', '高风险']:
+            asyncio.create_task(
+                BanPolicyService.check_and_apply_ban_policy(
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    risk_level=detection_result.get('overall_risk_level'),
+                    detection_result_id=detection_id
+                )
+            )
+
         # 记录检测结果但不阻断
         if detection_result.get('suggest_action') in ['拒答', '代答']:
             logger.info(f"异步输出检测发现风险但未阻断 - request {request_id}")
             logger.info(f"检测结果: {detection_result}")
-            
+
     except Exception as e:
         logger.error(f"后台输出检测失败: {e}")
 
-async def _sync_output_detection(model_config, input_messages: list, response_content: str, tenant_id: str, request_id: str):
+async def _sync_output_detection(model_config, input_messages: list, response_content: str, tenant_id: str, request_id: str, user_id: str = None):
     """同步输出检测 - 检测完成后再决定返回内容"""
     try:
         # 构造检测messages: input + response
@@ -190,14 +247,23 @@ async def _sync_output_detection(model_config, input_messages: list, response_co
             tenant_id=tenant_id,
             request_id=f"{request_id}_output_sync"
         )
-        
+
         detection_id = detection_result.get('request_id')
-        
+
+        # 同步记录风险触发并应用封禁策略
+        if user_id and detection_result.get('overall_risk_level') in ['中风险', '高风险']:
+            await BanPolicyService.check_and_apply_ban_policy(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                risk_level=detection_result.get('overall_risk_level'),
+                detection_result_id=detection_id
+            )
+
         # 检查是否需要阻断输出
         if model_config.block_on_output_risk and detection_result.get('suggest_action') in ['拒答', '代答']:
             logger.warning(f"同步输出检测阻断响应 - request {request_id}")
             logger.warning(f"检测结果: {detection_result}")
-            
+
             # 返回替代内容
             suggest_answer = detection_result.get('suggest_answer', '抱歉，生成的内容包含不当信息。')
             return {
@@ -206,7 +272,7 @@ async def _sync_output_detection(model_config, input_messages: list, response_co
                 'suggest_answer': suggest_answer,
                 'response_content': suggest_answer  # 替换后的内容
             }
-        
+
         # 检测通过，返回原始内容
         return {
             'blocked': False,
@@ -214,7 +280,7 @@ async def _sync_output_detection(model_config, input_messages: list, response_co
             'suggest_answer': None,
             'response_content': response_content  # 原始响应内容
         }
-        
+
     except Exception as e:
         logger.error(f"同步输出检测失败: {e}")
         # 检测失败时默认通过（避免服务不可用）
@@ -723,7 +789,19 @@ async def create_chat_completion(
         tenant_id = auth_ctx['data'].get('tenant_id') or auth_ctx['data'].get('tenant_id')
         request_id = str(uuid.uuid4())
 
-        logger.info(f"Chat completion request {request_id} from tenant {tenant_id} for model {request_data.model}")
+        # 获取用户ID
+        user_id = None
+        if request_data.extra_body:
+            user_id = request_data.extra_body.get('xxai_app_user_id')
+
+        # 如果没有 user_id，使用 tenant_id 作为 fallback
+        if not user_id:
+            user_id = tenant_id
+
+        logger.info(f"Chat completion request {request_id} from tenant {tenant_id} for model {request_data.model}, user_id: {user_id}")
+
+        # 检查用户是否被封禁
+        await check_user_ban_status_proxy(tenant_id, user_id)
 
         # 获取租户的模型配置
         model_config = await proxy_service.get_user_model_config(tenant_id, request_data.model)
@@ -740,17 +818,17 @@ async def create_chat_completion(
         
         # 构造messages结构用于上下文感知检测
         input_messages = [{"role": msg.role, "content": msg.content} for msg in request_data.messages]
-        
+
         start_time = time.time()
         input_blocked = False
         output_blocked = False
         input_detection_id = None
         output_detection_id = None
-        
+
         try:
             # 输入检测 - 根据配置选择异步/同步模式
             input_detection_result = await perform_input_detection(
-                model_config, input_messages, tenant_id, request_id
+                model_config, input_messages, tenant_id, request_id, user_id
             )
             
             input_detection_id = input_detection_result.get('detection_id')
@@ -867,9 +945,9 @@ async def create_chat_completion(
                 
                 # 执行输出检测
                 output_detection_result = await perform_output_detection(
-                    model_config, input_messages, output_content, tenant_id, request_id
+                    model_config, input_messages, output_content, tenant_id, request_id, user_id
                 )
-                
+
                 output_detection_id = output_detection_result.get('detection_id')
                 output_blocked = output_detection_result.get('blocked', False)
                 final_content = output_detection_result.get('response_content', output_content)
@@ -934,6 +1012,9 @@ async def create_chat_completion(
                 }
             )
     
+    except HTTPException:
+        # Re-raise HTTPException to preserve status codes (e.g., 403 for banned users)
+        raise
     except Exception as e:
         logger.error(f"Chat completion error: {e}")
         return JSONResponse(
@@ -955,7 +1036,19 @@ async def create_completion(
         tenant_id = auth_ctx['data'].get('tenant_id') or auth_ctx['data'].get('tenant_id')
         request_id = str(uuid.uuid4())
 
-        logger.info(f"Completion request {request_id} from tenant {tenant_id} for model {request_data.model}")
+        # 获取用户ID
+        user_id = None
+        if request_data.extra_body:
+            user_id = request_data.extra_body.get('xxai_app_user_id')
+
+        # 如果没有 user_id，使用 tenant_id 作为 fallback
+        if not user_id:
+            user_id = tenant_id
+
+        logger.info(f"Completion request {request_id} from tenant {tenant_id} for model {request_data.model}, user_id: {user_id}")
+
+        # 检查用户是否被封禁
+        await check_user_ban_status_proxy(tenant_id, user_id)
 
         # 获取租户的模型配置
         model_config = await proxy_service.get_user_model_config(tenant_id, request_data.model)
@@ -978,17 +1071,17 @@ async def create_completion(
         
         # 为completions API构造messages结构（兼容传统的prompt格式）
         input_messages = [{"role": "user", "content": prompt_text}]
-        
+
         start_time = time.time()
         input_blocked = False
         output_blocked = False
         input_detection_id = None
         output_detection_id = None
-        
+
         try:
             # 输入检测 - 根据配置选择异步/同步模式
             input_detection_result = await perform_input_detection(
-                model_config, input_messages, tenant_id, request_id
+                model_config, input_messages, tenant_id, request_id, user_id
             )
             
             input_detection_id = input_detection_result.get('detection_id')
@@ -1044,9 +1137,9 @@ async def create_completion(
                 
                 # 执行输出检测
                 output_detection_result = await perform_output_detection(
-                    model_config, input_messages, output_text, tenant_id, request_id
+                    model_config, input_messages, output_text, tenant_id, request_id, user_id
                 )
-                
+
                 output_detection_id = output_detection_result.get('detection_id')
                 output_blocked = output_detection_result.get('blocked', False)
                 final_content = output_detection_result.get('response_content', output_text)
@@ -1110,7 +1203,10 @@ async def create_completion(
                     }
                 }
             )
-    
+
+    except HTTPException:
+        # Re-raise HTTPException to preserve status codes (e.g., 403 for banned users)
+        raise
     except Exception as e:
         logger.error(f"Completion error: {e}")
         return JSONResponse(

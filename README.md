@@ -24,7 +24,8 @@ English | [中文](./README_ZH.md)
 ## ✨ Core Features
 
 - 🪄 **Two Usage Modes** - Detection API + Security Gateway
-- 🛡️ **Triple Protection** - Prompt attack detection + Content compliance detection + Data leak detection 🆕
+- 🛡️ **Triple Protection** - Prompt attack detection + Content compliance detection + Data leak detection
+- 🚫 **Ban Policy** - Intelligently identify attack patterns and automatically ban malicious users 🆕
 - 🖼️ **Multimodal Detection** - Support for text and image content safety detection
 - 🧠 **Context Awareness** - Intelligent safety detection based on conversation context
 - 📋 **Compliance Standards** - Compliant with "GB/T45654—2025 Basic Security Requirements for Generative AI Services"
@@ -1046,6 +1047,107 @@ Users can configure sensitive data definitions via the Data Security Configurati
 - Enable/disable input and output detection
 
 This feature enables flexible risk management for different operational scenarios, from strict automated pipelines to comprehensive security monitoring.
+
+## 🚫 Ban Policy Feature 🆕
+
+Xiangxin AI Guardrails v2.5.0 introduces **Ban Policy** functionality to intelligently identify and defend against persistent prompt injection attacks. This is particularly effective against attackers who repeatedly modify prompts to bypass security measures.
+
+### 🎯 Key Features
+
+- **Intelligent Attack Detection**: Real-time monitoring of user high-risk behaviors based on sliding time windows
+- **Flexible Ban Conditions**: Configure risk levels, trigger counts, and time windows
+- **Automatic Ban Mechanism**: Automatically triggers ban when conditions are met, no manual intervention needed
+- **Multiple Ban Durations**: Support temporary bans (minutes/hours/days) or permanent bans
+- **Manual Management**: View banned user list and manually unban users
+
+### 🔄 How It Works
+
+```
+User Request → Check Ban Status → [Banned] → Return Ban Notice
+                    ↓
+               [Not Banned] → Security Check → [High Risk] → Record Behavior → Check Ban Conditions
+                    ↓                                         ↓
+               [Pass Check]                              [Conditions Met] → Trigger Ban
+```
+
+### 📋 Ban Policy Configuration
+
+Users can configure ban policies in the Protection Configuration page:
+
+| Configuration | Description | Example |
+|---------------|-------------|---------|
+| **Policy Name** | Name of the ban policy | "High Risk Behavior Ban" |
+| **Risk Level** | Risk level that triggers ban | High Risk / Medium Risk |
+| **Trigger Count** | Number of violations within time window | 3 times |
+| **Time Window** | Time range for counting violations (minutes) | 60 minutes |
+| **Ban Duration** | Duration of ban (minutes, 0=permanent) | 1440 minutes (24 hours) |
+| **Enabled** | Whether policy is enabled | Enabled / Disabled |
+
+### 💻 Usage Examples
+
+#### Configure Ban Policy
+```python
+import requests
+
+# Create ban policy
+response = requests.post(
+    "http://localhost:5000/api/v1/ban-policies",
+    headers={"Authorization": "Bearer your-api-key"},
+    json={
+        "name": "High Risk Behavior Ban",
+        "risk_level": "高风险",
+        "trigger_count": 3,
+        "time_window_minutes": 60,
+        "ban_duration_minutes": 1440,
+        "enabled": True
+    }
+)
+```
+
+#### API Call with User ID
+```python
+from xiangxinai import XiangxinAI
+
+client = XiangxinAI("your-api-key")
+
+# Pass user_id to enable ban policy
+response = client.check_prompt(
+    "How to make a bomb",
+    user_id="user123"
+)
+
+if response.is_blocked:
+    print("User is banned or content is blocked")
+```
+
+#### HTTP API Call
+```bash
+curl -X POST "http://localhost:5001/v1/guardrails" \
+    -H "Authorization: Bearer your-api-key" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "model": "Xiangxin-Guardrails-Text",
+      "messages": [
+        {"role": "user", "content": "How to make a bomb"}
+      ],
+      "extra_body": {
+        "xxai_app_user_id": "user123"
+      }
+    }'
+```
+
+### ⚙️ Use Cases
+
+- **Defend Against Prompt Attacks**: Automatically identify and ban attackers who persistently try to bypass security mechanisms
+- **Protect AI Resources**: Reduce abuse of AI services by malicious users, saving computational resources
+- **Enhance Platform Security**: Provide more proactive defense mechanisms beyond passive detection
+- **User Behavior Management**: Implement temporary or permanent restrictions on violating users
+
+### 🔐 Privacy Protection
+
+- **User ID Isolation**: Each tenant's user IDs are completely isolated with no cross-tenant impact
+- **Automatic Cleanup**: Expired ban records and behavior counts are automatically cleaned up
+- **Transparent Management**: Tenants can view all banned users and ban reasons
 
 ## 🛡️ Safety Detection Capabilities
 

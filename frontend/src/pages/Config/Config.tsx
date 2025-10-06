@@ -10,6 +10,7 @@ import RiskTypeManagement from './RiskTypeManagement';
 import ProxyModelManagement from './ProxyModelManagement';
 import SensitivityThresholdManagement from './SensitivityThresholdManagement';
 import DataSecurity from '../DataSecurity';
+import BanPolicy from './BanPolicy';
 
 const Config: React.FC = () => {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ const Config: React.FC = () => {
     if (path.includes('/sensitivity-thresholds')) return 'sensitivity-thresholds';
     if (path.includes('/proxy-models')) return 'proxy-models';
     if (path.includes('/data-security')) return 'data-security';
+    if (path.includes('/ban-policy')) return 'ban-policy';
     return 'risk-types';
   };
 
@@ -36,18 +38,23 @@ const Config: React.FC = () => {
   const items = [
     {
       key: 'risk-types',
-      label: '风险类型配置',
+      label: '风险类型',
       children: <RiskTypeManagement />,
     },
     {
       key: 'sensitivity-thresholds',
-      label: '敏感度阈值管理',
+      label: '敏感度阈值',
       children: <SensitivityThresholdManagement />,
     },
     {
       key: 'data-security',
-      label: '敏感数据防泄漏',
+      label: '数据防泄漏',
       children: <DataSecurity />,
+    },
+    {
+      key: 'ban-policy',
+      label: '封禁策略',
+      children: <BanPolicy />,
     },
     {
       key: 'blacklist',
@@ -71,7 +78,7 @@ const Config: React.FC = () => {
     },
     {
       key: 'proxy-models',
-      label: '代理模型配置',
+      label: '安全网关配置',
       children: <ProxyModelManagement />,
     },
   ];

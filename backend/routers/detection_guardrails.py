@@ -1,11 +1,25 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
 from services.detection_guardrail_service import DetectionGuardrailService
+from services.ban_policy_service import BanPolicyService
 from models.requests import GuardrailRequest, InputGuardrailRequest, OutputGuardrailRequest, Message
 from models.responses import GuardrailResponse
 from utils.logger import setup_logger
 
 logger = setup_logger()
 router = APIRouter(tags=["Detection Guardrails"])
+
+async def check_user_ban_status(tenant_id: str, user_id: str):
+    """检查用户是否被封禁"""
+    ban_record = await BanPolicyService.check_user_banned(tenant_id, user_id)
+    if ban_record:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "User is banned",
+                "ban_until": ban_record['ban_until'].isoformat() if hasattr(ban_record['ban_until'], 'isoformat') else str(ban_record['ban_until']),
+                "reason": ban_record['reason']
+            }
+        )
 
 @router.post("/guardrails", response_model=GuardrailResponse)
 async def check_guardrails(
@@ -19,33 +33,64 @@ async def check_guardrails(
         # 获取客户端信息
         ip_address = request.client.host if request.client else None
         user_agent = request.headers.get("user-agent")
-        
+
         # 获取用户上下文
         auth_context = getattr(request.state, 'auth_context', None)
         tenant_id = None
         if auth_context:
             tenant_id = str(auth_context['data'].get('tenant_id'))
-        
+
         if not tenant_id:
             raise HTTPException(status_code=401, detail="User ID not found in auth context")
-        
+
+        # 获取用户ID
+        user_id = None
+        if request_data.extra_body:
+            user_id = request_data.extra_body.get('xxai_app_user_id')
+
+        # 如果没有 user_id，使用 tenant_id 作为 fallback
+        if not user_id:
+            user_id = tenant_id
+
+        # 检查用户是否被封禁
+        await check_user_ban_status(tenant_id, user_id)
+
         # 创建检测服务（不需要数据库连接）
         guardrail_service = DetectionGuardrailService()
-        
+
         # 执行检测（只写日志文件）
         result = await guardrail_service.check_guardrails(
-            request_data, 
+            request_data,
             ip_address=ip_address,
             user_agent=user_agent,
             tenant_id=tenant_id
         )
-        
+
+        # 检查并应用封禁策略
+        logger.info(f"Checking ban policy: overall_risk_level={result.overall_risk_level}, user_id={user_id}, tenant_id={tenant_id}")
+        if result.overall_risk_level in ['中风险', '高风险']:
+            logger.info(f"Ban policy check triggered for user_id={user_id}, risk_level={result.overall_risk_level}")
+            try:
+                await BanPolicyService.check_and_apply_ban_policy(
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    risk_level=result.overall_risk_level,
+                    detection_result_id=result.id
+                )
+                logger.info(f"Ban policy check completed for user_id={user_id}")
+            except Exception as e:
+                logger.error(f"Ban policy check failed for user_id={user_id}: {e}", exc_info=True)
+        else:
+            logger.info(f"Ban policy check skipped: risk_level={result.overall_risk_level}")
+
         logger.info(f"Detection completed: {result.id}, action: {result.suggest_action}")
-        
+
         return result
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Detection API error: {e}")
+        logger.error(f"Detection API error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Detection service error")
 
 @router.get("/guardrails/health")

@@ -395,7 +395,7 @@ const ProxyModelManagement: React.FC = () => {
         title={
           <Space>
             <ApiOutlined />
-            代理模型配置
+            安全网关配置
           </Space>
         }
         extra={

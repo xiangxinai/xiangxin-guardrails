@@ -81,7 +81,7 @@ const Account: React.FC = () => {
         </div>
 
         <div>
-          <Text type="secondary">用户 UUID</Text>
+          <Text type="secondary">租户 UUID</Text>
           <Space style={{ width: '100%', marginTop: 8, alignItems: 'center' }}>
             <div style={{ 
               flex: 1,

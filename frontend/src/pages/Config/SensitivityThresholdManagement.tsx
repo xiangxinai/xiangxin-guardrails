@@ -266,7 +266,7 @@ const SensitivityThresholdManagement: React.FC = () => {
           <div>
             <Title level={4}>
               <InfoCircleOutlined style={{ marginRight: 8 }} />
-              敏感度阈值管理
+              敏感度阈值配置
             </Title>
             <Paragraph type="secondary">
               配置检测结果的敏感度阈值和当前敏感度等级。敏感度等级分为高、中、低三个级别。如果检测结果的置信概率大于等于当前敏感度等级阈值，则将触发风险检测。
