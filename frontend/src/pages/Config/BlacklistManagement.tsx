@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Switch, Space, message, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { configApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Blacklist } from '../../types';
@@ -8,6 +9,7 @@ import type { Blacklist } from '../../types';
 const { TextArea } = Input;
 
 const BlacklistManagement: React.FC = () => {
+  const { t } = useTranslation();
   const [data, setData] = useState<Blacklist[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -56,14 +58,14 @@ const BlacklistManagement: React.FC = () => {
 
   const handleDelete = (record: Blacklist) => {
     Modal.confirm({
-      title: '确认删除',
-      content: `确定要删除黑名单 "${record.name}" 吗？`,
-      okText: '确认',
-      cancelText: '取消',
+      title: t('config.blacklist.confirmDelete'),
+      content: t('config.blacklist.confirmDeleteContent', { name: record.name }),
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
       onOk: async () => {
         try {
           await configApi.blacklist.delete(record.id);
-          message.success('删除成功');
+          message.success(t('common.deleteSuccess'));
           fetchData();
         } catch (error) {
           console.error('Error deleting blacklist:', error);
@@ -81,17 +83,17 @@ const BlacklistManagement: React.FC = () => {
 
       if (editingItem) {
         await configApi.blacklist.update(editingItem.id, submitData);
-        message.success('更新成功');
+        message.success(t('common.updateSuccess'));
       } else {
         await configApi.blacklist.create(submitData);
-        message.success('创建成功');
+        message.success(t('common.createSuccess'));
       }
 
       setModalVisible(false);
       fetchData();
     } catch (error) {
       console.error('Error saving blacklist:', error);
-      message.error('保存失败，请重试');
+      message.error(t('common.saveFailed'));
     }
   };
 
@@ -103,59 +105,59 @@ const BlacklistManagement: React.FC = () => {
         description: record.description,
         is_active: !record.is_active
       });
-      message.success(`${!record.is_active ? '启用' : '禁用'}成功`);
+      message.success(t(!record.is_active ? 'common.enableSuccess' : 'common.disableSuccess'));
       fetchData();
     } catch (error) {
       console.error('Error toggling blacklist status:', error);
-      message.error('操作失败，请重试');
+      message.error(t('common.operationFailed'));
     }
   };
 
   const columns = [
     {
-      title: '名称',
+      title: t('config.blacklist.name'),
       dataIndex: 'name',
       key: 'name',
     },
     {
-      title: '关键词数量',
+      title: t('config.blacklist.keywordCount'),
       dataIndex: 'keywords',
       key: 'keywords',
       render: (keywords: string[]) => keywords?.length || 0,
     },
     {
-      title: '描述',
+      title: t('config.blacklist.description'),
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
     },
     {
-      title: '状态',
+      title: t('common.status'),
       dataIndex: 'is_active',
       key: 'is_active',
       render: (active: boolean, record: Blacklist) => (
         <Space>
           <Tag color={active ? 'green' : 'red'}>
-            {active ? '启用' : '禁用'}
+            {active ? t('common.enabled') : t('common.disabled')}
           </Tag>
           <Button
             type="link"
             size="small"
             onClick={() => handleToggleStatus(record)}
           >
-            {active ? '禁用' : '启用'}
+            {active ? t('common.disable') : t('common.enable')}
           </Button>
         </Space>
       ),
     },
     {
-      title: '创建时间',
+      title: t('common.createdAt'),
       dataIndex: 'created_at',
       key: 'created_at',
       render: (time: string) => new Date(time).toLocaleString(),
     },
     {
-      title: '操作',
+      title: t('common.action'),
       key: 'action',
       render: (_: any, record: Blacklist) => (
         <Space>
@@ -164,7 +166,7 @@ const BlacklistManagement: React.FC = () => {
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            编辑
+            {t('common.edit')}
           </Button>
           <Button
             type="link"
@@ -172,7 +174,7 @@ const BlacklistManagement: React.FC = () => {
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record)}
           >
-            删除
+            {t('common.delete')}
           </Button>
         </Space>
       ),
@@ -187,7 +189,7 @@ const BlacklistManagement: React.FC = () => {
           icon={<PlusOutlined />}
           onClick={handleAdd}
         >
-          添加黑名单
+          {t('config.blacklist.addBlacklist')}
         </Button>
       </div>
 
@@ -199,7 +201,7 @@ const BlacklistManagement: React.FC = () => {
       />
 
       <Modal
-        title={editingItem ? '编辑黑名单' : '添加黑名单'}
+        title={editingItem ? t('config.blacklist.editBlacklist') : t('config.blacklist.addBlacklist')}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         onOk={() => form.submit()}
@@ -212,37 +214,37 @@ const BlacklistManagement: React.FC = () => {
         >
           <Form.Item
             name="name"
-            label="名称"
-            rules={[{ required: true, message: '请输入名称' }]}
+            label={t('config.blacklist.name')}
+            rules={[{ required: true, message: t('config.blacklist.nameRequired') }]}
           >
-            <Input placeholder="请输入黑名单名称" />
+            <Input placeholder={t('config.blacklist.namePlaceholder')} />
           </Form.Item>
 
           <Form.Item
             name="keywords"
-            label="关键词"
-            rules={[{ required: true, message: '请输入关键词' }]}
-            extra="每行一个关键词"
+            label={t('config.blacklist.keywords')}
+            rules={[{ required: true, message: t('config.blacklist.keywordsRequired') }]}
+            extra={t('config.blacklist.keywordsExtra')}
           >
             <TextArea
               rows={6}
-              placeholder="请输入关键词，每行一个"
+              placeholder={t('config.blacklist.keywordsPlaceholder')}
             />
           </Form.Item>
 
           <Form.Item
             name="description"
-            label="描述"
+            label={t('config.blacklist.description')}
           >
             <TextArea
               rows={3}
-              placeholder="请输入描述"
+              placeholder={t('config.blacklist.descriptionPlaceholder')}
             />
           </Form.Item>
 
           <Form.Item
             name="is_active"
-            label="启用状态"
+            label={t('common.enableStatus')}
             valuePropName="checked"
             initialValue={true}
           >

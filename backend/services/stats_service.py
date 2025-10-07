@@ -34,19 +34,19 @@ class StatsService:
             # 总请求数
             total_requests = base_query.count()
             
-            # 安全风险数（security_risk_level非无风险）
+            # 安全风险数（security_risk_level非no_risk）
             security_risks = base_query.filter(
-                DetectionResult.security_risk_level != "无风险"
-            ).count()
-            
-            # 合规风险数（compliance_risk_level非无风险）
-            compliance_risks = base_query.filter(
-                DetectionResult.compliance_risk_level != "无风险"
+                DetectionResult.security_risk_level != "no_risk"
             ).count()
 
-            # 数据泄漏风险数（data_risk_level非无风险）
+            # 合规风险数（compliance_risk_level非no_risk）
+            compliance_risks = base_query.filter(
+                DetectionResult.compliance_risk_level != "no_risk"
+            ).count()
+
+            # 数据泄漏风险数（data_risk_level非no_risk）
             data_leaks = base_query.filter(
-                DetectionResult.data_risk_level != "无风险"
+                DetectionResult.data_risk_level != "no_risk"
             ).count()
 
             # 综合统计各风险等级（取最高风险等级）
@@ -72,21 +72,21 @@ class StatsService:
                 # 取三个风险等级中的最高值
                 overall_risk = self._get_highest_risk_level(sec_risk, comp_risk, data_risk)
 
-                if overall_risk == "高风险":
+                if overall_risk == "high_risk":
                     high_risk_count += 1
-                elif overall_risk == "中风险":
+                elif overall_risk == "medium_risk":
                     medium_risk_count += 1
-                elif overall_risk == "低风险":
+                elif overall_risk == "low_risk":
                     low_risk_count += 1
                 else:
                     safe_count += 1
             
             # 风险分布
             risk_distribution = {
-                "高风险": high_risk_count,
-                "中风险": medium_risk_count,
-                "低风险": low_risk_count,
-                "无风险": safe_count
+                "high_risk": high_risk_count,
+                "medium_risk": medium_risk_count,
+                "low_risk": low_risk_count,
+                "no_risk": safe_count
             }
             
             # 最近7天趋势
@@ -109,13 +109,13 @@ class StatsService:
             logger.error(f"Get dashboard stats error: {e}")
             return self._get_empty_stats()
     
-    def _get_highest_risk_level(self, security_risk: str, compliance_risk: str, data_risk: str = "无风险") -> str:
+    def _get_highest_risk_level(self, security_risk: str, compliance_risk: str, data_risk: str = "no_risk") -> str:
         """获取三个风险等级中的最高级别"""
         risk_priority = {
-            "高风险": 4,
-            "中风险": 3,
-            "低风险": 2,
-            "无风险": 1
+            "high_risk": 4,
+            "medium_risk": 3,
+            "low_risk": 2,
+            "no_risk": 1
         }
 
         sec_priority = risk_priority.get(security_risk, 1)
@@ -127,7 +127,7 @@ class StatsService:
             if priority == max_priority:
                 return risk
 
-        return "无风险"
+        return "no_risk"
     
     def _get_daily_trends(self, days: int, tenant_id: str = None) -> List[Dict[str, Any]]:
         """获取每日趋势数据
@@ -176,11 +176,11 @@ class StatsService:
                 overall_risk = self._get_highest_risk_level(record.security_risk_level, record.compliance_risk_level, record.data_risk_level)
                 daily_data[date_str]['total'] += 1
                 
-                if overall_risk == '高风险':
+                if overall_risk == 'high_risk':
                     daily_data[date_str]['high_risk'] += 1
-                elif overall_risk == '中风险':
+                elif overall_risk == 'medium_risk':
                     daily_data[date_str]['medium_risk'] += 1
-                elif overall_risk == '低风险':
+                elif overall_risk == 'low_risk':
                     daily_data[date_str]['low_risk'] += 1
                 else:
                     daily_data[date_str]['safe'] += 1
@@ -224,8 +224,8 @@ class StatsService:
         try:
             # 构建查询条件 - 查询有安全或合规风险的记录
             query = self.db.query(DetectionResult).filter(
-                (DetectionResult.security_risk_level != "无风险") |
-                (DetectionResult.compliance_risk_level != "无风险")
+                (DetectionResult.security_risk_level != "no_risk") |
+                (DetectionResult.compliance_risk_level != "no_risk")
             )
 
             if tenant_id is not None:
@@ -304,10 +304,10 @@ class StatsService:
             "low_risk_count": 0,
             "safe_count": 0,
             "risk_distribution": {
-                "高风险": 0,
-                "中风险": 0,
-                "低风险": 0,
-                "无风险": 0
+                "high_risk": 0,
+                "medium_risk": 0,
+                "low_risk": 0,
+                "no_risk": 0
             },
             "daily_trends": []
         }

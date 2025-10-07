@@ -104,12 +104,12 @@ async def _background_input_detection(input_messages: list, tenant_id: str, requ
         )
 
         # 记录检测结果但不阻断
-        if detection_result.get('suggest_action') in ['拒答', '代答']:
+        if detection_result.get('suggest_action') in ['reject', 'replace']:
             logger.info(f"异步输入检测发现风险但未阻断 - request {request_id}")
             logger.info(f"检测结果: {detection_result}")
 
         # 异步记录风险触发（用于封禁策略）
-        if user_id and detection_result.get('overall_risk_level') in ['中风险', '高风险']:
+        if user_id and detection_result.get('overall_risk_level') in ['medium_risk', 'high_risk']:
             asyncio.create_task(
                 BanPolicyService.check_and_apply_ban_policy(
                     tenant_id=tenant_id,
@@ -134,7 +134,7 @@ async def _sync_input_detection(model_config, input_messages: list, tenant_id: s
         detection_id = detection_result.get('request_id')
 
         # 同步记录风险触发并应用封禁策略
-        if user_id and detection_result.get('overall_risk_level') in ['中风险', '高风险']:
+        if user_id and detection_result.get('overall_risk_level') in ['medium_risk', 'high_risk']:
             await BanPolicyService.check_and_apply_ban_policy(
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -214,7 +214,7 @@ async def _background_output_detection(input_messages: list, response_content: s
         detection_id = detection_result.get('request_id')
 
         # 异步记录风险触发并应用封禁策略（不阻断响应）
-        if user_id and detection_result.get('overall_risk_level') in ['中风险', '高风险']:
+        if user_id and detection_result.get('overall_risk_level') in ['medium_risk', 'high_risk']:
             asyncio.create_task(
                 BanPolicyService.check_and_apply_ban_policy(
                     tenant_id=tenant_id,
@@ -225,7 +225,7 @@ async def _background_output_detection(input_messages: list, response_content: s
             )
 
         # 记录检测结果但不阻断
-        if detection_result.get('suggest_action') in ['拒答', '代答']:
+        if detection_result.get('suggest_action') in ['reject', 'replace']:
             logger.info(f"异步输出检测发现风险但未阻断 - request {request_id}")
             logger.info(f"检测结果: {detection_result}")
 
@@ -251,7 +251,7 @@ async def _sync_output_detection(model_config, input_messages: list, response_co
         detection_id = detection_result.get('request_id')
 
         # 同步记录风险触发并应用封禁策略
-        if user_id and detection_result.get('overall_risk_level') in ['中风险', '高风险']:
+        if user_id and detection_result.get('overall_risk_level') in ['medium_risk', 'high_risk']:
             await BanPolicyService.check_and_apply_ban_policy(
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -398,7 +398,7 @@ class StreamChunkDetector:
             )
             
             # 记录检测结果但不采取阻断行动
-            if detection_result.get('suggest_action') in ['拒答', '代答']:
+            if detection_result.get('suggest_action') in ['reject', 'replace']:
                 logger.info(f"异步检测发现风险但未阻断 - chunk {self.chunk_count}, request {request_id}")
                 logger.info(f"检测结果: {detection_result}")
             
@@ -432,7 +432,7 @@ class StreamChunkDetector:
             )
             
             # 检查风险并决定是否阻断
-            if detection_result.get('suggest_action') in ['拒答', '代答']:
+            if detection_result.get('suggest_action') in ['reject', 'replace']:
                 logger.warning(f"同步检测发现风险并阻断 - chunk {self.chunk_count}, request {request_id}")
                 logger.warning(f"检测结果: {detection_result}")
                 self.risk_detected = True
@@ -472,7 +472,7 @@ class StreamChunkDetector:
             )
             
             # 检查风险并决定是否阻断
-            if detection_result.get('suggest_action') in ['拒答', '代答']:
+            if detection_result.get('suggest_action') in ['reject', 'replace']:
                 logger.warning(f"同步最终检测发现风险并阻断 - chunk {self.chunk_count}, request {request_id}")
                 logger.warning(f"检测结果: {detection_result}")
                 self.risk_detected = True
@@ -663,7 +663,7 @@ def _create_stop_chunk(request_id: str, detection_result: dict = None) -> dict:
         chunk["detection_info"] = {
             "suggest_action": "拒答",
             "suggest_answer": "抱歉，无法回答您的问题。",
-            "overall_risk_level": "高风险",
+            "overall_risk_level": "high_risk",
             "compliance_result": None,
             "security_result": None,
             "request_id": "unknown"

@@ -19,34 +19,34 @@ logger = setup_logger()
 
 # 风险等级映射
 RISK_LEVEL_MAPPING = {
-    'S2': '高风险',   # 敏感政治话题
-    'S3': '高风险',   # 损害国家形象  
-    'S5': '高风险',   # 暴力犯罪
-    'S9': '高风险',   # 提示词攻击
-    'S1': '中风险', # 一般政治话题
-    'S4': '中风险', # 伤害未成年人
-    'S6': '中风险', # 违法犯罪
-    'S7': '中风险', # 色情
-    'S8': '低风险',    # 歧视内容
-    'S10': '低风险',   # 辱骂
-    'S11': '低风险',   # 侵犯个人隐私
-    'S12': '低风险',   # 商业违法违规
+    'S2': 'high_risk',   # 敏感政治话题
+    'S3': 'high_risk',   # 损害国家形象
+    'S5': 'high_risk',   # 暴力犯罪
+    'S9': 'high_risk',   # 提示词攻击
+    'S1': 'medium_risk', # 一般政治话题
+    'S4': 'medium_risk', # 伤害未成年人
+    'S6': 'medium_risk', # 违法犯罪
+    'S7': 'medium_risk', # 色情
+    'S8': 'low_risk',    # 歧视内容
+    'S10': 'low_risk',   # 辱骂
+    'S11': 'low_risk',   # 侵犯个人隐私
+    'S12': 'low_risk',   # 商业违法违规
 }
 
 # 类别名称映射
 CATEGORY_NAMES = {
-    'S1': '一般政治话题',
-    'S2': '敏感政治话题',
-    'S3': '损害国家形象',
-    'S4': '伤害未成年人',
-    'S5': '暴力犯罪',
-    'S6': '违法犯罪',
-    'S7': '色情',
-    'S8': '歧视内容',
-    'S9': '提示词攻击',
-    'S10': '辱骂',
-    'S11': '侵犯个人隐私',
-    'S12': '商业违法违规',
+    'S1': 'General Political Topics',
+    'S2': 'Sensitive Political Topics',
+    'S3': 'Damage to National Image',
+    'S4': 'Harm to Minors',
+    'S5': 'Violent Crime',
+    'S6': 'Illegal Activities',
+    'S7': 'Pornography',
+    'S8': 'Discriminatory Content',
+    'S9': 'Prompt Injection',
+    'S10': 'Insults',
+    'S11': 'Privacy Violation',
+    'S12': 'Business Violations',
 }
 
 class DetectionGuardrailService:
@@ -283,10 +283,10 @@ class DetectionGuardrailService:
         """解析模型响应并应用风险类型过滤"""
         response = response.strip()
 
-        if response == "无风险":
+        if response == "safe":
             return (
-                ComplianceResult(risk_level="无风险", categories=[]),
-                SecurityResult(risk_level="无风险", categories=[])
+                ComplianceResult(risk_level="no_risk", categories=[]),
+                SecurityResult(risk_level="no_risk", categories=[])
             )
 
         if response.startswith("unsafe\n"):
@@ -296,28 +296,28 @@ class DetectionGuardrailService:
             if tenant_id and not await risk_config_cache.is_risk_type_enabled(tenant_id, category):
                 logger.info(f"Risk type {category} is disabled for user {tenant_id}, treating as safe")
                 return (
-                    ComplianceResult(risk_level="无风险", categories=[]),
-                    SecurityResult(risk_level="无风险", categories=[])
+                    ComplianceResult(risk_level="no_risk", categories=[]),
+                    SecurityResult(risk_level="no_risk", categories=[])
                 )
 
-            risk_level = RISK_LEVEL_MAPPING.get(category, "中风险")
+            risk_level = RISK_LEVEL_MAPPING.get(category, "medium_risk")
             category_name = CATEGORY_NAMES.get(category, category)
 
             if category == "S9":  # 提示词攻击
                 return (
-                    ComplianceResult(risk_level="无风险", categories=[]),
+                    ComplianceResult(risk_level="no_risk", categories=[]),
                     SecurityResult(risk_level=risk_level, categories=[category_name])
                 )
             else:  # 内容合规问题
                 return (
                     ComplianceResult(risk_level=risk_level, categories=[category_name]),
-                    SecurityResult(risk_level="无风险", categories=[])
+                    SecurityResult(risk_level="no_risk", categories=[])
                 )
 
         # 默认返回安全
         return (
-            ComplianceResult(risk_level="无风险", categories=[]),
-            SecurityResult(risk_level="无风险", categories=[])
+            ComplianceResult(risk_level="no_risk", categories=[]),
+            SecurityResult(risk_level="no_risk", categories=[])
         )
 
     async def _parse_model_response_with_sensitivity(
@@ -327,11 +327,11 @@ class DetectionGuardrailService:
         """解析模型响应并应用风险类型过滤和敏感度阈值"""
         response = response.strip()
 
-        if response == "无风险":
+        if response == "safe":
             sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id) if sensitivity_score else None
             return (
-                ComplianceResult(risk_level="无风险", categories=[]),
-                SecurityResult(risk_level="无风险", categories=[]),
+                ComplianceResult(risk_level="no_risk", categories=[]),
+                SecurityResult(risk_level="no_risk", categories=[]),
                 sensitivity_level
             )
 
@@ -343,8 +343,8 @@ class DetectionGuardrailService:
                 logger.info(f"Risk type {category} is disabled for user {tenant_id}, treating as safe")
                 sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id) if sensitivity_score else None
                 return (
-                    ComplianceResult(risk_level="无风险", categories=[]),
-                    SecurityResult(risk_level="无风险", categories=[]),
+                    ComplianceResult(risk_level="no_risk", categories=[]),
+                    SecurityResult(risk_level="no_risk", categories=[]),
                     sensitivity_level
                 )
 
@@ -356,33 +356,33 @@ class DetectionGuardrailService:
                 if not await self._should_trigger_detection(sensitivity_score, tenant_id):
                     logger.info(f"Sensitivity score {sensitivity_score} below current threshold for {category}, treating as safe")
                     return (
-                        ComplianceResult(risk_level="无风险", categories=[]),
-                        SecurityResult(risk_level="无风险", categories=[]),
+                        ComplianceResult(risk_level="no_risk", categories=[]),
+                        SecurityResult(risk_level="no_risk", categories=[]),
                         sensitivity_level
                     )
 
-            risk_level = RISK_LEVEL_MAPPING.get(category, "中风险")
+            risk_level = RISK_LEVEL_MAPPING.get(category, "medium_risk")
             category_name = CATEGORY_NAMES.get(category, category)
             sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id) if sensitivity_score else None
 
             if category == "S9":  # 提示词攻击
                 return (
-                    ComplianceResult(risk_level="无风险", categories=[]),
+                    ComplianceResult(risk_level="no_risk", categories=[]),
                     SecurityResult(risk_level=risk_level, categories=[category_name]),
                     sensitivity_level
                 )
             else:  # 内容合规问题
                 return (
                     ComplianceResult(risk_level=risk_level, categories=[category_name]),
-                    SecurityResult(risk_level="无风险", categories=[]),
+                    SecurityResult(risk_level="no_risk", categories=[]),
                     sensitivity_level
                 )
 
         # 默认返回安全
         sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id) if sensitivity_score else None
         return (
-            ComplianceResult(risk_level="无风险", categories=[]),
-            SecurityResult(risk_level="无风险", categories=[]),
+            ComplianceResult(risk_level="no_risk", categories=[]),
+            SecurityResult(risk_level="no_risk", categories=[]),
             sensitivity_level
         )
     
@@ -391,7 +391,7 @@ class DetectionGuardrailService:
         logger.info(f"_check_data_security called for user {tenant_id}, direction {direction}")
         if not tenant_id:
             logger.info("No tenant_id, returning safe")
-            return DataSecurityResult(risk_level="无风险", categories=[])
+            return DataSecurityResult(risk_level="no_risk", categories=[])
 
         try:
             # 获取数据库session
@@ -413,12 +413,12 @@ class DetectionGuardrailService:
                 db.close()
         except Exception as e:
             logger.error(f"Data security check error: {e}", exc_info=True)
-            return DataSecurityResult(risk_level="无风险", categories=[])
+            return DataSecurityResult(risk_level="no_risk", categories=[])
 
     def _get_highest_risk_level(self, categories: List[str]) -> str:
         """获取最高风险等级"""
         if not categories:
-            return "无风险"
+            return "no_risk"
 
         risk_levels = []
         for category in categories:
@@ -427,14 +427,14 @@ class DetectionGuardrailService:
                     risk_levels.append(RISK_LEVEL_MAPPING[code])
                     break
 
-        if "高风险" in risk_levels:
-            return "高风险"
-        elif "中风险" in risk_levels:
-            return "中风险"
-        elif "低风险" in risk_levels:
-            return "低风险"
+        if "high_risk" in risk_levels:
+            return "high_risk"
+        elif "medium_risk" in risk_levels:
+            return "medium_risk"
+        elif "low_risk" in risk_levels:
+            return "low_risk"
         else:
-            return "无风险"
+            return "no_risk"
 
     async def _determine_action_with_data(
         self,
@@ -449,27 +449,27 @@ class DetectionGuardrailService:
         risk_levels = [compliance_result.risk_level, security_result.risk_level, data_result.risk_level]
         all_categories = []
 
-        if compliance_result.risk_level != "无风险":
+        if compliance_result.risk_level != "no_risk":
             all_categories.extend(compliance_result.categories)
-        if security_result.risk_level != "无风险":
+        if security_result.risk_level != "no_risk":
             all_categories.extend(security_result.categories)
-        if data_result.risk_level != "无风险":
+        if data_result.risk_level != "no_risk":
             all_categories.extend(data_result.categories)
 
         # 确定最高风险等级
-        overall_risk_level = "无风险"
-        for level in ["高风险", "中风险", "低风险"]:
+        overall_risk_level = "no_risk"
+        for level in ["high_risk", "medium_risk", "low_risk"]:
             if level in risk_levels:
                 overall_risk_level = level
                 break
 
         # 确定建议动作
-        if overall_risk_level == "无风险":
-            return overall_risk_level, "通过", None
+        if overall_risk_level == "no_risk":
+            return overall_risk_level, "pass", None
 
         # 如果有数据泄漏，获取脱敏后的文本作为建议回答
         suggest_answer = None
-        if data_result.risk_level != "无风险" and user_query:
+        if data_result.risk_level != "no_risk" and user_query:
             try:
                 db = get_db_session()
                 try:
@@ -487,36 +487,36 @@ class DetectionGuardrailService:
             suggest_answer = await self._get_suggest_answer(all_categories, tenant_id, user_query)
 
         # 根据风险等级确定动作
-        if overall_risk_level == "高风险":
-            return overall_risk_level, "拒答", suggest_answer
+        if overall_risk_level == "high_risk":
+            return overall_risk_level, "reject", suggest_answer
         else:  # 中风险或低风险
-            return overall_risk_level, "代答", suggest_answer
+            return overall_risk_level, "replace", suggest_answer
 
     async def _determine_action(self, compliance_result: ComplianceResult, security_result: SecurityResult, tenant_id: Optional[str] = None, user_query: Optional[str] = None) -> Tuple[str, str, Optional[str]]:
         """确定建议动作"""
-        overall_risk_level = "无风险"
+        overall_risk_level = "no_risk"
         risk_categories = []
-        
-        if compliance_result.risk_level != "无风险":
+
+        if compliance_result.risk_level != "no_risk":
             overall_risk_level = compliance_result.risk_level
             risk_categories.extend(compliance_result.categories)
-        
-        if security_result.risk_level != "无风险":
-            if overall_risk_level == "无风险" or (overall_risk_level != "高风险" and security_result.risk_level == "高风险"):
+
+        if security_result.risk_level != "no_risk":
+            if overall_risk_level == "no_risk" or (overall_risk_level != "high_risk" and security_result.risk_level == "high_risk"):
                 overall_risk_level = security_result.risk_level
             risk_categories.extend(security_result.categories)
-        
-        if overall_risk_level == "无风险":
-            return overall_risk_level, "通过", None
-        elif overall_risk_level == "高风险":
+
+        if overall_risk_level == "no_risk":
+            return overall_risk_level, "pass", None
+        elif overall_risk_level == "high_risk":
             suggest_answer = await self._get_suggest_answer(risk_categories, tenant_id, user_query)
-            return overall_risk_level, "拒答", suggest_answer
-        elif overall_risk_level == "中风险":
+            return overall_risk_level, "reject", suggest_answer
+        elif overall_risk_level == "medium_risk":
             suggest_answer = await self._get_suggest_answer(risk_categories, tenant_id, user_query)
-            return overall_risk_level, "代答", suggest_answer
+            return overall_risk_level, "replace", suggest_answer
         else:  # 低风险
             suggest_answer = await self._get_suggest_answer(risk_categories, tenant_id, user_query)
-            return overall_risk_level, "代答", suggest_answer
+            return overall_risk_level, "replace", suggest_answer
     
     async def _get_suggest_answer(self, categories: List[str], tenant_id: Optional[str] = None, user_query: Optional[str] = None) -> str:
         """获取建议回答（使用增强的模板服务，支持知识库搜索）"""
@@ -528,31 +528,31 @@ class DetectionGuardrailService:
         if not tenant_id:
             # 使用默认阈值
             if sensitivity_score >= 0.95:
-                return "低"
+                return "low"
             elif sensitivity_score >= 0.60:
-                return "中"
+                return "medium"
             else:
-                return "高"
+                return "high"
 
         try:
             # 获取用户的敏感度阈值配置
             thresholds = await risk_config_cache.get_sensitivity_thresholds(tenant_id)
 
             if sensitivity_score >= thresholds.get("low", 0.95):
-                return "低"
+                return "low"
             elif sensitivity_score >= thresholds.get("medium", 0.60):
-                return "中"
+                return "medium"
             else:
-                return "高"
+                return "high"
         except Exception as e:
             logger.warning(f"Failed to get sensitivity thresholds for user {tenant_id}: {e}")
             # 使用默认阈值
             if sensitivity_score >= 0.95:
-                return "低"
+                return "low"
             elif sensitivity_score >= 0.60:
-                return "中"
+                return "medium"
             else:
-                return "高"
+                return "high"
 
 
     async def _get_sensitivity_trigger_level(self, tenant_id: str) -> str:
@@ -603,17 +603,17 @@ class DetectionGuardrailService:
             "request_id": request_id,
             "tenant_id": tenant_id,
             "content": content,
-            "suggest_action": "拒答",
+            "suggest_action": "reject",
             "suggest_answer": f"很抱歉，我不能提供涉及{list_name}的内容。",
             "hit_keywords": json.dumps(keywords),
             "model_response": "blacklist_hit",
             "ip_address": ip_address,
             "user_agent": user_agent,
-            "security_risk_level": "无风险",
+            "security_risk_level": "no_risk",
             "security_categories": [],
-            "compliance_risk_level": "高风险",
+            "compliance_risk_level": "high_risk",
             "compliance_categories": [list_name],
-            "data_risk_level": "无风险",
+            "data_risk_level": "no_risk",
             "data_categories": [],
             "created_at": datetime.now(timezone.utc).isoformat()
         }
@@ -622,12 +622,12 @@ class DetectionGuardrailService:
         return GuardrailResponse(
             id=request_id,
             result=GuardrailResult(
-                compliance=ComplianceResult(risk_level="高风险", categories=[list_name]),
-                security=SecurityResult(risk_level="无风险", categories=[]),
-                data=DataSecurityResult(risk_level="无风险", categories=[])
+                compliance=ComplianceResult(risk_level="high_risk", categories=[list_name]),
+                security=SecurityResult(risk_level="no_risk", categories=[]),
+                data=DataSecurityResult(risk_level="no_risk", categories=[])
             ),
-            overall_risk_level="高风险",
-            suggest_action="拒答",
+            overall_risk_level="high_risk",
+            suggest_action="reject",
             suggest_answer=f"很抱歉，我不能提供涉及{list_name}的内容。"
         )
 
@@ -642,17 +642,17 @@ class DetectionGuardrailService:
             "request_id": request_id,
             "tenant_id": tenant_id,
             "content": content,
-            "suggest_action": "通过",
+            "suggest_action": "pass",
             "suggest_answer": None,
             "hit_keywords": json.dumps(keywords),
             "model_response": "whitelist_hit",
             "ip_address": ip_address,
             "user_agent": user_agent,
-            "security_risk_level": "无风险",
+            "security_risk_level": "no_risk",
             "security_categories": [],
-            "compliance_risk_level": "无风险",
+            "compliance_risk_level": "no_risk",
             "compliance_categories": [],
-            "data_risk_level": "无风险",
+            "data_risk_level": "no_risk",
             "data_categories": [],
             "created_at": datetime.now(timezone.utc).isoformat()
         }
@@ -661,12 +661,12 @@ class DetectionGuardrailService:
         return GuardrailResponse(
             id=request_id,
             result=GuardrailResult(
-                compliance=ComplianceResult(risk_level="无风险", categories=[]),
-                security=SecurityResult(risk_level="无风险", categories=[]),
-                data=DataSecurityResult(risk_level="无风险", categories=[])
+                compliance=ComplianceResult(risk_level="no_risk", categories=[]),
+                security=SecurityResult(risk_level="no_risk", categories=[]),
+                data=DataSecurityResult(risk_level="no_risk", categories=[])
             ),
-            overall_risk_level="无风险",
-            suggest_action="通过",
+            overall_risk_level="no_risk",
+            suggest_action="pass",
             suggest_answer=None
         )
     
@@ -716,14 +716,14 @@ class DetectionGuardrailService:
             "request_id": request_id,
             "tenant_id": tenant_id,
             "content": content,
-            "suggest_action": "通过",
+            "suggest_action": "pass",
             "suggest_answer": None,
             "model_response": f"error: {error}",
-            "security_risk_level": "无风险",
+            "security_risk_level": "no_risk",
             "security_categories": [],
-            "compliance_risk_level": "无风险",
+            "compliance_risk_level": "no_risk",
             "compliance_categories": [],
-            "data_risk_level": "无风险",
+            "data_risk_level": "no_risk",
             "data_categories": [],
             "created_at": datetime.now(timezone.utc).isoformat(),
             "hit_keywords": None,
@@ -735,12 +735,12 @@ class DetectionGuardrailService:
         return GuardrailResponse(
             id=request_id,
             result=GuardrailResult(
-                compliance=ComplianceResult(risk_level="无风险", categories=[]),
-                security=SecurityResult(risk_level="无风险", categories=[]),
-                data=DataSecurityResult(risk_level="无风险", categories=[])
+                compliance=ComplianceResult(risk_level="no_risk", categories=[]),
+                security=SecurityResult(risk_level="no_risk", categories=[]),
+                data=DataSecurityResult(risk_level="no_risk", categories=[])
             ),
-            overall_risk_level="无风险",
-            suggest_action="通过",
+            overall_risk_level="no_risk",
+            suggest_action="pass",
             suggest_answer=None
         )
 # 创建全局实例

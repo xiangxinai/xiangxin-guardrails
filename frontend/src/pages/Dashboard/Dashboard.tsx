@@ -9,10 +9,12 @@ import {
   LockOutlined,
 } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
+import { useTranslation } from 'react-i18next';
 import { dashboardApi } from '../../services/api';
 import type { DashboardStats } from '../../types';
 
 const Dashboard: React.FC = () => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +30,7 @@ const Dashboard: React.FC = () => {
       setStats(data);
       setError(null);
     } catch (err) {
-      setError('获取统计数据失败');
+      setError(t('dashboard.errorFetchingStats'));
       console.error('Error fetching stats:', err);
     } finally {
       setLoading(false);
@@ -40,7 +42,7 @@ const Dashboard: React.FC = () => {
 
     return {
       title: {
-        text: '风险等级分布',
+        text: t('dashboard.riskDistribution'),
         left: 'center',
       },
       tooltip: {
@@ -53,14 +55,14 @@ const Dashboard: React.FC = () => {
       },
       series: [
         {
-          name: '风险等级',
+          name: t('dashboard.riskLevel'),
           type: 'pie',
           radius: '50%',
           data: [
-            { value: stats.risk_distribution['高风险'], name: '高风险', itemStyle: { color: '#ff4d4f' } },
-            { value: stats.risk_distribution['中风险'], name: '中风险', itemStyle: { color: '#faad14' } },
-            { value: stats.risk_distribution['低风险'], name: '低风险', itemStyle: { color: '#fadb14' } },
-            { value: stats.risk_distribution['无风险'], name: '安全通过', itemStyle: { color: '#52c41a' } },
+            { value: stats.risk_distribution['高风险'], name: t('dashboard.highRisk'), itemStyle: { color: '#ff4d4f' } },
+            { value: stats.risk_distribution['中风险'], name: t('dashboard.mediumRisk'), itemStyle: { color: '#faad14' } },
+            { value: stats.risk_distribution['低风险'], name: t('dashboard.lowRisk'), itemStyle: { color: '#fadb14' } },
+            { value: stats.risk_distribution['无风险'], name: t('dashboard.noRisk'), itemStyle: { color: '#52c41a' } },
           ],
           emphasis: {
             itemStyle: {
@@ -84,14 +86,14 @@ const Dashboard: React.FC = () => {
 
     return {
       title: {
-        text: '检测趋势（最近7天）',
+        text: t('dashboard.dailyTrends'),
         left: 'center',
       },
       tooltip: {
         trigger: 'axis',
       },
       legend: {
-        data: ['总检测数', '高风险', '中风险'],
+        data: [t('dashboard.totalDetections'), t('dashboard.highRisk'), t('dashboard.mediumRisk')],
         bottom: 0,
       },
       xAxis: {
@@ -103,19 +105,19 @@ const Dashboard: React.FC = () => {
       },
       series: [
         {
-          name: '总检测数',
+          name: t('dashboard.totalDetections'),
           type: 'line',
           data: totalData,
           itemStyle: { color: '#1890ff' },
         },
         {
-          name: '高风险',
+          name: t('dashboard.highRisk'),
           type: 'line',
           data: highRiskData,
           itemStyle: { color: '#ff4d4f' },
         },
         {
-          name: '中风险',
+          name: t('dashboard.mediumRisk'),
           type: 'line',
           data: mediumRiskData,
           itemStyle: { color: '#faad14' },
@@ -135,13 +137,13 @@ const Dashboard: React.FC = () => {
   if (error) {
     return (
       <Alert
-        message="错误"
+        message={t('dashboard.error')}
         description={error}
         type="error"
         showIcon
         action={
           <button onClick={fetchStats} style={{ border: 'none', background: 'none', color: '#1890ff', cursor: 'pointer' }}>
-            重试
+            {t('dashboard.retry')}
           </button>
         }
       />
@@ -152,14 +154,14 @@ const Dashboard: React.FC = () => {
 
   return (
     <div>
-      <h2 style={{ marginBottom: 24 }}>系统总览</h2>
-      
+      <h2 style={{ marginBottom: 24 }}>{t('dashboard.title')}</h2>
+
       {/* 总体统计 */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={6}>
           <Card>
             <Statistic
-              title="总检测数"
+              title={t('dashboard.totalRequests')}
               value={stats.total_requests}
               prefix={<FileProtectOutlined />}
               valueStyle={{ color: '#1890ff' }}
@@ -169,33 +171,33 @@ const Dashboard: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title="发现安全风险"
+              title={t('dashboard.securityRisks')}
               value={stats.security_risks}
               prefix={<SafetyOutlined />}
               valueStyle={{ color: '#fa8c16' }}
-              suffix="次"
+              suffix={t('dashboard.times')}
             />
           </Card>
         </Col>
         <Col span={6}>
           <Card>
             <Statistic
-              title="发现合规风险"
+              title={t('dashboard.complianceRisks')}
               value={stats.compliance_risks}
               prefix={<SafetyOutlined />}
               valueStyle={{ color: '#722ed1' }}
-              suffix="次"
+              suffix={t('dashboard.times')}
             />
           </Card>
         </Col>
         <Col span={6}>
           <Card>
             <Statistic
-              title="发现数据泄漏"
+              title={t('dashboard.dataLeaks')}
               value={stats.data_leaks}
               prefix={<LockOutlined />}
               valueStyle={{ color: '#eb2f96' }}
-              suffix="次"
+              suffix={t('dashboard.times')}
             />
           </Card>
         </Col>
@@ -206,29 +208,29 @@ const Dashboard: React.FC = () => {
         <Col span={8}>
           <Card>
             <Statistic
-              title="总风险检出"
+              title={t('dashboard.totalRisks')}
               value={stats.high_risk_count + stats.medium_risk_count + stats.low_risk_count}
               prefix={<ExclamationCircleOutlined />}
               valueStyle={{ color: '#ff7a45' }}
-              suffix="次"
+              suffix={t('dashboard.times')}
             />
           </Card>
         </Col>
         <Col span={8}>
           <Card>
             <Statistic
-              title="安全通过"
+              title={t('dashboard.safePassed')}
               value={stats.safe_count}
               prefix={<CheckCircleOutlined />}
               valueStyle={{ color: '#52c41a' }}
-              suffix="次"
+              suffix={t('dashboard.times')}
             />
           </Card>
         </Col>
         <Col span={8}>
           <Card>
             <Statistic
-              title="拦截率"
+              title={t('dashboard.blockRate')}
               value={stats.total_requests > 0 ? ((stats.high_risk_count + stats.medium_risk_count + stats.low_risk_count) / stats.total_requests * 100).toFixed(1) : 0}
               prefix={<WarningOutlined />}
               valueStyle={{ color: '#1890ff' }}

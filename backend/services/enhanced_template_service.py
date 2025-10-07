@@ -65,25 +65,25 @@ class EnhancedTemplateService:
         try:
             # 定义风险等级优先级
             risk_priority = {
-                "高风险": 3,
-                "中风险": 2,
-                "低风险": 1,
-                "无风险": 0
+                "high_risk": 3,
+                "medium_risk": 2,
+                "low_risk": 1,
+                "no_risk": 0
             }
 
             # 风险等级映射
             risk_level_mapping = {
-                'S2': '高风险', 'S3': '高风险', 'S5': '高风险', 'S9': '高风险',
-                'S1': '中风险', 'S4': '中风险', 'S6': '中风险', 'S7': '中风险',
-                'S8': '低风险', 'S10': '低风险', 'S11': '低风险', 'S12': '低风险',
+                'S2': 'high_risk', 'S3': 'high_risk', 'S5': 'high_risk', 'S9': 'high_risk',
+                'S1': 'medium_risk', 'S4': 'medium_risk', 'S6': 'medium_risk', 'S7': 'medium_risk',
+                'S8': 'low_risk', 'S10': 'low_risk', 'S11': 'low_risk', 'S12': 'low_risk',
             }
 
             # 类别名称映射
             category_names = {
-                'S1': '一般政治话题', 'S2': '敏感政治话题', 'S3': '损害国家形象',
-                'S4': '伤害未成年人', 'S5': '暴力犯罪', 'S6': '违法犯罪',
-                'S7': '色情', 'S8': '歧视内容', 'S9': '提示词攻击',
-                'S10': '辱骂', 'S11': '侵犯个人隐私', 'S12': '商业违法违规',
+                'S1': 'General Political Topics', 'S2': 'Sensitive Political Topics', 'S3': 'Damage to National Image',
+                'S4': 'Harm to Minors', 'S5': 'Violent Crime', 'S6': 'Illegal Activities',
+                'S7': 'Pornography', 'S8': 'Discriminatory Content', 'S9': 'Prompt Injection',
+                'S10': 'Insults', 'S11': 'Privacy Violation', 'S12': 'Business Violations',
             }
 
             # 将类别名称转换为类别代码，并计算风险等级
@@ -141,25 +141,25 @@ class EnhancedTemplateService:
         try:
             # 定义风险等级优先级
             risk_priority = {
-                "高风险": 3,
-                "中风险": 2,
-                "低风险": 1,
-                "无风险": 0
+                "high_risk": 3,
+                "medium_risk": 2,
+                "low_risk": 1,
+                "no_risk": 0
             }
 
             # 风险等级映射
             risk_level_mapping = {
-                'S2': '高风险', 'S3': '高风险', 'S5': '高风险', 'S9': '高风险',
-                'S1': '中风险', 'S4': '中风险', 'S6': '中风险', 'S7': '中风险',
-                'S8': '低风险', 'S10': '低风险', 'S11': '低风险', 'S12': '低风险',
+                'S2': 'high_risk', 'S3': 'high_risk', 'S5': 'high_risk', 'S9': 'high_risk',
+                'S1': 'medium_risk', 'S4': 'medium_risk', 'S6': 'medium_risk', 'S7': 'medium_risk',
+                'S8': 'low_risk', 'S10': 'low_risk', 'S11': 'low_risk', 'S12': 'low_risk',
             }
 
             # 类别名称映射
             category_names = {
-                'S1': '一般政治话题', 'S2': '敏感政治话题', 'S3': '损害国家形象',
-                'S4': '伤害未成年人', 'S5': '暴力犯罪', 'S6': '违法犯罪',
-                'S7': '色情', 'S8': '歧视内容', 'S9': '提示词攻击',
-                'S10': '辱骂', 'S11': '侵犯个人隐私', 'S12': '商业违法违规',
+                'S1': 'General Political Topics', 'S2': 'Sensitive Political Topics', 'S3': 'Damage to National Image',
+                'S4': 'Harm to Minors', 'S5': 'Violent Crime', 'S6': 'Illegal Activities',
+                'S7': 'Pornography', 'S8': 'Discriminatory Content', 'S9': 'Prompt Injection',
+                'S10': 'Insults', 'S11': 'Privacy Violation', 'S12': 'Business Violations',
             }
 
             # 将类别名称转换为类别代码，并计算风险等级

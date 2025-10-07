@@ -43,12 +43,12 @@ class DetectionResultResponse(BaseModel):
     created_at: datetime
     ip_address: Optional[str]
     # 分离的安全和合规检测结果
-    security_risk_level: str = "无风险"
+    security_risk_level: str = "no_risk"
     security_categories: List[str] = []
-    compliance_risk_level: str = "无风险"
+    compliance_risk_level: str = "no_risk"
     compliance_categories: List[str] = []
     # 数据安全检测结果
-    data_risk_level: str = "无风险"
+    data_risk_level: str = "no_risk"
     data_categories: List[str] = []
     # 检测结果相关字段
     score: Optional[float] = None  # 检测概率分数 (0.0-1.0)

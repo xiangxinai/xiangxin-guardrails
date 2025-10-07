@@ -19,13 +19,15 @@ security = HTTPBearer()
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
-    
+    language: Optional[str] = 'en'  # Default to English
+
 class VerifyEmailRequest(BaseModel):
     email: EmailStr
     verification_code: str
 
 class ResendCodeRequest(BaseModel):
     email: EmailStr
+    language: Optional[str] = 'en'  # Default to English
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -109,17 +111,17 @@ async def register_user(register_data: RegisterRequest, db: Session = Depends(ge
     db.add(email_verification)
     db.commit()
     
-    # 发送验证邮件
+    # Send verification email with language preference
     try:
-        if not send_verification_email(register_data.email, verification_code):
+        if not send_verification_email(register_data.email, verification_code, register_data.language):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to send verification email"
             )
     except Exception:
-        # 如果邮件发送失败，仍然返回成功，但提示用户联系管理员
+        # If email sending fails, still return success but prompt user to contact administrator
         return {"message": "Registration successful. Please contact administrator to verify your account."}
-    
+
     return {"message": "Registration successful. Please check your email for verification code."}
 
 @router.post("/verify-email")
@@ -164,16 +166,16 @@ async def resend_verification_code(resend_data: ResendCodeRequest, db: Session =
         db.add(email_verification)
         db.commit()
         
-        # 发送验证邮件
+        # Send verification email with language preference
         try:
-            if not send_verification_email(resend_data.email, verification_code):
+            if not send_verification_email(resend_data.email, verification_code, resend_data.language):
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to send verification email"
                 )
         except Exception as e:
             return {"message": "Verification code generated. Please contact administrator if you don't receive the email."}
-        
+
         return {"message": "Verification code resent successfully. Please check your email."}
     except HTTPException:
         raise

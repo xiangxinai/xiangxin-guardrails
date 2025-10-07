@@ -3,6 +3,7 @@ import { Form, Input, Button, Card, Typography, message, Space, Alert } from 'an
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import './Login.css';
 
 const { Title, Text } = Typography;
@@ -19,15 +20,16 @@ const Login: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
   const handleSubmit = async (values: LoginFormData) => {
     try {
       setLoading(true);
-      setShowVerificationAlert(false); // 重置状态
+      setShowVerificationAlert(false);
       await login(values.email, values.password);
-      message.success('登录成功');
+      message.success(t('login.loginSuccess'));
       navigate(from, { replace: true });
     } catch (error: any) {
       console.error('Login error:', error);
@@ -36,10 +38,10 @@ const Login: React.FC = () => {
         data: error.response?.data,
         config: error.config
       });
-      
-      const errorMessage = error.response?.data?.detail || '登录失败，请检查邮箱和密码';
-      
-      // 检查是否是账号未激活错误
+
+      const errorMessage = error.response?.data?.detail || t('login.loginFailed');
+
+      // Check if account is not activated
       if (error.response?.status === 403 && errorMessage.includes('not activated')) {
         setUnverifiedEmail(values.email);
         setShowVerificationAlert(true);
@@ -57,34 +59,34 @@ const Login: React.FC = () => {
         <Card className="login-card">
           <div className="login-header">
             <Title level={2} className="login-title">
-              象信AI安全护栏
+              {t('login.title')}
             </Title>
             <Text type="secondary" className="login-subtitle">
-              账号登录
+              {t('login.subtitle')}
             </Text>
           </div>
 
           {showVerificationAlert && (
             <Alert
-              message="账号需要验证"
+              message={t('login.accountNotActivated')}
               description={
                 <div>
-                  <p>您的账号 <strong>{unverifiedEmail}</strong> 尚未验证邮箱。</p>
+                  <p>{t('login.accountNotActivatedDesc', { email: unverifiedEmail })}</p>
                   <Space>
-                    <Button 
-                      type="link" 
+                    <Button
+                      type="link"
                       size="small"
                       onClick={() => navigate(`/verify?email=${encodeURIComponent(unverifiedEmail)}`)}
                     >
-                      前往验证页面
+                      {t('login.goToVerifyPage')}
                     </Button>
                     <span>|</span>
-                    <Button 
-                      type="link" 
+                    <Button
+                      type="link"
                       size="small"
                       onClick={() => setShowVerificationAlert(false)}
                     >
-                      关闭提醒
+                      {t('login.closeReminder')}
                     </Button>
                   </Space>
                 </div>
@@ -105,13 +107,13 @@ const Login: React.FC = () => {
             <Form.Item
               name="email"
               rules={[
-                { required: true, message: '请输入邮箱' },
-                { type: 'email', message: '请输入有效的邮箱地址' },
+                { required: true, message: t('login.emailRequired') },
+                { type: 'email', message: t('login.emailInvalid') },
               ]}
             >
               <Input
                 prefix={<UserOutlined />}
-                placeholder="邮箱地址"
+                placeholder={t('login.emailPlaceholder')}
                 autoComplete="email"
               />
             </Form.Item>
@@ -119,12 +121,12 @@ const Login: React.FC = () => {
             <Form.Item
               name="password"
               rules={[
-                { required: true, message: '请输入密码' },
+                { required: true, message: t('login.passwordRequired') },
               ]}
             >
               <Input.Password
                 prefix={<LockOutlined />}
-                placeholder="密码"
+                placeholder={t('login.passwordPlaceholder')}
                 autoComplete="current-password"
               />
             </Form.Item>
@@ -137,7 +139,7 @@ const Login: React.FC = () => {
                 block
                 className="login-button"
               >
-                登录
+                {t('login.loginButton')}
               </Button>
             </Form.Item>
           </Form>
@@ -146,15 +148,15 @@ const Login: React.FC = () => {
             <Space direction="vertical" align="center">
               <Space>
                 <Text type="secondary">
-                  没有账户？ <Link to="/register">立即注册</Link>
+                  {t('login.noAccount')} <Link to="/register">{t('login.registerNow')}</Link>
                 </Text>
                 <Text type="secondary">|</Text>
                 <Text type="secondary">
-                  需要验证邮箱？ <Link to="/verify">验证页面</Link>
+                  {t('login.needVerifyEmail')} <Link to="/verify">{t('login.verifyPage')}</Link>
                 </Text>
               </Space>
               <Text type="secondary" style={{ fontSize: '12px' }}>
-                © 2025 象信AI. All rights reserved.
+                {t('login.copyright')}
               </Text>
             </Space>
           </div>

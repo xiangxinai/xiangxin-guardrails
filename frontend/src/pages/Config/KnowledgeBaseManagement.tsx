@@ -26,6 +26,7 @@ import {
   SearchOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { knowledgeBaseApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { KnowledgeBase, SimilarQuestionResult } from '../../types';
@@ -34,6 +35,7 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 const KnowledgeBaseManagement: React.FC = () => {
+  const { t } = useTranslation();
   const [data, setData] = useState<KnowledgeBase[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -51,18 +53,18 @@ const KnowledgeBaseManagement: React.FC = () => {
   const { user, onUserSwitch } = useAuth();
 
   const categories = [
-    { value: 'S1', label: 'S1 - 一般政治话题' },
-    { value: 'S2', label: 'S2 - 敏感政治话题' },
-    { value: 'S3', label: 'S3 - 损害国家形象' },
-    { value: 'S4', label: 'S4 - 伤害未成年人' },
-    { value: 'S5', label: 'S5 - 暴力犯罪' },
-    { value: 'S6', label: 'S6 - 违法犯罪' },
-    { value: 'S7', label: 'S7 - 色情' },
-    { value: 'S8', label: 'S8 - 歧视内容' },
-    { value: 'S9', label: 'S9 - 提示词攻击' },
-    { value: 'S10', label: 'S10 - 辱骂' },
-    { value: 'S11', label: 'S11 - 侵犯个人隐私' },
-    { value: 'S12', label: 'S12 - 商业违法违规' },
+    { value: 'S1', label: `S1 - ${t('category.S1')}` },
+    { value: 'S2', label: `S2 - ${t('category.S2')}` },
+    { value: 'S3', label: `S3 - ${t('category.S3')}` },
+    { value: 'S4', label: `S4 - ${t('category.S4')}` },
+    { value: 'S5', label: `S5 - ${t('category.S5')}` },
+    { value: 'S6', label: `S6 - ${t('category.S6')}` },
+    { value: 'S7', label: `S7 - ${t('category.S7')}` },
+    { value: 'S8', label: `S8 - ${t('category.S8')}` },
+    { value: 'S9', label: `S9 - ${t('category.S9')}` },
+    { value: 'S10', label: `S10 - ${t('category.S10')}` },
+    { value: 'S11', label: `S11 - ${t('category.S11')}` },
+    { value: 'S12', label: `S12 - ${t('category.S12')}` },
   ];
 
   useEffect(() => {
@@ -119,16 +121,16 @@ const KnowledgeBaseManagement: React.FC = () => {
       console.log('==================');
       
       const text = await file.text();
-      
+
       if (!text.trim()) {
-        message.error('文件内容为空');
+        message.error(t('knowledge.emptyFile'));
         return false;
       }
 
       const lines = text.trim().split('\n').filter(line => line.trim());
-      
+
       if (lines.length === 0) {
-        message.error('文件内容为空');
+        message.error(t('knowledge.emptyFile'));
         return false;
       }
 
@@ -141,49 +143,49 @@ const KnowledgeBaseManagement: React.FC = () => {
         
         // 检查是否为JSON格式
         if (!line.startsWith('{') || !line.endsWith('}')) {
-          message.error(`文件格式错误：第${i + 1}行不是有效的JSON格式`);
+          message.error(t('knowledge.formatError', { line: i + 1, error: t('knowledge.invalidJSON') }));
           return false;
         }
-        
+
         try {
           const jsonObj = JSON.parse(line);
-          
+
           // 检查必需字段
           if (!jsonObj.questionid || !jsonObj.question || !jsonObj.answer) {
-            message.error(`文件格式错误：第${i + 1}行缺少必需字段 (questionid, question, answer)`);
+            message.error(t('knowledge.missingFields', { line: i + 1 }));
             return false;
           }
-          
+
           // 检查字段类型
-          if (typeof jsonObj.questionid !== 'string' || 
-              typeof jsonObj.question !== 'string' || 
+          if (typeof jsonObj.questionid !== 'string' ||
+              typeof jsonObj.question !== 'string' ||
               typeof jsonObj.answer !== 'string') {
-            message.error(`文件格式错误：第${i + 1}行字段类型不正确，所有字段必须为字符串`);
+            message.error(t('knowledge.invalidFieldType', { line: i + 1 }));
             return false;
           }
-          
+
           // 检查内容不为空
           if (!jsonObj.question.trim() || !jsonObj.answer.trim()) {
-            message.error(`文件格式错误：第${i + 1}行问题或答案内容为空`);
+            message.error(t('knowledge.emptyContent', { line: i + 1 }));
             return false;
           }
-          
+
           validLines++;
         } catch (parseError: any) {
-          message.error(`文件格式错误：第${i + 1}行JSON解析失败 - ${parseError.message}`);
+          message.error(t('knowledge.parseError', { line: i + 1, error: parseError.message }));
           return false;
         }
       }
-      
+
       if (validLines === 0) {
-        message.error('文件格式错误：未找到有效的问答对');
+        message.error(t('knowledge.noValidPairs'));
         return false;
       }
-      
-      message.success(`文件格式验证通过，检查了前${validLines}行`);
+
+      message.success(t('knowledge.validationSuccess', { count: validLines }));
       return true;
     } catch (error) {
-      message.error('文件读取失败');
+      message.error(t('knowledge.readFileFailed'));
       return false;
     }
   };
@@ -192,11 +194,11 @@ const KnowledgeBaseManagement: React.FC = () => {
     try {
       if (editingItem) {
         await knowledgeBaseApi.update(editingItem.id, values);
-        message.success('更新成功');
+        message.success(t('common.updateSuccess'));
       } else {
         // 创建知识库需要文件上传
         if (!values.file || values.file.length === 0) {
-          message.error('请选择文件');
+          message.error(t('knowledge.selectFile'));
           return;
         }
 
@@ -242,14 +244,14 @@ const KnowledgeBaseManagement: React.FC = () => {
 
         setFileUploadLoading(true);
         await knowledgeBaseApi.create(formData);
-        message.success('创建成功');
+        message.success(t('knowledge.uploadSuccess'));
       }
 
       setModalVisible(false);
       fetchData();
     } catch (error: any) {
       console.error('Error saving knowledge base:', error);
-      message.error(error.response?.data?.detail || '保存失败，请重试');
+      message.error(error.response?.data?.detail || t('common.saveFailed'));
     } finally {
       setFileUploadLoading(false);
     }
@@ -258,11 +260,11 @@ const KnowledgeBaseManagement: React.FC = () => {
   const handleDelete = async (record: KnowledgeBase) => {
     try {
       await knowledgeBaseApi.delete(record.id);
-      message.success('删除成功');
+      message.success(t('knowledge.deleteSuccess'));
       fetchData();
     } catch (error) {
       console.error('Error deleting knowledge base:', error);
-      message.error('删除失败，请重试');
+      message.error(t('knowledge.deleteFailed'));
     }
   };
 
@@ -274,7 +276,7 @@ const KnowledgeBaseManagement: React.FC = () => {
 
   const handleFileReplace = async (values: any) => {
     if (!replacingKb || !values.file || values.file.length === 0) {
-      message.error('请选择文件');
+      message.error(t('knowledge.selectFile'));
       return;
     }
 
@@ -297,12 +299,12 @@ const KnowledgeBaseManagement: React.FC = () => {
     try {
       setFileUploadLoading(true);
       await knowledgeBaseApi.replaceFile(replacingKb.id, file);
-      message.success('文件替换成功');
+      message.success(t('knowledge.replaceSuccess'));
       setFileReplaceModalVisible(false);
       fetchData();
     } catch (error: any) {
       console.error('Error replacing file:', error);
-      message.error(error.response?.data?.detail || '文件替换失败，请重试');
+      message.error(error.response?.data?.detail || t('knowledge.replaceFailed'));
     } finally {
       setFileUploadLoading(false);
     }
@@ -317,7 +319,7 @@ const KnowledgeBaseManagement: React.FC = () => {
 
   const handleSearchQuery = async (values: any) => {
     if (!searchingKb || !values.query.trim()) {
-      message.error('请输入搜索内容');
+      message.error(t('knowledge.enterSearchContent'));
       return;
     }
 
@@ -326,11 +328,11 @@ const KnowledgeBaseManagement: React.FC = () => {
       const results = await knowledgeBaseApi.search(searchingKb.id, values.query.trim(), 5);
       setSearchResults(results);
       if (results.length === 0) {
-        message.info('未找到相似的问题');
+        message.info(t('knowledge.noSimilarQuestions'));
       }
     } catch (error: any) {
       console.error('Error searching knowledge base:', error);
-      message.error(error.response?.data?.detail || '搜索失败，请重试');
+      message.error(error.response?.data?.detail || t('knowledge.searchFailed'));
     } finally {
       setSearchLoading(false);
     }
@@ -354,7 +356,7 @@ const KnowledgeBaseManagement: React.FC = () => {
 
   const columns = [
     {
-      title: '类别',
+      title: t('results.category'),
       dataIndex: 'category',
       key: 'category',
       width: 180,
@@ -365,14 +367,14 @@ const KnowledgeBaseManagement: React.FC = () => {
       ),
     },
     {
-      title: '知识库名称',
+      title: t('knowledge.knowledgeBaseName'),
       dataIndex: 'name',
       key: 'name',
       width: 150,
       ellipsis: true,
     },
     {
-      title: '描述',
+      title: t('common.description'),
       dataIndex: 'description',
       key: 'description',
       width: 200,
@@ -380,7 +382,7 @@ const KnowledgeBaseManagement: React.FC = () => {
       render: (text: string) => text || '-',
     },
     {
-      title: '文件名',
+      title: t('knowledge.fileName'),
       dataIndex: 'file_path',
       key: 'file_name',
       width: 150,
@@ -392,7 +394,7 @@ const KnowledgeBaseManagement: React.FC = () => {
       ),
     },
     {
-      title: '问答对数量',
+      title: t('knowledge.qaPairsCount'),
       dataIndex: 'total_qa_pairs',
       key: 'total_qa_pairs',
       width: 100,
@@ -402,78 +404,78 @@ const KnowledgeBaseManagement: React.FC = () => {
       ),
     },
     {
-      title: '状态',
+      title: t('common.status'),
       dataIndex: 'is_active',
       key: 'is_active',
       width: 80,
       align: 'center' as const,
       render: (active: boolean) => (
         <Tag color={active ? 'green' : 'red'}>
-          {active ? '启用' : '禁用'}
+          {active ? t('common.enabled') : t('common.disabled')}
         </Tag>
       ),
     },
     {
-      title: '作用范围',
+      title: t('knowledge.scope'),
       dataIndex: 'is_global',
       key: 'is_global',
       width: 100,
       align: 'center' as const,
       render: (isGlobal: boolean) => (
         <Tag color={isGlobal ? 'purple' : 'default'}>
-          {isGlobal ? '全局' : '个人'}
+          {isGlobal ? t('knowledge.global') : t('knowledge.personal')}
         </Tag>
       ),
     },
     {
-      title: '创建时间',
+      title: t('common.createdAt'),
       dataIndex: 'created_at',
       key: 'created_at',
       width: 150,
       render: (time: string) => new Date(time).toLocaleString(),
     },
     {
-      title: '操作',
+      title: t('common.operation'),
       key: 'action',
       width: 300,
       fixed: 'right' as const,
       render: (_: any, record: KnowledgeBase) => (
         <Space size="small">
-          <Tooltip title="编辑基本信息">
+          <Tooltip title={t('knowledge.editBasicInfo')}>
             <Button
               type="link"
               size="small"
               icon={<EditOutlined />}
               onClick={() => handleEdit(record)}
             >
-              编辑
+              {t('common.edit')}
             </Button>
           </Tooltip>
-          <Tooltip title="替换知识库文件">
+          <Tooltip title={t('knowledge.replaceKBFile')}>
             <Button
               type="link"
               size="small"
               icon={<UploadOutlined />}
               onClick={() => handleReplaceFile(record)}
             >
-              替换文件
+              {t('knowledge.replaceFile')}
             </Button>
           </Tooltip>
-          <Tooltip title="搜索测试">
+          <Tooltip title={t('knowledge.searchTest')}>
             <Button
               type="link"
               size="small"
               icon={<SearchOutlined />}
               onClick={() => handleSearch(record)}
             >
-              搜索测试
+              {t('knowledge.searchTest')}
             </Button>
           </Tooltip>
           <Popconfirm
-            title={`确定要删除知识库"${record.name}"吗？`}
+            title={t('knowledge.deleteConfirmKB', { name: record.name })}
             onConfirm={() => handleDelete(record)}
-            okText="确定"
-            cancelText="取消"
+            okText={t('common.confirm')}
+            cancelText={t('common.cancel')}
           >
             <Button
               type="link"
@@ -481,7 +483,7 @@ const KnowledgeBaseManagement: React.FC = () => {
               size="small"
               icon={<DeleteOutlined />}
             >
-              删除
+              {t('common.delete')}
             </Button>
           </Popconfirm>
         </Space>

@@ -82,7 +82,7 @@ class BanPolicyService:
                     {
                         "tenant_id": tenant_id,
                         "enabled": policy_data.get('enabled', False),
-                        "risk_level": policy_data.get('risk_level', '高风险'),
+                        "risk_level": policy_data.get('risk_level', 'high_risk'),
                         "trigger_count": policy_data.get('trigger_count', 3),
                         "time_window_minutes": policy_data.get('time_window_minutes', 10),
                         "ban_duration_minutes": policy_data.get('ban_duration_minutes', 60)
@@ -104,7 +104,7 @@ class BanPolicyService:
                     {
                         "tenant_id": tenant_id,
                         "enabled": policy_data.get('enabled', False),
-                        "risk_level": policy_data.get('risk_level', '高风险'),
+                        "risk_level": policy_data.get('risk_level', 'high_risk'),
                         "trigger_count": policy_data.get('trigger_count', 3),
                         "time_window_minutes": policy_data.get('time_window_minutes', 10),
                         "ban_duration_minutes": policy_data.get('ban_duration_minutes', 60)
@@ -200,7 +200,7 @@ class BanPolicyService:
             logger.info(f"Policy config: risk_level={policy_risk_level}, trigger_count={trigger_count}, window={time_window_minutes}min, duration={ban_duration_minutes}min")
 
             # 风险等级映射
-            risk_level_map = {'低风险': 1, '中风险': 2, '高风险': 3}
+            risk_level_map = {'low_risk': 1, 'medium_risk': 2, 'high_risk': 3}
             current_risk_value = risk_level_map.get(risk_level, 0)
             policy_risk_value = risk_level_map.get(policy_risk_level, 3)
             logger.info(f"Risk level check: current={risk_level}({current_risk_value}), policy={policy_risk_level}({policy_risk_value})")

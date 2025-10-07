@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Select, DatePicker, Space, Tag, Button, Drawer, Typography, Row, Col, Input, Spin, Image } from 'antd';
 import { EyeOutlined, ReloadOutlined, SearchOutlined, FileImageOutlined, PictureOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { resultsApi } from '../../services/api';
 import type { DetectionResult, PaginatedResponse } from '../../types';
@@ -10,6 +11,7 @@ const { Option } = Select;
 const { Text, Paragraph } = Typography;
 
 const Results: React.FC = () => {
+  const { t } = useTranslation();
   const [data, setData] = useState<PaginatedResponse<DetectionResult> | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedResult, setSelectedResult] = useState<DetectionResult | null>(null);
@@ -105,19 +107,33 @@ const Results: React.FC = () => {
   };
 
   const getRiskLevelColor = (level: string) => {
+    const highRisk = t('risk.level.high_risk');
+    const mediumRisk = t('risk.level.medium_risk');
+    const lowRisk = t('risk.level.low_risk');
+    const noRisk = t('risk.level.no_risk');
+
     switch (level) {
-      case '高风险': return 'red';
-      case '中风险': return 'orange';
-      case '低风险': return 'yellow';
-      case '无风险': return 'green';
+      case highRisk:
+      case '高风险':
+        return 'red';
+      case mediumRisk:
+      case '中风险':
+        return 'orange';
+      case lowRisk:
+      case '低风险':
+        return 'yellow';
+      case noRisk:
+      case '无风险':
+        return 'green';
       default: return 'default';
     }
   };
 
   // Helper function to format risk display
   const formatRiskDisplay = (riskLevel: string, categories: string[]) => {
-    if (riskLevel === '无风险') {
-      return '无风险';
+    const noRisk = t('risk.level.no_risk');
+    if (riskLevel === '无风险' || riskLevel === noRisk) {
+      return noRisk;
     }
     if (categories && categories.length > 0) {
       return `${riskLevel} ${categories[0]}`;
@@ -154,7 +170,7 @@ const Results: React.FC = () => {
 
   const columns = [
     {
-      title: '检测内容',
+      title: t('results.detectionContent'),
       dataIndex: 'content',
       key: 'content',
       ellipsis: {
@@ -168,7 +184,7 @@ const Results: React.FC = () => {
         >
           {record.has_image && (
             <Tag color="blue" icon={<FileImageOutlined />} style={{ marginRight: 8 }}>
-              {record.image_count}张图片
+              {t('results.imageCount', { count: record.image_count })}
             </Tag>
           )}
           <span title={text}>{text}</span>
@@ -176,14 +192,14 @@ const Results: React.FC = () => {
       ),
     },
     {
-      title: '请求ID',
+      title: t('results.requestId'),
       dataIndex: 'request_id',
       key: 'request_id',
       width: 140,
       render: (text: string) => (
-        <span 
-          title={text} 
-          style={{ 
+        <span
+          title={text}
+          style={{
             cursor: 'pointer',
             fontSize: '12px',
             whiteSpace: 'nowrap',
@@ -198,17 +214,17 @@ const Results: React.FC = () => {
       ),
     },
     {
-      title: '提示词攻击',
+      title: t('results.promptAttack'),
       key: 'prompt_attack',
       width: 150,
       render: (_: any, record: DetectionResult) => {
-        const riskLevel = record.security_risk_level || '无风险';
+        const riskLevel = record.security_risk_level || t('risk.level.no_risk');
         const categories = record.security_categories || [];
         const displayText = formatRiskDisplay(riskLevel, categories);
-        
+
         return (
-          <Tag 
-            color={getRiskLevelColor(riskLevel)} 
+          <Tag
+            color={getRiskLevelColor(riskLevel)}
             style={{ fontSize: '12px' }}
             title={categories.join(', ')}
           >
@@ -218,11 +234,11 @@ const Results: React.FC = () => {
       },
     },
     {
-      title: '内容合规',
+      title: t('results.contentCompliance'),
       key: 'content_compliance',
       width: 150,
       render: (_: any, record: DetectionResult) => {
-        const riskLevel = record.compliance_risk_level || '无风险';
+        const riskLevel = record.compliance_risk_level || t('risk.level.no_risk');
         const categories = record.compliance_categories || [];
         const displayText = formatRiskDisplay(riskLevel, categories);
 
@@ -238,11 +254,11 @@ const Results: React.FC = () => {
       },
     },
     {
-      title: '数据泄漏',
+      title: t('results.dataLeak'),
       key: 'data_leak',
       width: 150,
       render: (_: any, record: DetectionResult) => {
-        const riskLevel = record.data_risk_level || '无风险';
+        const riskLevel = record.data_risk_level || t('risk.level.no_risk');
         const categories = record.data_categories || [];
         const displayText = formatRiskDisplay(riskLevel, categories);
 
@@ -258,17 +274,27 @@ const Results: React.FC = () => {
       },
     },
     {
-      title: '建议动作',
+      title: t('results.suggestedAction'),
       dataIndex: 'suggest_action',
       key: 'suggest_action',
       width: 90,
       render: (action: string) => {
-        const color = action === '通过' ? 'green' : action === '拒答' ? 'red' : 'orange';
+        const pass = t('action.pass');
+        const reject = t('action.reject');
+        const replace = t('action.replace');
+        let color = 'default';
+        if (action === pass || action === '通过') {
+          color = 'green';
+        } else if (action === reject || action === '拒答') {
+          color = 'red';
+        } else if (action === replace || action === '代答') {
+          color = 'orange';
+        }
         return <Tag color={color} style={{ fontSize: '12px' }}>{action}</Tag>;
       },
     },
     {
-      title: '检测时间',
+      title: t('results.detectionTime'),
       dataIndex: 'created_at',
       key: 'created_at',
       width: 120,
@@ -279,7 +305,7 @@ const Results: React.FC = () => {
       ),
     },
     {
-      title: '操作',
+      title: t('results.action'),
       key: 'action',
       width: 70,
       fixed: 'right' as const,
@@ -290,7 +316,7 @@ const Results: React.FC = () => {
           size="small"
           onClick={() => showDetail(record)}
         >
-          详情
+          {t('results.details')}
         </Button>
       ),
     },
@@ -298,28 +324,28 @@ const Results: React.FC = () => {
 
   return (
     <div>
-      <h2 style={{ marginBottom: 24 }}>检测结果</h2>
-      
+      <h2 style={{ marginBottom: 24 }}>{t('results.title')}</h2>
+
       <Card style={{ marginBottom: 24 }}>
         <Space wrap>
-          
+
           <Select
-            placeholder="选择风险等级"
+            placeholder={t('results.selectRiskLevel')}
             allowClear
             size="middle"
             style={{ width: 120 }}
             value={filters.risk_level}
             onChange={(value) => handleFilterChange('risk_level', value)}
           >
-            <Option value="高风险">高风险</Option>
-            <Option value="中风险">中风险</Option>
-            <Option value="低风险">低风险</Option>
-            <Option value="无风险">无风险</Option>
+            <Option value="高风险">{t('risk.level.high_risk')}</Option>
+            <Option value="中风险">{t('risk.level.medium_risk')}</Option>
+            <Option value="低风险">{t('risk.level.low_risk')}</Option>
+            <Option value="无风险">{t('risk.level.no_risk')}</Option>
           </Select>
-          
-          
+
+
           <Select
-            placeholder="选择风险类别"
+            placeholder={t('results.selectCategory')}
             allowClear
             size="middle"
             style={{ width: 150 }}
@@ -330,9 +356,9 @@ const Results: React.FC = () => {
               <Option key={category} value={category}>{category}</Option>
             ))}
           </Select>
-          
+
           <Input
-            placeholder="搜索检测内容"
+            placeholder={t('results.contentSearch')}
             allowClear
             size="middle"
             style={{ width: 200, height: 32 }}
@@ -340,9 +366,9 @@ const Results: React.FC = () => {
             value={filters.content_search}
             onChange={(e) => handleFilterChange('content_search', e.target.value || undefined)}
           />
-          
+
           <Input
-            placeholder="搜索请求ID"
+            placeholder={t('results.requestIdSearch')}
             allowClear
             size="middle"
             style={{ width: 200, height: 32 }}
@@ -350,18 +376,18 @@ const Results: React.FC = () => {
             value={filters.request_id_search}
             onChange={(e) => handleFilterChange('request_id_search', e.target.value || undefined)}
           />
-          
+
           <RangePicker
-            placeholder={['开始日期', '结束日期']}
+            placeholder={[t('results.startDate'), t('results.endDate')]}
             value={filters.date_range}
             onChange={(dates) => handleFilterChange('date_range', dates)}
           />
-          
+
           <Button
             icon={<ReloadOutlined />}
             onClick={fetchResults}
           >
-            刷新
+            {t('results.refresh')}
           </Button>
         </Space>
       </Card>
@@ -380,7 +406,7 @@ const Results: React.FC = () => {
             total: data?.total || 0,
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
+            showTotal: (total, range) => t('results.paginationText', { from: range[0], to: range[1], total }),
             size: 'small',
           }}
           onChange={handleTableChange}
@@ -388,7 +414,7 @@ const Results: React.FC = () => {
       </Card>
 
       <Drawer
-        title="检测结果详情"
+        title={t('results.detectionDetails')}
         width={720}
         onClose={() => {
           setDrawerVisible(false);
@@ -399,74 +425,74 @@ const Results: React.FC = () => {
         {detailLoading ? (
           <div style={{ textAlign: 'center', padding: '50px 0' }}>
             <Spin size="large" />
-            <div style={{ marginTop: 16 }}>加载详细内容中...</div>
+            <div style={{ marginTop: 16 }}>{t('results.loadingDetails')}</div>
           </div>
         ) : selectedResult && (
           <div>
             <Row gutter={16} style={{ marginBottom: 16 }}>
               <Col span={8}>
-                <Text strong>请求ID:</Text>
+                <Text strong>{t('results.requestId')}:</Text>
               </Col>
               <Col span={16}>
                 <Text code>{selectedResult.request_id}</Text>
               </Col>
             </Row>
-            
+
             <Row gutter={16} style={{ marginBottom: 16 }}>
               <Col span={8}>
-                <Text strong>提示词攻击:</Text>
+                <Text strong>{t('results.promptAttack')}:</Text>
               </Col>
               <Col span={16}>
-                <Tag color={getRiskLevelColor(selectedResult.security_risk_level || '无风险')}>
-                  {formatRiskDisplay(selectedResult.security_risk_level || '无风险', selectedResult.security_categories || [])}
-                </Tag>
-              </Col>
-            </Row>
-            
-            <Row gutter={16} style={{ marginBottom: 16 }}>
-              <Col span={8}>
-                <Text strong>内容合规:</Text>
-              </Col>
-              <Col span={16}>
-                <Tag color={getRiskLevelColor(selectedResult.compliance_risk_level || '无风险')}>
-                  {formatRiskDisplay(selectedResult.compliance_risk_level || '无风险', selectedResult.compliance_categories || [])}
+                <Tag color={getRiskLevelColor(selectedResult.security_risk_level || t('risk.level.no_risk'))}>
+                  {formatRiskDisplay(selectedResult.security_risk_level || t('risk.level.no_risk'), selectedResult.security_categories || [])}
                 </Tag>
               </Col>
             </Row>
 
             <Row gutter={16} style={{ marginBottom: 16 }}>
               <Col span={8}>
-                <Text strong>数据泄漏:</Text>
+                <Text strong>{t('results.contentCompliance')}:</Text>
               </Col>
               <Col span={16}>
-                <Tag color={getRiskLevelColor(selectedResult.data_risk_level || '无风险')}>
-                  {formatRiskDisplay(selectedResult.data_risk_level || '无风险', selectedResult.data_categories || [])}
+                <Tag color={getRiskLevelColor(selectedResult.compliance_risk_level || t('risk.level.no_risk'))}>
+                  {formatRiskDisplay(selectedResult.compliance_risk_level || t('risk.level.no_risk'), selectedResult.compliance_categories || [])}
                 </Tag>
               </Col>
             </Row>
 
             <Row gutter={16} style={{ marginBottom: 16 }}>
               <Col span={8}>
-                <Text strong>建议动作:</Text>
+                <Text strong>{t('results.dataLeak')}:</Text>
               </Col>
               <Col span={16}>
-                <Tag color={selectedResult.suggest_action === '通过' ? 'green' : selectedResult.suggest_action === '拒答' ? 'red' : 'orange'}>
+                <Tag color={getRiskLevelColor(selectedResult.data_risk_level || t('risk.level.no_risk'))}>
+                  {formatRiskDisplay(selectedResult.data_risk_level || t('risk.level.no_risk'), selectedResult.data_categories || [])}
+                </Tag>
+              </Col>
+            </Row>
+
+            <Row gutter={16} style={{ marginBottom: 16 }}>
+              <Col span={8}>
+                <Text strong>{t('results.suggestedAction')}:</Text>
+              </Col>
+              <Col span={16}>
+                <Tag color={selectedResult.suggest_action === t('action.pass') || selectedResult.suggest_action === '通过' ? 'green' : selectedResult.suggest_action === t('action.reject') || selectedResult.suggest_action === '拒答' ? 'red' : 'orange'}>
                   {selectedResult.suggest_action}
                 </Tag>
               </Col>
             </Row>
-            
+
             <Row gutter={16} style={{ marginBottom: 16 }}>
               <Col span={8}>
-                <Text strong>检测时间:</Text>
+                <Text strong>{t('results.detectionTime')}:</Text>
               </Col>
               <Col span={16}>
                 <Text>{dayjs(selectedResult.created_at).format('YYYY-MM-DD HH:mm:ss')}</Text>
               </Col>
             </Row>
-            
+
             <div style={{ marginBottom: 16 }}>
-              <Text strong>检测内容:</Text>
+              <Text strong>{t('results.detectionContent')}:</Text>
               <div
                 style={{
                   marginTop: 8,
@@ -475,18 +501,18 @@ const Results: React.FC = () => {
                   borderRadius: 4,
                 }}
               >
-                {/* 显示文本内容 */}
+                {/* Display text content */}
                 {selectedResult.content && (
                   <Paragraph style={{ marginBottom: selectedResult.has_image ? 12 : 0 }}>
                     {selectedResult.content}
                   </Paragraph>
                 )}
 
-                {/* 如果有图片，在内容中显示缩略图 */}
+                {/* If there are images, display thumbnails in content */}
                 {selectedResult.has_image && selectedResult.image_urls && selectedResult.image_urls.length > 0 ? (
                   <div style={{ marginTop: 12 }}>
                     <Text strong style={{ display: 'block', marginBottom: 8 }}>
-                      检测图片 ({selectedResult.image_count}张):
+                      {t('results.imagesCount', { count: selectedResult.image_count })}:
                     </Text>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                       {selectedResult.image_urls.map((imageUrl, index) => {
@@ -502,7 +528,7 @@ const Results: React.FC = () => {
                           >
                             <Image
                               src={imageUrl}
-                              alt={`检测图片 ${index + 1}`}
+                              alt={`${t('results.image')} ${index + 1}`}
                               style={{
                                 width: 150,
                                 height: 150,
@@ -519,7 +545,7 @@ const Results: React.FC = () => {
                                 textAlign: 'center'
                               }}
                             >
-                              图片 {index + 1}
+                              {t('results.image')} {index + 1}
                             </Text>
                           </div>
                         );
@@ -529,14 +555,14 @@ const Results: React.FC = () => {
                 ) : null}
               </div>
               <Text type="secondary" style={{ fontSize: '12px' }}>
-                内容长度: {selectedResult.content.length} 字符
-                {selectedResult.has_image && ` | 包含 ${selectedResult.image_count} 张图片`}
+                {t('results.contentLengthChars', { length: selectedResult.content.length })}
+                {selectedResult.has_image && ` | ${t('results.includesImages', { count: selectedResult.image_count })}`}
               </Text>
             </div>
-            
+
             {selectedResult.suggest_answer && (
               <div style={{ marginBottom: 16 }}>
-                <Text strong>建议回答:</Text>
+                <Text strong>{t('results.suggestedAnswer')}:</Text>
                 <Paragraph
                   style={{
                     marginTop: 8,
@@ -549,16 +575,16 @@ const Results: React.FC = () => {
                 </Paragraph>
               </div>
             )}
-            
+
             {((selectedResult.security_categories && selectedResult.security_categories.length > 0) ||
               (selectedResult.compliance_categories && selectedResult.compliance_categories.length > 0) ||
               (selectedResult.data_categories && selectedResult.data_categories.length > 0)) && (
               <div style={{ marginBottom: 16 }}>
-                <Text strong>风险详情:</Text>
+                <Text strong>{t('results.riskDetails')}:</Text>
                 <div style={{ marginTop: 8 }}>
                   {selectedResult.security_categories && selectedResult.security_categories.length > 0 && (
                     <div style={{ marginBottom: 8 }}>
-                      <Text strong style={{ fontSize: '12px' }}>提示词攻击: </Text>
+                      <Text strong style={{ fontSize: '12px' }}>{t('results.promptAttack')}: </Text>
                       {selectedResult.security_categories.map((category, index) => (
                         <Tag key={`security-${index}`} color="red" style={{ marginBottom: 4 }}>
                           {category}
@@ -568,7 +594,7 @@ const Results: React.FC = () => {
                   )}
                   {selectedResult.compliance_categories && selectedResult.compliance_categories.length > 0 && (
                     <div style={{ marginBottom: 8 }}>
-                      <Text strong style={{ fontSize: '12px' }}>内容合规: </Text>
+                      <Text strong style={{ fontSize: '12px' }}>{t('results.contentCompliance')}: </Text>
                       {selectedResult.compliance_categories.map((category, index) => (
                         <Tag key={`compliance-${index}`} color="orange" style={{ marginBottom: 4 }}>
                           {category}
@@ -578,7 +604,7 @@ const Results: React.FC = () => {
                   )}
                   {selectedResult.data_categories && selectedResult.data_categories.length > 0 && (
                     <div>
-                      <Text strong style={{ fontSize: '12px' }}>数据泄漏: </Text>
+                      <Text strong style={{ fontSize: '12px' }}>{t('results.dataLeak')}: </Text>
                       {selectedResult.data_categories.map((category, index) => (
                         <Tag key={`data-${index}`} color="magenta" style={{ marginBottom: 4 }}>
                           {category}
@@ -589,11 +615,11 @@ const Results: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             {selectedResult.ip_address && (
               <Row gutter={16} style={{ marginBottom: 16 }}>
                 <Col span={8}>
-                  <Text strong>来源IP:</Text>
+                  <Text strong>{t('results.sourceIP')}:</Text>
                 </Col>
                 <Col span={16}>
                   <Text code>{selectedResult.ip_address}</Text>

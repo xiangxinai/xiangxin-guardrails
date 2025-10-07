@@ -17,9 +17,9 @@ logger = setup_logger()
 
 # 风险等级映射
 RISK_LEVEL_MAPPING = {
-    '低': '低风险',
-    '中': '中风险',
-    '高': '高风险'
+    'low': 'low_risk',
+    'medium': 'medium_risk',
+    'high': 'high_risk'
 }
 
 class DataSecurityService:
@@ -50,7 +50,7 @@ class DataSecurityService:
 
         if not entity_types:
             return {
-                'risk_level': '无风险',
+                'risk_level': 'no_risk',
                 'categories': [],
                 'detected_entities': [],
                 'anonymized_text': text
@@ -58,7 +58,7 @@ class DataSecurityService:
 
         # 检测敏感数据
         detected_entities = []
-        highest_risk_level = '无风险'
+        highest_risk_level = 'no_risk'
         detected_categories = set()
 
         for entity_type in entity_types:
@@ -68,9 +68,9 @@ class DataSecurityService:
                 detected_categories.add(entity_type['entity_type'])
 
                 # 更新最高风险等级
-                entity_risk = entity_type.get('risk_level', '中')
+                entity_risk = entity_type.get('risk_level', 'medium')
                 if self._compare_risk_level(entity_risk, highest_risk_level) > 0:
-                    highest_risk_level = RISK_LEVEL_MAPPING.get(entity_risk, '中风险')
+                    highest_risk_level = RISK_LEVEL_MAPPING.get(entity_risk, 'medium_risk')
 
         # 脱敏处理
         anonymized_text = self._anonymize_text(text, detected_entities, entity_types)
@@ -238,7 +238,7 @@ class DataSecurityService:
 
     def _compare_risk_level(self, level1: str, level2: str) -> int:
         """比较风险等级，返回 1 如果 level1 > level2，-1 如果 level1 < level2，0 如果相等"""
-        risk_order = {'无风险': 0, '低': 1, '低风险': 1, '中': 2, '中风险': 2, '高': 3, '高风险': 3}
+        risk_order = {'no_risk': 0, 'low': 1, 'low_risk': 1, 'medium': 2, 'medium_risk': 2, 'high': 3, 'high_risk': 3}
         score1 = risk_order.get(level1, 0)
         score2 = risk_order.get(level2, 0)
 
@@ -398,7 +398,7 @@ def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
         {
             'entity_type': 'ID_CARD_NUMBER',
             'display_name': '身份证号',
-            'risk_level': '高',
+            'risk_level': 'high',
             'pattern': r'[1-8]\d{5}(19|20)\d{2}((0[1-9])|(1[0-2]))((0[1-9])|([12]\d)|(3[01]))\d{3}[\dxX]',
             'anonymization_method': 'mask',
             'anonymization_config': {'mask_char': '*', 'keep_prefix': 3, 'keep_suffix': 4},
@@ -408,7 +408,7 @@ def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
         {
             'entity_type': 'PHONE_NUMBER',
             'display_name': '手机号',
-            'risk_level': '中',
+            'risk_level': 'medium',
             'pattern': r'1[3-9]\d{9}',
             'anonymization_method': 'mask',
             'anonymization_config': {'mask_char': '*', 'keep_prefix': 3, 'keep_suffix': 4},
@@ -418,7 +418,7 @@ def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
         {
             'entity_type': 'EMAIL',
             'display_name': '电子邮箱',
-            'risk_level': '低',
+            'risk_level': 'low',
             'pattern': r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
             'anonymization_method': 'mask',
             'anonymization_config': {'mask_char': '*', 'keep_prefix': 2, 'keep_suffix': 0},
@@ -428,7 +428,7 @@ def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
         {
             'entity_type': 'BANK_CARD_NUMBER',
             'display_name': '银行卡号',
-            'risk_level': '高',
+            'risk_level': 'high',
             'pattern': r'\d{16,19}',
             'anonymization_method': 'mask',
             'anonymization_config': {'mask_char': '*', 'keep_prefix': 4, 'keep_suffix': 4},
@@ -438,7 +438,7 @@ def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
         {
             'entity_type': 'PASSPORT_NUMBER',
             'display_name': '护照号',
-            'risk_level': '高',
+            'risk_level': 'high',
             'pattern': r'[EGP]\d{8}',
             'anonymization_method': 'mask',
             'anonymization_config': {'mask_char': '*', 'keep_prefix': 1, 'keep_suffix': 2},
@@ -448,7 +448,7 @@ def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
         {
             'entity_type': 'IP_ADDRESS',
             'display_name': 'IP地址',
-            'risk_level': '低',
+            'risk_level': 'low',
             'pattern': r'(?:\d{1,3}\.){3}\d{1,3}',
             'anonymization_method': 'replace',
             'anonymization_config': {'replacement': '<IP_ADDRESS>'},

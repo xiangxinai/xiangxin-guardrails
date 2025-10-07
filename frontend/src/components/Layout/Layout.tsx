@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout as AntLayout, Menu, theme, Dropdown, Avatar, Space, Button, Modal, Select, message, Tag } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   DashboardOutlined,
   FileSearchOutlined,
@@ -14,6 +15,7 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { adminApi, configApi } from '../../services/api';
+import LanguageSwitcher from '../LanguageSwitcher/LanguageSwitcher';
 
 const { Header, Sider, Content } = AntLayout;
 
@@ -22,12 +24,13 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const [switchModalVisible, setSwitchModalVisible] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [systemVersion, setSystemVersion] = useState<string>('');
-  
+
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, switchInfo, switchToUser, exitSwitch, refreshSwitchStatus } = useAuth();
@@ -65,86 +68,86 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     {
       key: '/dashboard',
       icon: <DashboardOutlined />,
-      label: '总览',
+      label: t('nav.dashboard'),
     },
     {
       key: '/online-test',
       icon: <ExperimentOutlined />,
-      label: '在线测试',
+      label: t('nav.onlineTest'),
     },
     {
       key: '/results',
       icon: <FileSearchOutlined />,
-      label: '检测结果',
+      label: t('nav.results'),
     },
     {
       key: '/reports',
       icon: <BarChartOutlined />,
-      label: '风险报表',
+      label: t('nav.reports'),
     },
     {
       key: '/config',
       icon: <SettingOutlined />,
-      label: '防护配置',
+      label: t('nav.config'),
       children: [
         {
           key: '/config/risk-types',
-          label: '风险类型',
+          label: t('config.riskType'),
         },
         {
           key: '/config/sensitivity-thresholds',
-          label: '敏感度阈值',
+          label: t('config.sensitivity'),
         },
         {
           key: '/config/data-security',
-          label: '数据防泄漏',
+          label: t('config.dataSecurity'),
         },
         {
           key: '/config/ban-policy',
-          label: '封禁策略',
+          label: t('config.banPolicy'),
         },
         {
           key: '/config/blacklist',
-          label: '黑名单管理',
+          label: t('config.blacklist'),
         },
         {
           key: '/config/whitelist',
-          label: '白名单管理',
+          label: t('config.whitelist'),
         },
         {
           key: '/config/responses',
-          label: '拒答答案库',
+          label: t('config.template'),
         },
         {
           key: '/config/knowledge-bases',
-          label: '代答知识库',
+          label: t('config.knowledge'),
         },
         {
           key: '/config/proxy-models',
-          label: '安全网关配置',
+          label: t('config.proxy'),
         },
       ],
     },
-    // 只有超级管理员显示租户管理
+    // Only super admins can see tenant management
     ...(user?.is_super_admin ? [{
       key: '/admin',
       icon: <SettingOutlined />,
-      label: '系统管理',
+      label: t('nav.admin'),
       children: [
         {
           key: '/admin/users',
-          label: '租户管理',
+          label: 'Tenant Management',
         },
         {
           key: '/admin/rate-limits',
-          label: '限速配置',
+          label: 'Rate Limiting',
         },
       ],
     }] : []),
     {
       key: '/account',
       icon: <UserOutlined />,
-      label: '账号管理',
+      label: t('nav.account'),
     },
   ];
 
@@ -233,9 +236,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           }}
           onClick={() => navigate('/dashboard')}
         >
-          <img 
-            src="/platform/xiangxinlogo.png" 
-            alt="象信logo" 
+          <img
+            src="/platform/xiangxinlogo.png"
+            alt="象信logo"
             style={{
               height: '100%',
               maxWidth: collapsed ? '32px' : '100%',
@@ -243,6 +246,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             }}
           />
         </div>
+        <style>{`
+          .ant-menu-inline .ant-menu-item,
+          .ant-menu-inline .ant-menu-submenu-title {
+            white-space: normal !important;
+            height: auto !important;
+            line-height: 1.5 !important;
+            padding: 8px 16px !important;
+            overflow-wrap: break-word !important;
+          }
+          .ant-menu-inline .ant-menu-item-icon {
+            vertical-align: top !important;
+            margin-top: 2px !important;
+          }
+          .ant-menu-submenu-inline .ant-menu-item {
+            white-space: normal !important;
+            height: auto !important;
+            line-height: 1.5 !important;
+            overflow-wrap: break-word !important;
+          }
+        `}</style>
         <Menu
           theme="dark"
           mode="inline"
@@ -267,41 +290,44 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             象信AI安全护栏平台
           </div>
           <Space>
-            {/* 用户切换状态显示 */}
+            {/* Language Switcher */}
+            <LanguageSwitcher />
+
+            {/* User switch status display */}
             {switchInfo.is_switched && (
               <Tag color="orange" style={{ marginRight: 8 }}>
-                切换中: {switchInfo.target_user?.email}
+                Switched to: {switchInfo.target_user?.email}
               </Tag>
             )}
-            
-            {/* 超级管理员才显示用户切换按钮 */}
+
+            {/* Super admin only: user switch button */}
             {user?.is_super_admin && !switchInfo.is_switched && (
-              <Button 
-                type="link" 
+              <Button
+                type="link"
                 icon={<SwapOutlined />}
                 onClick={showSwitchModal}
                 size="small"
               >
-                切换用户
+                Switch User
               </Button>
             )}
-            
-            {/* 退出用户切换按钮 */}
+
+            {/* Exit user switch button */}
             {switchInfo.is_switched && (
-              <Button 
-                type="link" 
+              <Button
+                type="link"
                 icon={<ReloadOutlined />}
                 onClick={handleExitSwitch}
                 size="small"
                 danger
               >
-                退出切换
+                Exit Switch
               </Button>
             )}
-            
-            {/* 当前用户名显示 */}
-            <span style={{ 
-              color: '#1890ff', 
+
+            {/* Current user display */}
+            <span style={{
+              color: '#1890ff',
               fontWeight: 500,
               padding: '4px 8px',
               backgroundColor: '#f0f6ff',
@@ -309,9 +335,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               border: '1px solid #d6e4ff'
             }}>
               {user?.email}
-              {user?.is_super_admin && <Tag color="red" style={{ marginLeft: 4 }}>管理员</Tag>}
+              {user?.is_super_admin && <Tag color="red" style={{ marginLeft: 4 }}>Admin</Tag>}
             </span>
-            
+
             <span style={{ color: '#666' }}>{systemVersion}</span>
             <Dropdown
               menu={{
@@ -319,7 +345,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   {
                     key: 'account',
                     icon: <UserOutlined />,
-                    label: '账号管理',
+                    label: t('nav.account'),
                     onClick: () => navigate('/account'),
                   },
                   {
@@ -328,7 +354,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   {
                     key: 'logout',
                     icon: <LogoutOutlined />,
-                    label: '退出登录',
+                    label: t('nav.logout'),
                     onClick: () => {
                       logout();
                       navigate('/login');
