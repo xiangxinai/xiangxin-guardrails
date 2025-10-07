@@ -32,20 +32,20 @@ const RiskTypeManagement: React.FC = () => {
   // Risk types definition - sorted by risk level (high > medium > low)
   const RISK_TYPES = [
     // High risk
-    { key: 's2_enabled', code: 'S2', name: t('config.riskType.s2'), level: t('risk.level.high_risk'), color: '#f5222d', priority: 1 },
-    { key: 's3_enabled', code: 'S3', name: t('config.riskType.s3'), level: t('risk.level.high_risk'), color: '#f5222d', priority: 1 },
-    { key: 's5_enabled', code: 'S5', name: t('config.riskType.s5'), level: t('risk.level.high_risk'), color: '#f5222d', priority: 1 },
-    { key: 's9_enabled', code: 'S9', name: t('config.riskType.s9'), level: t('risk.level.high_risk'), color: '#f5222d', priority: 1 },
+    { key: 's2_enabled', code: 'S2', name: t('config.riskTypes.s2'), level: t('risk.level.high_risk'), color: '#f5222d', priority: 1 },
+    { key: 's3_enabled', code: 'S3', name: t('config.riskTypes.s3'), level: t('risk.level.high_risk'), color: '#f5222d', priority: 1 },
+    { key: 's5_enabled', code: 'S5', name: t('config.riskTypes.s5'), level: t('risk.level.high_risk'), color: '#f5222d', priority: 1 },
+    { key: 's9_enabled', code: 'S9', name: t('config.riskTypes.s9'), level: t('risk.level.high_risk'), color: '#f5222d', priority: 1 },
     // Medium risk
-    { key: 's1_enabled', code: 'S1', name: t('config.riskType.s1'), level: t('risk.level.medium_risk'), color: '#fa8c16', priority: 2 },
-    { key: 's4_enabled', code: 'S4', name: t('config.riskType.s4'), level: t('risk.level.medium_risk'), color: '#fa8c16', priority: 2 },
-    { key: 's6_enabled', code: 'S6', name: t('config.riskType.s6'), level: t('risk.level.medium_risk'), color: '#fa8c16', priority: 2 },
-    { key: 's7_enabled', code: 'S7', name: t('config.riskType.s7'), level: t('risk.level.medium_risk'), color: '#fa8c16', priority: 2 },
+    { key: 's1_enabled', code: 'S1', name: t('config.riskTypes.s1'), level: t('risk.level.medium_risk'), color: '#fa8c16', priority: 2 },
+    { key: 's4_enabled', code: 'S4', name: t('config.riskTypes.s4'), level: t('risk.level.medium_risk'), color: '#fa8c16', priority: 2 },
+    { key: 's6_enabled', code: 'S6', name: t('config.riskTypes.s6'), level: t('risk.level.medium_risk'), color: '#fa8c16', priority: 2 },
+    { key: 's7_enabled', code: 'S7', name: t('config.riskTypes.s7'), level: t('risk.level.medium_risk'), color: '#fa8c16', priority: 2 },
     // Low risk
-    { key: 's8_enabled', code: 'S8', name: t('config.riskType.s8'), level: t('risk.level.low_risk'), color: '#52c41a', priority: 3 },
-    { key: 's10_enabled', code: 'S10', name: t('config.riskType.s10'), level: t('risk.level.low_risk'), color: '#52c41a', priority: 3 },
-    { key: 's11_enabled', code: 'S11', name: t('config.riskType.s11'), level: t('risk.level.low_risk'), color: '#52c41a', priority: 3 },
-    { key: 's12_enabled', code: 'S12', name: t('config.riskType.s12'), level: t('risk.level.low_risk'), color: '#52c41a', priority: 3 },
+    { key: 's8_enabled', code: 'S8', name: t('config.riskTypes.s8'), level: t('risk.level.low_risk'), color: '#52c41a', priority: 3 },
+    { key: 's10_enabled', code: 'S10', name: t('config.riskTypes.s10'), level: t('risk.level.low_risk'), color: '#52c41a', priority: 3 },
+    { key: 's11_enabled', code: 'S11', name: t('config.riskTypes.s11'), level: t('risk.level.low_risk'), color: '#52c41a', priority: 3 },
+    { key: 's12_enabled', code: 'S12', name: t('config.riskTypes.s12'), level: t('risk.level.low_risk'), color: '#52c41a', priority: 3 },
   ];
 
   useEffect(() => {
@@ -66,7 +66,7 @@ const RiskTypeManagement: React.FC = () => {
       const data = await getRiskConfig();
       setConfig(data);
     } catch (error) {
-      message.error(t('config.riskType.loadFailed'));
+      message.error(t('riskType.loadFailed'));
       console.error('Failed to load risk config:', error);
     } finally {
       setLoading(false);
@@ -87,7 +87,7 @@ const RiskTypeManagement: React.FC = () => {
       const statusText = checked ? t('common.enabled') : t('common.disabled');
       message.success(`${riskType?.code} ${riskType?.name} ${statusText}`);
     } catch (error) {
-      message.error(t('config.riskType.updateFailed'));
+      message.error(t('riskType.updateFailed'));
       console.error('Failed to update risk config:', error);
     } finally {
       setSaving(false);
@@ -103,7 +103,7 @@ const RiskTypeManagement: React.FC = () => {
   }
 
   if (!config) {
-    return <div>{t('config.riskType.loadConfigFailed')}</div>;
+    return <div>{t('riskType.loadConfigFailed')}</div>;
   }
 
   const enabledCount = Object.values(config).filter(Boolean).length;
@@ -116,12 +116,12 @@ const RiskTypeManagement: React.FC = () => {
           <div>
             <Title level={4}>
               <InfoCircleOutlined style={{ marginRight: 8 }} />
-              {t('config.riskType.title')}
+              {t('riskType.title')}
             </Title>
             <Text type="secondary">
-              {t('config.riskType.description')}
+              {t('riskType.description')}
               <br />
-              {t('config.riskType.currentEnabled', { enabled: enabledCount, total: totalCount })}
+              {t('riskType.currentEnabled', { enabled: enabledCount, total: totalCount })}
             </Text>
           </div>
 
@@ -146,7 +146,7 @@ const RiskTypeManagement: React.FC = () => {
                   }}
                 >
                   <Text strong style={{ fontSize: '16px', color: '#262626' }}>
-                    {group.level} ({t('config.riskType.itemCount', { count: groupRiskTypes.length })})
+                    {group.level} ({t('riskType.itemCount', { count: groupRiskTypes.length })})
                   </Text>
                 </div>
                 <Row gutter={[16, 16]}>
@@ -207,16 +207,16 @@ const RiskTypeManagement: React.FC = () => {
           <Card size="small" style={{ backgroundColor: '#f6ffed', borderColor: '#b7eb8f' }}>
             <Space direction="vertical" size="small">
               <Text style={{ fontSize: '13px', fontWeight: 'bold', color: '#389e0d' }}>
-                ⚠️ {t('config.riskType.importantNotice')}
+                ⚠️ {t('riskType.importantNotice')}
               </Text>
               <Text style={{ fontSize: '12px', color: '#666' }}>
-                • {t('config.riskType.notice1')}
+                • {t('riskType.notice1')}
               </Text>
               <Text style={{ fontSize: '12px', color: '#666' }}>
-                • {t('config.riskType.notice2')}
+                • {t('riskType.notice2')}
               </Text>
               <Text style={{ fontSize: '12px', color: '#666' }}>
-                • {t('config.riskType.notice3')}
+                • {t('riskType.notice3')}
               </Text>
             </Space>
           </Card>

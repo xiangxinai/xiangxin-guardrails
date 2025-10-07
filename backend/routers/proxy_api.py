@@ -17,6 +17,7 @@ from models.responses import ProxyCompletionResponse, ProxyModelListResponse
 from services.proxy_service import proxy_service
 from services.detection_guardrail_service import detection_guardrail_service
 from services.ban_policy_service import BanPolicyService
+from utils.i18n import get_language_from_request
 from utils.logger import setup_logger
 from enum import Enum
 
@@ -115,7 +116,8 @@ async def _background_input_detection(input_messages: list, tenant_id: str, requ
                     tenant_id=tenant_id,
                     user_id=user_id,
                     risk_level=detection_result.get('overall_risk_level'),
-                    detection_result_id=detection_result.get('request_id')
+                    detection_result_id=detection_result.get('request_id'),
+                    language='zh'  # 代理服务使用默认中文
                 )
             )
 
@@ -139,7 +141,8 @@ async def _sync_input_detection(model_config, input_messages: list, tenant_id: s
                 tenant_id=tenant_id,
                 user_id=user_id,
                 risk_level=detection_result.get('overall_risk_level'),
-                detection_result_id=detection_id
+                detection_result_id=detection_id,
+                language='zh'  # 代理服务使用默认中文
             )
 
         # 检查是否需要阻断
@@ -220,7 +223,8 @@ async def _background_output_detection(input_messages: list, response_content: s
                     tenant_id=tenant_id,
                     user_id=user_id,
                     risk_level=detection_result.get('overall_risk_level'),
-                    detection_result_id=detection_id
+                    detection_result_id=detection_id,
+                    language='zh'  # 代理服务使用默认中文
                 )
             )
 
@@ -256,7 +260,8 @@ async def _sync_output_detection(model_config, input_messages: list, response_co
                 tenant_id=tenant_id,
                 user_id=user_id,
                 risk_level=detection_result.get('overall_risk_level'),
-                detection_result_id=detection_id
+                detection_result_id=detection_id,
+                language='zh'  # 代理服务使用默认中文
             )
 
         # 检查是否需要阻断输出

@@ -1,5 +1,5 @@
 """
-数据安全API路由 - 基于正则表达式的敏感数据检测和脱敏
+Data security API routes - sensitive data detection and de-sensitization based on regular expressions
 """
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -18,21 +18,21 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/config/data-security", tags=["data-security"])
 
-# Pydantic模型定义
+# Pydantic model definition
 class EntityTypeCreate(BaseModel):
-    """创建实体类型配置"""
-    entity_type: str = Field(..., description="实体类型代码，如 ID_CARD_NUMBER")
-    display_name: str = Field(..., description="显示名称，如 身份证号")
-    risk_level: str = Field(..., description="风险等级: 低、中、高")
-    pattern: str = Field(..., description="正则表达式模式")
-    anonymization_method: str = Field(default="replace", description="脱敏方法: replace, mask, hash, encrypt, shuffle, random")
-    anonymization_config: Optional[Dict[str, Any]] = Field(default=None, description="脱敏配置")
-    check_input: bool = Field(default=True, description="是否检测输入")
-    check_output: bool = Field(default=True, description="是否检测输出")
-    is_active: bool = Field(default=True, description="是否启用")
+    """Create entity type configuration"""
+    entity_type: str = Field(..., description="Entity type code, e.g. ID_CARD_NUMBER")
+    display_name: str = Field(..., description="Display name, e.g. ID card number")
+    risk_level: str = Field(..., description="Risk level: low, medium, high")
+    pattern: str = Field(..., description="Regular expression pattern")
+    anonymization_method: str = Field(default="replace", description="De-sensitization method: replace, mask, hash, encrypt, shuffle, random")
+    anonymization_config: Optional[Dict[str, Any]] = Field(default=None, description="De-sensitization configuration")
+    check_input: bool = Field(default=True, description="Whether to check input")
+    check_output: bool = Field(default=True, description="Whether to check output")
+    is_active: bool = Field(default=True, description="Whether to activate")
 
 class EntityTypeUpdate(BaseModel):
-    """更新实体类型配置"""
+    """Update entity type configuration"""
     display_name: Optional[str] = None
     risk_level: Optional[str] = None
     pattern: Optional[str] = None
@@ -43,18 +43,18 @@ class EntityTypeUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Tenant:
-    """获取当前用户"""
+    """Get current user"""
     auth_context = getattr(request.state, 'auth_context', None)
     if not auth_context:
-        raise HTTPException(status_code=401, detail="未授权")
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
     tenant_id = auth_context.get("data", {}).get("tenant_id")
     if not tenant_id:
-        raise HTTPException(status_code=401, detail="无效的用户ID")
+        raise HTTPException(status_code=401, detail="Invalid user ID")
 
     user = db.query(Tenant).filter(Tenant.id == uuid.UUID(tenant_id)).first()
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise HTTPException(status_code=404, detail="User not found")
 
     return user
 
@@ -64,10 +64,10 @@ async def create_entity_type(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """创建敏感数据类型配置"""
+    """Create sensitive data type configuration"""
     current_user = get_current_user(request, db)
 
-    # 检查是否已存在相同的实体类型
+    # Check if the entity type already exists
     existing = db.query(DataSecurityEntityType).filter(
         and_(
             DataSecurityEntityType.entity_type == entity_data.entity_type,
@@ -76,12 +76,12 @@ async def create_entity_type(
     ).first()
 
     if existing:
-        raise HTTPException(status_code=400, detail="该实体类型已存在")
+        raise HTTPException(status_code=400, detail="The entity type already exists")
 
-    # 创建服务实例
+    # Create service instance
     service = DataSecurityService(db)
 
-    # 创建新配置
+    # Create new configuration
     entity_type = service.create_entity_type(
         tenant_id=str(current_user.id),
         entity_type=entity_data.entity_type,
@@ -119,13 +119,13 @@ async def list_entity_types(
     request: Request = None,
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
-    """获取敏感数据类型配置列表（包括全局和用户自己的）"""
+    """Get sensitive data type configuration list (including global and user's own)"""
     current_user = get_current_user(request, db)
 
-    # 创建服务实例
+    # Create service instance
     service = DataSecurityService(db)
 
-    # 获取实体类型列表
+    # Get entity type list
     entity_types = service.get_entity_types(
         tenant_id=str(current_user.id),
         risk_level=risk_level
@@ -161,7 +161,7 @@ async def get_entity_type(
     request: Request,
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
-    """获取单个敏感数据类型配置"""
+    """Get single sensitive data type configuration"""
     current_user = get_current_user(request, db)
 
     entity_type = db.query(DataSecurityEntityType).filter(
@@ -169,11 +169,11 @@ async def get_entity_type(
     ).first()
 
     if not entity_type:
-        raise HTTPException(status_code=404, detail="实体类型配置不存在")
+        raise HTTPException(status_code=404, detail="Entity type configuration not found")
 
-    # 检查权限：只能查看全局配置或自己的配置
+    # Check permission: only global configuration or user's own configuration
     if not entity_type.is_global and entity_type.tenant_id != current_user.id:
-        raise HTTPException(status_code=403, detail="无权访问该配置")
+        raise HTTPException(status_code=403, detail="No permission to access this configuration")
 
     recognition_config = entity_type.recognition_config or {}
 
@@ -200,7 +200,7 @@ async def update_entity_type(
     request: Request,
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
-    """更新敏感数据类型配置"""
+    """Update sensitive data type configuration"""
     current_user = get_current_user(request, db)
 
     entity_type = db.query(DataSecurityEntityType).filter(
@@ -208,20 +208,20 @@ async def update_entity_type(
     ).first()
 
     if not entity_type:
-        raise HTTPException(status_code=404, detail="实体类型配置不存在")
+        raise HTTPException(status_code=404, detail="Entity type configuration not found")
 
-    # 检查权限
+    # Check permission
     if entity_type.is_global:
-        # 只有管理员可以修改全局配置
+        # Only admin can modify global configuration
         if not current_user.is_super_admin:
-            raise HTTPException(status_code=403, detail="只有管理员可以修改全局配置")
+            raise HTTPException(status_code=403, detail="Only admin can modify global configuration")
     elif entity_type.tenant_id != current_user.id:
-        raise HTTPException(status_code=403, detail="无权修改该配置")
+        raise HTTPException(status_code=403, detail="No permission to modify this configuration")
 
-    # 创建服务实例
+    # Create service instance
     service = DataSecurityService(db)
 
-    # 构建更新参数
+    # Build update parameters
     update_kwargs = {}
     if update_data.display_name is not None:
         update_kwargs['display_name'] = update_data.display_name
@@ -240,7 +240,7 @@ async def update_entity_type(
     if update_data.is_active is not None:
         update_kwargs['is_active'] = update_data.is_active
 
-    # 更新
+    # Update
     updated_entity = service.update_entity_type(
         entity_type_id=entity_type_id,
         tenant_id=str(current_user.id),
@@ -248,7 +248,7 @@ async def update_entity_type(
     )
 
     if not updated_entity:
-        raise HTTPException(status_code=404, detail="更新失败")
+        raise HTTPException(status_code=404, detail="Update failed")
 
     recognition_config = updated_entity.recognition_config or {}
 
@@ -274,7 +274,7 @@ async def delete_entity_type(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """删除敏感数据类型配置"""
+    """Delete sensitive data type configuration"""
     current_user = get_current_user(request, db)
 
     entity_type = db.query(DataSecurityEntityType).filter(
@@ -282,26 +282,26 @@ async def delete_entity_type(
     ).first()
 
     if not entity_type:
-        raise HTTPException(status_code=404, detail="实体类型配置不存在")
+        raise HTTPException(status_code=404, detail="Entity type configuration not found")
 
-    # 检查权限
+    # Check permission
     if entity_type.is_global:
-        # 只有管理员可以删除全局配置
+        # Only admin can delete global configuration
         if not current_user.is_super_admin:
-            raise HTTPException(status_code=403, detail="只有管理员可以删除全局配置")
+            raise HTTPException(status_code=403, detail="Only admin can delete global configuration")
     elif entity_type.tenant_id != current_user.id:
-        raise HTTPException(status_code=403, detail="无权删除该配置")
+        raise HTTPException(status_code=403, detail="No permission to delete this configuration")
 
-    # 创建服务实例
+    # Create service instance
     service = DataSecurityService(db)
 
-    # 删除
+    # Delete
     success = service.delete_entity_type(entity_type_id, str(current_user.id))
 
     if not success:
-        raise HTTPException(status_code=404, detail="删除失败")
+        raise HTTPException(status_code=404, detail="Delete failed")
 
-    return {"message": "删除成功"}
+    return {"message": "Delete successfully"}
 
 @router.post("/global-entity-types", response_model=Dict[str, Any])
 async def create_global_entity_type(
@@ -309,14 +309,14 @@ async def create_global_entity_type(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """创建全局敏感数据类型配置（仅管理员）"""
+    """Create global sensitive data type configuration (only admin)"""
     current_user = get_current_user(request, db)
 
-    # 检查是否是管理员
+    # Check if the user is an admin
     if not current_user.is_super_admin:
-        raise HTTPException(status_code=403, detail="仅管理员可以创建全局配置")
+        raise HTTPException(status_code=403, detail="Only admin can create global configuration")
 
-    # 检查是否已存在相同的全局实体类型
+    # Check if the global entity type already exists
     existing = db.query(DataSecurityEntityType).filter(
         and_(
             DataSecurityEntityType.entity_type == entity_data.entity_type,
@@ -325,12 +325,12 @@ async def create_global_entity_type(
     ).first()
 
     if existing:
-        raise HTTPException(status_code=400, detail="该全局实体类型已存在")
+        raise HTTPException(status_code=400, detail="The global entity type already exists")
 
-    # 创建服务实例
+    # Create service instance
     service = DataSecurityService(db)
 
-    # 创建新的全局配置
+    # Create new global configuration
     entity_type = service.create_entity_type(
         tenant_id=str(current_user.id),
         entity_type=entity_data.entity_type,

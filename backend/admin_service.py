@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-管理服务 - 低并发管理平台API
-专门处理 /api/v1/* 管理界面请求，优化资源使用
+Management service - low concurrency management platform API
+Specially handles /api/v1/* management interface requests, optimizing resource usage
 """
 from fastapi import FastAPI, HTTPException, Depends, Security, Request
 from contextlib import asynccontextmanager
@@ -21,17 +21,17 @@ from services.data_sync_service import data_sync_service
 from utils.logger import setup_logger
 from services.admin_service import admin_service
 
-# 设置安全验证
+# Set security verification
 security = HTTPBearer()
 
 # 导入并发控制中间件
 from middleware.concurrent_limit_middleware import ConcurrentLimitMiddleware
 
 class AuthContextMiddleware(BaseHTTPMiddleware):
-    """认证上下文中间件 - 管理服务版本（完整版）"""
+    """Authentication context middleware - management service version (full version)"""
     
     async def dispatch(self, request: Request, call_next):
-        # 处理管理API路由
+        # Handle management API routes
         if request.url.path.startswith('/api/v1/'):
             auth_header = request.headers.get('authorization')
             switch_session = request.headers.get('x-switch-session')
@@ -50,13 +50,13 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         return response
     
     async def _get_auth_context(self, token: str, switch_session: str = None):
-        """获取认证上下文（完整版，支持用户切换）"""
+        """Get authentication context (full version, supports user switch)"""
         from utils.auth_cache import auth_cache
         
-        # 生成缓存键
+        # Generate cache key
         cache_key = f"{token}:{switch_session or ''}"
         
-        # 检查缓存
+        # Check cache
         cached_auth = auth_cache.get(cache_key)
         if cached_auth:
             return cached_auth
@@ -70,7 +70,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         try:
             auth_context = None
             
-            # JWT验证
+            # JWT verification
             try:
                 user_data = verify_token(token)
                 role = user_data.get('role')
@@ -98,7 +98,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                     
                     user = db.query(Tenant).filter(Tenant.id == tenant_uuid).first() if tenant_uuid else None
                     if user:
-                        # 检查用户切换
+                        # Check user switch
                         if switch_session and admin_service.is_super_admin(user):
                             switched_user = admin_service.get_switched_user(db, switch_session)
                             if switched_user:
@@ -123,10 +123,10 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                                 }
                             }
             except:
-                # API key验证
+                # API key verification
                 user = get_user_by_api_key(db, token)
                 if user:
-                    # 检查用户切换
+                    # Check user switch
                     if switch_session and admin_service.is_super_admin(user):
                         switched_user = admin_service.get_switched_user(db, switch_session)
                         if switched_user:
@@ -153,7 +153,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                             }
                         }
             
-            # 缓存认证结果
+            # Cache authentication result
             if auth_context:
                 auth_cache.set(cache_key, auth_context)
             
@@ -162,22 +162,22 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         finally:
             db.close()
 
-# 创建FastAPI应用
+# Create FastAPI application
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动阶段
+    # Startup phase
     os.makedirs(settings.data_dir, exist_ok=True)
     os.makedirs(settings.log_dir, exist_ok=True)
 
-    # 初始化数据库（管理服务需要完整初始化）
+    # Initialize database (management service needs full initialization)
     await init_db(minimal=False)
 
-    # 启动数据同步服务
+    # Start data synchronization service
     await data_sync_service.start()
     from services.cache_cleaner import cache_cleaner
     await cache_cleaner.start()
     
-    # 根据配置决定是否启动日志导入数据库服务
+    # According to the configuration, decide whether to start the log import database service
     if settings.store_detection_results:
         from services.log_to_db_service import log_to_db_service
         await log_to_db_service.start()
@@ -192,7 +192,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        # 关闭阶段
+        # Shutdown phase
         await data_sync_service.stop()
         from services.cache_cleaner import cache_cleaner
         await cache_cleaner.stop()
@@ -204,19 +204,19 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=f"{settings.app_name} - Admin Service",
     version=settings.app_version,
-    description="象信AI安全护栏管理服务 - 管理平台API",
+    description="Xiangxin AI security guardrails management service - management platform API",
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
     lifespan=lifespan,
 )
 
-# 添加并发控制中间件（优先级最高，最后添加）
+# Add concurrent control middleware (highest priority, added last)
 app.add_middleware(ConcurrentLimitMiddleware, service_type="admin", max_concurrent=settings.admin_max_concurrent_requests)
 
-# 添加认证上下文中间件
+# Add authentication context middleware
 app.add_middleware(AuthContextMiddleware)
 
-# 配置CORS
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -226,12 +226,12 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# 设置日志
+# Set log
 logger = setup_logger()
 
 @app.get("/")
 async def root():
-    """根路径"""
+    """Root path"""
     return {
         "name": f"{settings.app_name} - Admin Service",
         "version": settings.app_version,
@@ -243,26 +243,26 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """健康检查"""
+    """Health check"""
     return {
         "status": "healthy", 
         "version": settings.app_version,
         "service": "admin"
     }
 
-# 用户认证函数（完整版）
+# User authentication function (full version)
 async def verify_user_auth(
     credentials: HTTPAuthorizationCredentials = Security(security),
     request: Request = None,
 ):
-    """验证用户认证（管理服务专用）"""
-    # 使用中间件解析的认证上下文
+    """Verify user authentication (management service专用)"""
+    # Use middleware to parse authentication context
     if request is not None:
         auth_ctx = getattr(request.state, 'auth_context', None)
         if auth_ctx:
             return auth_ctx
     
-    # 如果中间件未解析，进行完整验证
+    # If the middleware is not parsed, perform complete verification
     token = credentials.credentials
     from database.connection import get_admin_db_session
     from database.models import Tenant
@@ -271,7 +271,7 @@ async def verify_user_auth(
     
     db = get_admin_db_session()
     try:
-        # JWT验证
+        # JWT verification
         try:
             user_data = verify_token(token)
             raw_tenant_id = user_data.get('tenant_id') or user_data.get('sub')
@@ -293,7 +293,7 @@ async def verify_user_auth(
         except:
             pass
         
-        # API key验证
+        # API key verification
         user = get_user_by_api_key(db, token)
         if user:
             return {
@@ -311,7 +311,7 @@ async def verify_user_auth(
     finally:
         db.close()
 
-# 注册管理路由
+# Register management routes
 app.include_router(auth.router, prefix="/api/v1/auth")
 app.include_router(user.router, prefix="/api/v1/users")
 app.include_router(dashboard.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
@@ -326,11 +326,11 @@ app.include_router(proxy_management.router, prefix="/api/v1", dependencies=[Depe
 app.include_router(concurrent_stats.router, dependencies=[Depends(verify_user_auth)])
 app.include_router(data_security.router, dependencies=[Depends(verify_user_auth)])
 
-# 导入并注册封禁策略路由
+# Import and register ban policy routes
 from routers import ban_policy_api
 app.include_router(ban_policy_api.router, dependencies=[Depends(verify_user_auth)])
-# Media router: 图片上传/删除需要认证，但图片访问不需要认证
-# 先注册不需要认证的图片访问路由
+# Media router: image upload/delete needs authentication, but image access does not need authentication
+# First register image access routes that do not need authentication
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from pathlib import Path
@@ -339,24 +339,24 @@ public_media_router = APIRouter(tags=["Media"])
 
 @public_media_router.get("/media/image/{tenant_id}/{filename}")
 async def get_image_public(tenant_id: str, filename: str):
-    """获取图片文件（公开访问，不需要认证）"""
+    """Get image file (public access, no authentication)"""
     try:
         file_path = Path(settings.media_dir) / tenant_id / filename
         if not str(file_path).startswith(str(Path(settings.media_dir))):
-            raise HTTPException(status_code=403, detail="无权访问此文件")
+            raise HTTPException(status_code=403, detail="No access to this file")
         if not file_path.exists() or not file_path.is_file():
-            raise HTTPException(status_code=404, detail="文件不存在")
+            raise HTTPException(status_code=404, detail="File not found")
         return FileResponse(path=str(file_path), media_type="image/jpeg", filename=filename)
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Get image error: {e}")
-        raise HTTPException(status_code=500, detail=f"获取图片失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Get image failed: {str(e)}")
 
 app.include_router(public_media_router, prefix="/api/v1")
 app.include_router(media.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
 
-# 全局异常处理
+# Global exception handling
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     logger.error(f"Admin service exception: {exc}")

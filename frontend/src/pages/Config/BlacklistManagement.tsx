@@ -115,18 +115,18 @@ const BlacklistManagement: React.FC = () => {
 
   const columns = [
     {
-      title: t('config.blacklist.name'),
+      title: t('blacklist.name'),
       dataIndex: 'name',
       key: 'name',
     },
     {
-      title: t('config.blacklist.keywordCount'),
+      title: t('blacklist.keywordCount'),
       dataIndex: 'keywords',
       key: 'keywords',
       render: (keywords: string[]) => keywords?.length || 0,
     },
     {
-      title: t('config.blacklist.description'),
+      title: t('blacklist.description'),
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
@@ -189,7 +189,7 @@ const BlacklistManagement: React.FC = () => {
           icon={<PlusOutlined />}
           onClick={handleAdd}
         >
-          {t('config.blacklist.addBlacklist')}
+          {t('blacklist.addBlacklist')}
         </Button>
       </div>
 
@@ -201,7 +201,7 @@ const BlacklistManagement: React.FC = () => {
       />
 
       <Modal
-        title={editingItem ? t('config.blacklist.editBlacklist') : t('config.blacklist.addBlacklist')}
+        title={editingItem ? t('blacklist.editBlacklist') : t('blacklist.addBlacklist')}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         onOk={() => form.submit()}
@@ -214,31 +214,31 @@ const BlacklistManagement: React.FC = () => {
         >
           <Form.Item
             name="name"
-            label={t('config.blacklist.name')}
-            rules={[{ required: true, message: t('config.blacklist.nameRequired') }]}
+            label={t('blacklist.name')}
+            rules={[{ required: true, message: t('blacklist.nameRequired') }]}
           >
-            <Input placeholder={t('config.blacklist.namePlaceholder')} />
+            <Input placeholder={t('blacklist.namePlaceholder')} />
           </Form.Item>
 
           <Form.Item
             name="keywords"
-            label={t('config.blacklist.keywords')}
-            rules={[{ required: true, message: t('config.blacklist.keywordsRequired') }]}
-            extra={t('config.blacklist.keywordsExtra')}
+            label={t('blacklist.keywords')}
+            rules={[{ required: true, message: t('blacklist.keywordsRequired') }]}
+            extra={t('blacklist.keywordsExtra')}
           >
             <TextArea
               rows={6}
-              placeholder={t('config.blacklist.keywordsPlaceholder')}
+              placeholder={t('blacklist.keywordsPlaceholder')}
             />
           </Form.Item>
 
           <Form.Item
             name="description"
-            label={t('config.blacklist.description')}
+            label={t('blacklist.description')}
           >
             <TextArea
               rows={3}
-              placeholder={t('config.blacklist.descriptionPlaceholder')}
+              placeholder={t('blacklist.descriptionPlaceholder')}
             />
           </Form.Item>
 

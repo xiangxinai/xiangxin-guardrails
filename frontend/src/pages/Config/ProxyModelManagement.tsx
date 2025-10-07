@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Button, Modal, Form, Input, Switch, message, Space, Popconfirm, Descriptions, Tag, Alert, Typography } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, ApiOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { proxyModelsApi } from '../../services/api';
 import { authService } from '../../services/auth';
 import { useAuth } from '../../contexts/AuthContext';
@@ -32,6 +33,7 @@ interface ProxyModelFormData {
 }
 
 const ProxyModelManagement: React.FC = () => {
+  const { t } = useTranslation();
   const [models, setModels] = useState<ProxyModel[]>([]);
   const [loading, setLoading] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -60,11 +62,11 @@ const ProxyModelManagement: React.FC = () => {
       if (response.success) {
         setModels(response.data);
       } else {
-        message.error('获取模型配置失败');
+        message.error(t('proxy.fetchModelsFailed'));
       }
     } catch (error) {
-      console.error('获取模型配置失败:', error);
-      message.error('获取模型配置失败');
+      console.error('Failed to fetch models:', error);
+      message.error(t('proxy.fetchModelsFailed'));
     } finally {
       setLoading(false);
     }
@@ -90,12 +92,12 @@ const ProxyModelManagement: React.FC = () => {
       if (response.success) {
         return response.data;
       } else {
-        message.error('获取模型详情失败');
+        message.error(t('proxy.fetchModelDetailFailed'));
         return null;
       }
     } catch (error) {
-      console.error('获取模型详情失败:', error);
-      message.error('获取模型详情失败');
+      console.error('Failed to fetch model detail:', error);
+      message.error(t('proxy.fetchModelDetailFailed'));
       return null;
     }
   };
@@ -138,7 +140,7 @@ const ProxyModelManagement: React.FC = () => {
         setFormKey(prev => prev + 1);
         setIsModalVisible(true);
       } else {
-        message.error('获取模型详情失败，无法编辑');
+        message.error(t('proxy.fetchModelDetailFailedCannotEdit'));
       }
     } else {
       // 创建模式：直接设置默认值并显示弹窗
@@ -201,14 +203,14 @@ const ProxyModelManagement: React.FC = () => {
   // 自定义验证器：检查代理模型名称重复
   const validateConfigName = async (_: any, value: string) => {
     if (value && checkConfigNameDuplicate(value)) {
-      throw new Error('代理模型名称已存在，请使用其他名称');
+      throw new Error(t('proxy.duplicateConfigName'));
     }
   };
 
   // 自定义验证器：检查API Base URL格式
   const validateApiBaseUrl = async (_: any, value: string) => {
     if (value && !value.match(/^https?:\/\/.+/)) {
-      throw new Error('API Base URL必须以http://或https://开头');
+      throw new Error(t('proxy.invalidApiBaseUrl'));
     }
   };
 
@@ -247,26 +249,26 @@ const ProxyModelManagement: React.FC = () => {
       if (editingModel) {
         // 编辑现有配置
         await proxyModelsApi.update(editingModel.id, formData);
-        message.success('模型配置已更新');
+        message.success(t('proxy.modelConfigUpdated'));
       } else {
         // 创建新配置
         await proxyModelsApi.create(formData);
-        message.success('模型配置已创建');
+        message.success(t('proxy.modelConfigCreated'));
       }
 
       handleClose();
       fetchModels();
     } catch (error: any) {
-      console.error('保存失败:', error);
+      console.error('Save failed:', error);
       
       // 处理不同类型的错误
       if (error.response) {
         // 服务器返回的错误
-        const errorMessage = error.response.data?.message || error.response.data?.error || '保存失败';
-        if (error.response.status === 409 || errorMessage.includes('已存在') || errorMessage.includes('重复')) {
-          message.error('代理模型名称已存在，请使用其他名称');
+        const errorMessage = error.response.data?.message || error.response.data?.error || t('proxy.saveFailed');
+        if (error.response.status === 409 || errorMessage.includes('已存在') || errorMessage.includes('重复') || errorMessage.includes('exists') || errorMessage.includes('duplicate')) {
+          message.error(t('proxy.duplicateConfigName'));
         } else {
-          message.error(`保存失败：${errorMessage}`);
+          message.error(t('proxy.saveFailedWithMessage', { message: errorMessage }));
         }
       } else if (error.errorFields) {
         // 表单验证错误
@@ -274,11 +276,11 @@ const ProxyModelManagement: React.FC = () => {
         if (firstError && firstError.errors && firstError.errors.length > 0) {
           message.error(firstError.errors[0]);
         } else {
-          message.error('请检查表单输入信息');
+          message.error(t('proxy.checkFormInput'));
         }
       } else {
         // 其他错误
-        message.error('保存失败，请检查网络连接或稍后重试');
+        message.error(t('proxy.saveFailedNetworkError'));
       }
     }
   };
@@ -289,69 +291,69 @@ const ProxyModelManagement: React.FC = () => {
       const response = await proxyModelsApi.delete(id);
       
       if (response.success) {
-        message.success('模型配置已删除');
+        message.success(t('proxy.modelConfigDeleted'));
         fetchModels();
       } else {
-        const errorMessage = response.message || '删除失败';
+        const errorMessage = response.message || t('proxy.deleteFailed');
         message.error(errorMessage);
       }
     } catch (error: any) {
-      console.error('删除失败:', error);
+      console.error('Delete failed:', error);
       
       // 处理不同类型的错误
       if (error.response) {
-        const errorMessage = error.response.data?.error || error.response.data?.message || '删除失败';
+        const errorMessage = error.response.data?.error || error.response.data?.message || t('proxy.deleteFailed');
         if (error.response.status === 404) {
-          message.error('模型配置不存在或已被删除');
+          message.error(t('proxy.modelNotExistOrDeleted'));
         } else if (error.response.status === 403) {
-          message.error('无权限删除此模型配置');
+          message.error(t('proxy.noPermissionToDelete'));
         } else {
-          message.error(`删除失败：${errorMessage}`);
+          message.error(t('proxy.deleteFailedWithMessage', { message: errorMessage }));
         }
       } else if (error.request) {
-        message.error('网络错误，请检查连接');
+        message.error(t('proxy.networkError'));
       } else {
-        message.error('删除失败，请稍后重试');
+        message.error(t('proxy.deleteFailedRetry'));
       }
     }
   };
 
   const columns = [
     {
-      title: '代理模型名称',
+      title: t('proxy.proxyModelName'),
       dataIndex: 'config_name',
       key: 'config_name',
       render: (text: string, record: ProxyModel) => (
         <Space>
           <span style={{ fontWeight: 'bold' }}>{text}</span>
-          {!record.enabled && <Tag color="red">已禁用</Tag>}
+          {!record.enabled && <Tag color="red">{t('proxy.disabled')}</Tag>}
         </Space>
       ),
     },
     {
-      title: '上游API模型名称',
+      title: t('proxy.upstreamApiModelName'),
       dataIndex: 'model_name',
       key: 'model_name',
     },
     {
-      title: '安全配置',
+      title: t('proxy.securityConfig'),
       key: 'security',
       render: (_: any, record: ProxyModel) => (
         <Space>
-          {record.enable_reasoning_detection && <Tag color="purple">推理检测</Tag>}
-          {record.block_on_input_risk && <Tag color="red">输入阻断</Tag>}
-          {record.block_on_output_risk && <Tag color="orange">输出阻断</Tag>}
+          {record.enable_reasoning_detection && <Tag color="purple">{t('proxy.inferenceDetection')}</Tag>}
+          {record.block_on_input_risk && <Tag color="red">{t('proxy.inputBlocking')}</Tag>}
+          {record.block_on_output_risk && <Tag color="orange">{t('proxy.outputBlocking')}</Tag>}
         </Space>
       ),
     },
     {
-      title: '创建时间',
+      title: t('proxy.createTime'),
       dataIndex: 'created_at',
       key: 'created_at',
       render: (text: string) => new Date(text).toLocaleString('zh-CN'),
     },
     {
-      title: '操作',
+      title: t('proxy.operation'),
       key: 'action',
       render: (_: any, record: ProxyModel) => (
         <Space>
@@ -360,28 +362,28 @@ const ProxyModelManagement: React.FC = () => {
             icon={<EyeOutlined />} 
             onClick={() => showViewModal(record)}
           >
-            查看
+            {t('proxy.view')}
           </Button>
           <Button 
             type="link" 
             icon={<EditOutlined />} 
             onClick={() => showModal(record)}
           >
-            编辑
+            {t('proxy.edit')}
           </Button>
           <Popconfirm
-            title="确定要删除这个模型配置吗？"
-            description="删除后将无法恢复"
+            title={t('proxy.confirmDeleteModel')}
+            description={t('proxy.deleteCannotRecover')}
             onConfirm={() => handleDelete(record.id)}
-            okText="确定"
-            cancelText="取消"
+            okText={t('common.confirm')}
+            cancelText={t('common.cancel')}
           >
             <Button 
               type="link" 
               danger 
               icon={<DeleteOutlined />}
             >
-              删除
+              {t('proxy.delete')}
             </Button>
           </Popconfirm>
         </Space>
@@ -395,7 +397,7 @@ const ProxyModelManagement: React.FC = () => {
         title={
           <Space>
             <ApiOutlined />
-            安全网关配置
+            {t('proxy.securityGatewayConfig')}
           </Space>
         }
         extra={
@@ -404,7 +406,7 @@ const ProxyModelManagement: React.FC = () => {
             icon={<PlusOutlined />} 
             onClick={() => showModal()}
           >
-            添加模型
+            {t('proxy.addModel')}
           </Button>
         }
       >
@@ -416,25 +418,25 @@ const ProxyModelManagement: React.FC = () => {
           pagination={{
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 个模型配置`,
+            showTotal: (total) => t('proxy.modelConfigCount', { count: total }),
           }}
         />
       </Card>
 
       {/* 使用说明 */}
       <Card 
-        title="接入象信AI安全网关" 
+        title={t('proxy.accessXiangxinGateway')} 
         style={{ marginTop: 16 }}
       >
         <Alert
-          message="仅需修改三行代码即可接入官方提供的象信AI安全网关"
+          message={t('proxy.gatewayIntegrationDesc')}
           type="info"
           style={{ marginBottom: 16 }}
         />
         
         <Typography>
           <Paragraph>
-            <Text strong>Python OpenAI 客户端接入示例：</Text>
+            <Text strong>{t('proxy.pythonOpenaiExample')}</Text>
           </Paragraph>
           <Paragraph>
             <pre style={{ 
@@ -444,25 +446,25 @@ const ProxyModelManagement: React.FC = () => {
               overflow: 'auto'
             }}>
 {`client = OpenAI(
-    base_url="https://api.xiangxinai.cn/v1/gateway",  # 改为象信AI安全网关服务
-    api_key="sk-xxai-your-proxy-key" # 改为您的象信AI API Key
+    base_url="https://api.xiangxinai.cn/v1/gateway",  # Change to Xiangxin Official gateway url or use your local deployment url http://your-server:5002/v1
+    api_key="sk-xxai-your-proxy-key" # ${t('account.codeComments.changeToApiKey')}
 )
 completion = openai_client.chat.completions.create(
-    model = "your-proxy-model-name",  # 改为您配置的代理模型名称
+    model = "your-proxy-model-name",  # ${t('account.codeComments.changeToModelName')}
     messages=[{"role": "system", "content": "You're a helpful assistant."},
         {"role": "user", "content": "Tell me how to make a bomb."}]
-    # 其他参数与原使用方法一致
+    # Other parameters are the same as the original usage method
 )
 `}
             </pre>
           </Paragraph>
           
           <Paragraph>
-            <Text strong>私有化部署 Base URL 配置说明：</Text>
+            <Text strong>{t('proxy.privateDeploymentConfig')}</Text>
           </Paragraph>
           <ul>
-            <li><Text code>Docker部署：</Text> 使用 <Text code>http://proxy-service:5002/v1</Text></li>
-            <li><Text code>自定义部署：</Text> 使用 <Text code>http://your-server:5002/v1</Text></li>
+            <li><Text code>{t('proxy.dockerDeployment')}</Text></li>
+            <li><Text code>{t('proxy.customDeployment')}</Text></li>
           </ul>
           
         </Typography>
@@ -470,13 +472,13 @@ completion = openai_client.chat.completions.create(
 
       {/* 创建/编辑弹窗 */}
       <Modal
-        title={editingModel ? '编辑模型配置' : '添加模型配置'}
+        title={editingModel ? t('proxy.editModelConfig') : t('proxy.addModelConfig')}
         visible={isModalVisible}
         onOk={handleSave}
         onCancel={handleCancel}
         width={800}
-        okText="保存"
-        cancelText="取消"
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
       >
         <Form
           key={formKey}
@@ -486,26 +488,26 @@ completion = openai_client.chat.completions.create(
         >
           <Form.Item
             name="config_name"
-            label="代理模型名称"
+            label={t('proxy.proxyModelNameLabel')}
             rules={[
-              { required: true, message: '请输入代理模型名称' },
+              { required: true, message: t('proxy.proxyModelNameRequired') },
               { validator: validateConfigName }
             ]}
-            tooltip="用户在API调用中指定的模型名，建议使用 提供商-模型 格式"
+            tooltip={t('proxy.proxyModelNameTooltip')}
           >
-            <Input placeholder="如：aliyun-qwen-3, openai-gpt-4, claude-3-sonnet" />
+            <Input placeholder={t('proxy.proxyModelNamePlaceholder')} />
           </Form.Item>
 
 
           <Form.Item
             name="api_base_url"
-            label="上游API Base URL"
+            label={t('proxy.upstreamApiBaseUrlLabel')}
             rules={[
-              { required: true, message: '请输入上游API Base URL' },
+              { required: true, message: t('proxy.upstreamApiBaseUrlRequired') },
               { validator: validateApiBaseUrl }
             ]}
           >
-            <Input placeholder="如：https://api.openai.com/v1" autoComplete="url" />
+            <Input placeholder={t('proxy.upstreamApiBaseUrlPlaceholder')} autoComplete="url" />
           </Form.Item>
 
           {/* 隐藏的用户名字段，防止浏览器将API Key识别为密码 */}
@@ -520,12 +522,12 @@ completion = openai_client.chat.completions.create(
 
           <Form.Item
             name="api_key"
-            label="上游API Key"
-            rules={[{ required: !editingModel, message: '请输入上游API Key' }]}
-            tooltip={editingModel ? "出于安全考虑，编辑时不显示原API Key。如需更换，请输入新的API Key；留空则保持原有配置不变。" : "请输入上游API的访问密钥"}
+            label={t('proxy.upstreamApiKeyLabel')}
+            rules={[{ required: !editingModel, message: t('proxy.upstreamApiKeyRequired') }]}
+            tooltip={editingModel ? t('proxy.upstreamApiKeyTooltipEdit') : t('proxy.upstreamApiKeyTooltipAdd')}
           >
             <Input.Password 
-              placeholder={editingModel ? "留空保持原有API Key不变，或输入新的API Key" : "输入上游API Key"} 
+              placeholder={editingModel ? t('proxy.upstreamApiKeyPlaceholderEdit') : t('proxy.upstreamApiKeyPlaceholderAdd')} 
               autoComplete="new-password"
               data-lpignore="true"
               data-form-type="other"
@@ -535,14 +537,14 @@ completion = openai_client.chat.completions.create(
 
           <Form.Item
             name="model_name"
-            label="上游API模型名称"
-            rules={[{ required: true, message: '请输入上游API模型名称' }]}
-            tooltip="发送给上游模型API的实际模型名，必须与上游API支持的模型名一致"
+            label={t('proxy.upstreamModelNameLabel')}
+            rules={[{ required: true, message: t('proxy.upstreamModelNameRequired') }]}
+            tooltip={t('proxy.upstreamModelNameTooltip')}
           >
-            <Input placeholder="如：gpt-4-turbo-preview、claude-3-5-sonnet-20241022" />
+            <Input placeholder={t('proxy.upstreamModelNamePlaceholder')} />
           </Form.Item>
 
-          <Form.Item label="启用此配置">
+          <Form.Item label={t('proxy.enableConfigLabel')}>
             <Switch 
               checked={switchStates.enabled}
               onChange={(checked) => setSwitchStates(prev => ({ ...prev, enabled: checked }))}
@@ -550,33 +552,33 @@ completion = openai_client.chat.completions.create(
           </Form.Item>
 
           <div style={{ marginBottom: 16 }}>
-            <div style={{ marginBottom: 8, fontWeight: 500 }}>安全配置</div>
+            <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('proxy.securityConfigLabel')}</div>
             <div style={{ marginBottom: 8, color: '#666', fontSize: '14px' }}>
-              输入检测和输出检测始终开启，为您提供全面安全防护
+              {t('proxy.securityConfigDesc')}
             </div>
             <div style={{ marginBottom: 12 }}>
               <Switch 
                 checked={switchStates.enable_reasoning_detection}
                 onChange={(checked) => setSwitchStates(prev => ({ ...prev, enable_reasoning_detection: checked }))}
-              /> 启用推理检测（检测模型的推理过程内容）
+              /> {t('proxy.enableReasoningDetection')}
             </div>
             <div style={{ marginBottom: 12 }}>
               <Switch 
                 checked={switchStates.block_on_input_risk}
                 onChange={(checked) => setSwitchStates(prev => ({ ...prev, block_on_input_risk: checked }))}
-              /> 输入风险时阻断请求（默认只记录，不阻断）
+              /> {t('proxy.blockOnInputRisk')}
             </div>
             <div style={{ marginBottom: 12 }}>
               <Switch 
                 checked={switchStates.block_on_output_risk}
                 onChange={(checked) => setSwitchStates(prev => ({ ...prev, block_on_output_risk: checked }))}
-              /> 输出风险时阻断响应（默认只记录，不阻断）
+              /> {t('proxy.blockOnOutputRisk')}
             </div>
           </div>
 
           <Form.Item
-            label="流式检测间隔"
-            tooltip="流式输出时，每N个chunk检测一次，范围1-500，默认50"
+            label={t('proxy.streamDetectionIntervalLabel')}
+            tooltip={t('proxy.streamDetectionIntervalTooltip')}
           >
             <Input
               type="number"
@@ -584,7 +586,7 @@ completion = openai_client.chat.completions.create(
               max={500}
               value={switchStates.stream_chunk_size}
               onChange={(e) => setSwitchStates(prev => ({ ...prev, stream_chunk_size: parseInt(e.target.value) || 50 }))}
-              placeholder="输入检测间隔（默认50）"
+              placeholder={t('proxy.streamDetectionIntervalPlaceholder')}
             />
           </Form.Item>
 
@@ -593,36 +595,36 @@ completion = openai_client.chat.completions.create(
 
       {/* 查看弹窗 */}
       <Modal
-        title="查看模型配置"
+        title={t('proxy.viewModelConfig')}
         visible={isViewModalVisible}
         onCancel={handleCancel}
         footer={[
           <Button key="close" onClick={handleCancel}>
-            关闭
+            {t('proxy.close')}
           </Button>
         ]}
         width={600}
       >
         {viewingModel && (
           <Descriptions column={1} bordered>
-            <Descriptions.Item label="代理模型名称">{viewingModel.config_name}</Descriptions.Item>
-            <Descriptions.Item label="上游API模型名称">{viewingModel.model_name}</Descriptions.Item>
-            <Descriptions.Item label="状态">
+            <Descriptions.Item label={t('proxy.proxyModelName')}>{viewingModel.config_name}</Descriptions.Item>
+            <Descriptions.Item label={t('proxy.upstreamApiModelName')}>{viewingModel.model_name}</Descriptions.Item>
+            <Descriptions.Item label={t('proxy.status')}>
               <Space>
                 {viewingModel.enabled ? 
-                  <Tag color="green">已启用</Tag> : 
-                  <Tag color="red">已禁用</Tag>
+                  <Tag color="green">{t('proxy.enabled')}</Tag> : 
+                  <Tag color="red">{t('proxy.disabled')}</Tag>
                 }
               </Space>
             </Descriptions.Item>
-            <Descriptions.Item label="安全配置">
+            <Descriptions.Item label={t('proxy.securityConfig')}>
               <Space direction="vertical">
-                {viewingModel.enable_reasoning_detection && <Tag color="purple">推理检测</Tag>}
-                {viewingModel.block_on_input_risk && <Tag color="red">输入阻断</Tag>}
-                {viewingModel.block_on_output_risk && <Tag color="orange">输出阻断</Tag>}
+                {viewingModel.enable_reasoning_detection && <Tag color="purple">{t('proxy.inferenceDetection')}</Tag>}
+                {viewingModel.block_on_input_risk && <Tag color="red">{t('proxy.inputBlocking')}</Tag>}
+                {viewingModel.block_on_output_risk && <Tag color="orange">{t('proxy.outputBlocking')}</Tag>}
               </Space>
             </Descriptions.Item>
-            <Descriptions.Item label="创建时间">
+            <Descriptions.Item label={t('proxy.createTime')}>
               {new Date(viewingModel.created_at).toLocaleString('zh-CN')}
             </Descriptions.Item>
           </Descriptions>

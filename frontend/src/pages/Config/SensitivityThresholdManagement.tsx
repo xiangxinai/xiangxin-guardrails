@@ -19,6 +19,7 @@ import {
   EditOutlined,
   CheckOutlined
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { sensitivityThresholdApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -40,6 +41,7 @@ interface SensitivityLevel {
 }
 
 const SensitivityThresholdManagement: React.FC = () => {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<SensitivityThresholdConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -65,7 +67,7 @@ const SensitivityThresholdManagement: React.FC = () => {
       const data = await sensitivityThresholdApi.get();
       setConfig(data);
     } catch (error) {
-      message.error('加载敏感度阈值配置失败');
+      message.error(t('sensitivity.fetchFailed'));
       console.error('Failed to load sensitivity threshold config:', error);
     } finally {
       setLoading(false);
@@ -79,24 +81,24 @@ const SensitivityThresholdManagement: React.FC = () => {
     return [
       {
         key: 'high',
-        name: '高',
+        name: t('sensitivity.high'),
         threshold: config.high_sensitivity_threshold,
-        description: '检测最严格，稍有可疑就触发告警',
-        target: '特定敏感时期或敏感场景专用。最高覆盖率，可能有误报'
+        description: t('sensitivity.strictestDetection'),
+        target: t('sensitivity.highSensitivityTarget')
       },
       {
         key: 'medium',
-        name: '中',
+        name: t('sensitivity.medium'),
         threshold: config.medium_sensitivity_threshold,
-        description: '平衡检测，适度敏感',
-        target: '默认配置。平衡准确率与覆盖率'
+        description: t('sensitivity.balancedDetection'),
+        target: t('sensitivity.mediumSensitivityTarget')
       },
       {
         key: 'low',
-        name: '低',
+        name: t('sensitivity.low'),
         threshold: config.low_sensitivity_threshold,
-        description: '检测最宽松，只在非常确定时告警',
-        target: '自动化流水线。最高准确率，可能漏报'
+        description: t('sensitivity.loosestDetection'),
+        target: t('sensitivity.lowSensitivityTarget')
       }
     ];
   };
@@ -113,20 +115,20 @@ const SensitivityThresholdManagement: React.FC = () => {
     const sortedLevels = [...levels].sort((a, b) => b.threshold - a.threshold);
     // 阈值必须是0-1之间
     if (sortedLevels[0].threshold < 0 || sortedLevels[0].threshold > 1) {
-      message.error('敏感度阈值必须在0.0-1.0之间');
+      message.error(t('sensitivity.invalidThreshold'));
       return false;
     }
 
     // 检查是否从高到低排序
     if (sortedLevels[0].key !== 'low' || sortedLevels[1].key !== 'medium' || sortedLevels[2].key !== 'high') {
-      message.error('敏感度阈值必须按照低→中→高的顺序设置');
+      message.error(t('sensitivity.thresholdOrder'));
       return false;
     }
 
     // 检查是否有重叠
     for (let i = 0; i < sortedLevels.length - 1; i++) {
       if (sortedLevels[i].threshold <= sortedLevels[i + 1].threshold) {
-        message.error('敏感度阈值不能重叠或相等');
+        message.error(t('sensitivity.thresholdOrder'));
         return false;
       }
     }
@@ -151,9 +153,9 @@ const SensitivityThresholdManagement: React.FC = () => {
       await sensitivityThresholdApi.update(newConfig);
       setConfig(newConfig);
       setEditModalVisible(false);
-      message.success('敏感度阈值配置已更新');
+      message.success(t('sensitivity.saveSuccess'));
     } catch (error) {
-      message.error('更新敏感度阈值配置失败');
+      message.error(t('sensitivity.fetchFailed'));
       console.error('Failed to update sensitivity threshold config:', error);
     } finally {
       setSaving(false);
@@ -171,10 +173,10 @@ const SensitivityThresholdManagement: React.FC = () => {
       await sensitivityThresholdApi.update(newConfig);
       setConfig(newConfig);
 
-      const levelNames = { low: '低', medium: '中', high: '高' };
+      const levelNames = { low: t('sensitivity.low'), medium: t('sensitivity.medium'), high: t('sensitivity.high') };
       message.success(`当前敏感度等级已设置为 ${levelNames[value as keyof typeof levelNames]}敏感度`);
     } catch (error) {
-      message.error('更新当前敏感度等级失败');
+      message.error(t('sensitivity.fetchFailed'));
       console.error('Failed to update sensitivity trigger level:', error);
     } finally {
       setSaving(false);
@@ -184,27 +186,27 @@ const SensitivityThresholdManagement: React.FC = () => {
   // 表格列定义
   const columns = [
     {
-      title: '敏感度等级',
+      title: t('sensitivity.levelName'),
       dataIndex: 'name',
       key: 'name',
       render: (text: string) => {
-        const colors = { '高': '#f5222d', '中': '#fa8c16', '低': '#52c41a' };
-        return <Tag color={colors[text as keyof typeof colors]}>{text}敏感度</Tag>;
+        const colors = { [t('sensitivity.high')]: '#f5222d', [t('sensitivity.medium')]: '#fa8c16', [t('sensitivity.low')]: '#52c41a' };
+        return <Tag color={colors[text as keyof typeof colors]}>{text}</Tag>;
       }
     },
     {
-      title: '概率阈值',
+      title: t('sensitivity.threshold'),
       dataIndex: 'threshold',
       key: 'threshold',
       render: (value: number) => <Text code>{value.toFixed(2)}</Text>
     },
     {
-      title: '检测特性',
+      title: t('common.description'),
       dataIndex: 'description',
       key: 'description',
     },
     {
-      title: '使用场景',
+      title: t('sensitivity.targetScenario'),
       dataIndex: 'target',
       key: 'target',
     }
@@ -213,16 +215,16 @@ const SensitivityThresholdManagement: React.FC = () => {
   // 编辑模态框的表格列
   const editColumns = [
     {
-      title: '敏感度等级',
+      title: t('sensitivity.sensitivityLevel'),
       dataIndex: 'name',
       key: 'name',
       render: (text: string) => {
-        const colors = { '高': '#f5222d', '中': '#fa8c16', '低': '#52c41a' };
+        const colors = { [t('sensitivity.high')]: '#f5222d', [t('sensitivity.medium')]: '#fa8c16', [t('sensitivity.low')]: '#52c41a' };
         return <Tag color={colors[text as keyof typeof colors]}>{text}敏感度</Tag>;
       }
     },
     {
-      title: '概率阈值',
+      title: t('sensitivity.probabilityThreshold'),
       dataIndex: 'threshold',
       key: 'threshold',
       render: (value: number, _: SensitivityLevel, index: number) => (
@@ -254,7 +256,7 @@ const SensitivityThresholdManagement: React.FC = () => {
   }
 
   if (!config) {
-    return <div>加载配置失败</div>;
+    return <div>{t('sensitivity.fetchFailed')}</div>;
   }
 
   const sensitivityLevels = getSensitivityLevels();
@@ -266,23 +268,23 @@ const SensitivityThresholdManagement: React.FC = () => {
           <div>
             <Title level={4}>
               <InfoCircleOutlined style={{ marginRight: 8 }} />
-              敏感度阈值配置
+              {t('sensitivity.title')}
             </Title>
             <Paragraph type="secondary">
-              配置检测结果的敏感度阈值和当前敏感度等级。敏感度等级分为高、中、低三个级别。如果检测结果的置信概率大于等于当前敏感度等级阈值，则将触发风险检测。
+              {t('sensitivity.description')}
             </Paragraph>
           </div>
 
           {/* 当前配置表格 */}
           <Card
-            title="当前敏感度阈值配置"
+            title={t('sensitivity.currentSensitivityLevel')}
             extra={
               <Button
                 type="primary"
                 icon={<EditOutlined />}
                 onClick={handleEdit}
               >
-                编辑阈值
+                {t('sensitivity.editThresholds')}
               </Button>
             }
           >
@@ -296,20 +298,20 @@ const SensitivityThresholdManagement: React.FC = () => {
           </Card>
 
           {/* 当前敏感度等级配置 */}
-          <Card title="当前敏感度等级配置">
+          <Card title={t('sensitivity.currentSensitivityLevel')}>
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <Alert
-                message="配置说明"
+                message={t('sensitivity.configurationExplanation')}
                 description={
                   <Space direction="vertical" size="small">
                     <Text style={{ fontSize: '12px' }}>
-                      • <strong>选择"高敏感度"</strong>：检测分数≥{config.high_sensitivity_threshold}时触发告警，检测最严格，覆盖率最高
+                      • {t('sensitivity.highSensitivityDesc', { threshold: config.high_sensitivity_threshold })}
                     </Text>
                     <Text style={{ fontSize: '12px' }}>
-                      • <strong>选择"中敏感度"</strong>：检测分数≥{config.medium_sensitivity_threshold}时触发告警，平衡准确性和覆盖率
+                      • {t('sensitivity.mediumSensitivityDesc', { threshold: config.medium_sensitivity_threshold })}
                     </Text>
                     <Text style={{ fontSize: '12px' }}>
-                      • <strong>选择"低敏感度"</strong>：检测分数≥{config.low_sensitivity_threshold}时触发告警，准确率最高但可能漏报
+                      • {t('sensitivity.lowSensitivityDesc', { threshold: config.low_sensitivity_threshold })}
                     </Text>
                   </Space>
                 }
@@ -319,7 +321,7 @@ const SensitivityThresholdManagement: React.FC = () => {
               />
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Text strong>当前敏感度等级：</Text>
+                <Text strong>{t('sensitivity.currentLevel')}：</Text>
                 <Select
                   value={config?.sensitivity_trigger_level}
                   onChange={handleTriggerLevelChange}
@@ -330,8 +332,8 @@ const SensitivityThresholdManagement: React.FC = () => {
                       value: 'high',
                       label: (
                         <span>
-                          <Tag color="#f5222d" style={{ border: 'none', margin: 0 }}>高</Tag>
-                          <span style={{ marginLeft: '4px' }}>敏感度</span>
+                          <Tag color="#f5222d" style={{ border: 'none', margin: 0 }}>{t('sensitivity.high')}</Tag>
+                          <span style={{ marginLeft: '4px' }}>{t('sensitivity.sensitivityLabel')}</span>
                         </span>
                       )
                     },
@@ -339,8 +341,8 @@ const SensitivityThresholdManagement: React.FC = () => {
                       value: 'medium',
                       label: (
                         <span>
-                          <Tag color="#fa8c16" style={{ border: 'none', margin: 0 }}>中</Tag>
-                          <span style={{ marginLeft: '4px' }}>敏感度</span>
+                          <Tag color="#fa8c16" style={{ border: 'none', margin: 0 }}>{t('sensitivity.medium')}</Tag>
+                          <span style={{ marginLeft: '4px' }}>{t('sensitivity.sensitivityLabel')}</span>
                         </span>
                       )
                     },
@@ -348,8 +350,8 @@ const SensitivityThresholdManagement: React.FC = () => {
                       value: 'low',
                       label: (
                         <span>
-                          <Tag color="#52c41a" style={{ border: 'none', margin: 0 }}>低</Tag>
-                          <span style={{ marginLeft: '4px' }}>敏感度</span>
+                          <Tag color="#52c41a" style={{ border: 'none', margin: 0 }}>{t('sensitivity.low')}</Tag>
+                          <span style={{ marginLeft: '4px' }}>{t('sensitivity.sensitivityLabel')}</span>
                         </span>
                       )
                     }
@@ -359,10 +361,9 @@ const SensitivityThresholdManagement: React.FC = () => {
 
               <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#f9f9f9', borderRadius: '4px', border: '1px dashed #d9d9d9' }}>
                 <Text style={{ fontSize: '12px', color: '#666' }}>
-                  <strong>当前检测规则：</strong>
-                  {config?.sensitivity_trigger_level === 'high' && `检测结果的置信概率≥${config.high_sensitivity_threshold}时触发告警，检测最严格`}
-                  {config?.sensitivity_trigger_level === 'medium' && `检测结果的置信概率≥${config.medium_sensitivity_threshold}时触发告警，平衡检测`}
-                  {config?.sensitivity_trigger_level === 'low' && `检测结果的置信概率≥${config.low_sensitivity_threshold}时触发告警，检测最宽松`}
+                  {config?.sensitivity_trigger_level === 'high' && t('sensitivity.currentDetectionRule', { threshold: config.high_sensitivity_threshold })}
+                  {config?.sensitivity_trigger_level === 'medium' && t('sensitivity.currentDetectionRule', { threshold: config.medium_sensitivity_threshold })}
+                  {config?.sensitivity_trigger_level === 'low' && t('sensitivity.currentDetectionRule', { threshold: config.low_sensitivity_threshold })}
                 </Text>
               </div>
             </Space>
@@ -370,12 +371,12 @@ const SensitivityThresholdManagement: React.FC = () => {
 
           {/* 编辑模态框 */}
           <Modal
-            title="编辑敏感度阈值配置"
+            title={t('sensitivity.editThresholds')}
             open={editModalVisible}
             onCancel={() => setEditModalVisible(false)}
             footer={[
               <Button key="cancel" onClick={() => setEditModalVisible(false)}>
-                取消
+                {t('common.cancel')}
               </Button>,
               <Button
                 key="save"
@@ -384,21 +385,21 @@ const SensitivityThresholdManagement: React.FC = () => {
                 onClick={handleSave}
                 icon={<CheckOutlined />}
               >
-                保存
+                {t('common.save')}
               </Button>
             ]}
             width={800}
           >
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <Alert
-                message="编辑说明"
+                message={t('sensitivity.editInstructions')}
                 description={
                   <Space direction="vertical" size="small">
                     <Text style={{ fontSize: '12px' }}>
-                      • 概率阈值不能重叠，必须按照低→中→高的顺序设置
+                      • {t('sensitivity.editDescription1')}
                     </Text>
                     <Text style={{ fontSize: '12px' }}>
-                      • 高敏感度阈值必须小于中敏感度阈值，中敏感度阈值必须小于低敏感度阈值
+                      • {t('sensitivity.editDescription2')}
                     </Text>
                   </Space>
                 }

@@ -11,7 +11,7 @@ logger = setup_logger()
 router = APIRouter(tags=["Dashboard"])
 
 def get_current_tenant_id(request: Request) -> str:
-    """从请求上下文获取当前用户ID"""
+    """Get current user ID from request context"""
     auth_context = getattr(request.state, 'auth_context', None)
     if not auth_context:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -24,7 +24,7 @@ def get_current_tenant_id(request: Request) -> str:
 
 @router.get("/dashboard/stats", response_model=DashboardStats)
 async def get_dashboard_stats(request: Request, db: Session = Depends(get_db)):
-    """获取仪表板统计数据"""
+    """Get dashboard stats"""
     try:
         current_tenant_id = get_current_tenant_id(request)
         
@@ -41,11 +41,11 @@ async def get_dashboard_stats(request: Request, db: Session = Depends(get_db)):
 @router.get("/dashboard/category-distribution")
 async def get_category_distribution(
     request: Request,
-    start_date: Optional[str] = Query(None, description="开始日期 YYYY-MM-DD"),
-    end_date: Optional[str] = Query(None, description="结束日期 YYYY-MM-DD"),
+    start_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
     db: Session = Depends(get_db)
 ):
-    """获取风险类别分布统计"""
+    """Get risk category distribution stats"""
     try:
         current_tenant_id = get_current_tenant_id(request)
         

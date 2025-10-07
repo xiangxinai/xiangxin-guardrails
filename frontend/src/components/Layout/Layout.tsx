@@ -136,11 +136,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       children: [
         {
           key: '/admin/users',
-          label: 'Tenant Management',
+          label: t('nav.tenantManagement'),
         },
         {
           key: '/admin/rate-limits',
-          label: 'Rate Limiting',
+          label: t('nav.rateLimiting'),
         },
       ],
     }] : []),
@@ -186,7 +186,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       setUsers(response.users || []);
     } catch (error) {
       console.error('Failed to load users:', error);
-      message.error('加载用户列表失败');
+      message.error(t('layout.loadUsersError'));
     } finally {
       setLoading(false);
     }
@@ -196,24 +196,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     try {
       await switchToUser(userId);
       setSwitchModalVisible(false);
-      message.success('已切换到用户视角');
+      message.success(t('layout.switchSuccess'));
       // 刷新当前页面
       window.location.reload();
     } catch (error) {
       console.error('Switch user failed:', error);
-      message.error('切换用户失败');
+      message.error(t('layout.switchError'));
     }
   };
 
   const handleExitSwitch = async () => {
     try {
       await exitSwitch();
-      message.success('已退出用户视角');
+      message.success(t('layout.exitSwitchSuccess'));
       // 刷新当前页面
       window.location.reload();
     } catch (error) {
       console.error('Exit switch failed:', error);
-      message.error('退出用户视角失败');
+      message.error(t('layout.exitSwitchError'));
     }
   };
 
@@ -287,20 +287,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           }}
         >
           <div style={{ paddingLeft: 24, fontSize: 18, fontWeight: 'bold' }}>
-            象信AI安全护栏平台
+            {t('common.appName')}
           </div>
           <Space>
             {/* Language Switcher */}
             <LanguageSwitcher />
 
-            {/* User switch status display */}
+            {/* Tenant switch status display */}
             {switchInfo.is_switched && (
               <Tag color="orange" style={{ marginRight: 8 }}>
                 Switched to: {switchInfo.target_user?.email}
               </Tag>
             )}
 
-            {/* Super admin only: user switch button */}
+            {/* Super admin only: tenant switch button */}
             {user?.is_super_admin && !switchInfo.is_switched && (
               <Button
                 type="link"
@@ -308,11 +308,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 onClick={showSwitchModal}
                 size="small"
               >
-                Switch User
+                {t('layout.switchUser')}
               </Button>
             )}
 
-            {/* Exit user switch button */}
+            {/* Exit tenant switch button */}
             {switchInfo.is_switched && (
               <Button
                 type="link"
@@ -321,7 +321,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 size="small"
                 danger
               >
-                Exit Switch
+                {t('layout.exitSwitch')}
               </Button>
             )}
 
@@ -335,7 +335,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               border: '1px solid #d6e4ff'
             }}>
               {user?.email}
-              {user?.is_super_admin && <Tag color="red" style={{ marginLeft: 4 }}>Admin</Tag>}
+              {user?.is_super_admin && <Tag color="red" style={{ marginLeft: 4 }}>{t('layout.admin')}</Tag>}
             </span>
 
             <span style={{ color: '#666' }}>{systemVersion}</span>
@@ -384,24 +384,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Content>
       </AntLayout>
       
-      {/* 用户切换Modal */}
+      {/* 租户切换Modal */}
       <Modal
-        title="切换用户视角"
+        title={t('layout.switchTenant')}
         open={switchModalVisible}
         onCancel={() => setSwitchModalVisible(false)}
         footer={null}
         width={600}
       >
         <div style={{ marginBottom: 16 }}>
-          <p>选择要切换到的用户视角：</p>
+          <p>{t('layout.selectTenantPrompt')}</p>
         </div>
         <Select
           style={{ width: '100%' }}
-          placeholder="请选择用户"
+          placeholder={t('layout.selectTenantPlaceholder')}
           loading={loading}
           showSearch
           filterOption={(input, option) => {
-            // 从 users 数组中找到对应的用户进行过滤
+            // 从 users 数组中找到对应的租户进行过滤
             const user = users.find(u => u.id === option?.value);
             return user ? user.email.toLowerCase().includes(input.toLowerCase()) : false;
           }}
@@ -412,11 +412,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>{user.email}</span>
                 <div>
-                  {user.is_super_admin && <Tag color="red">管理员</Tag>}
+                  {user.is_super_admin && <Tag color="red">{t('layout.admin')}</Tag>}
                   {user.is_verified ? (
-                    <Tag color="green">已验证</Tag>
+                    <Tag color="green">{t('layout.verified')}</Tag>
                   ) : (
-                    <Tag color="orange">未验证</Tag>
+                    <Tag color="orange">{t('layout.unverified')}</Tag>
                   )}
                 </div>
               </div>
@@ -424,7 +424,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           }))}
         />
         <div style={{ marginTop: 16, color: '#666', fontSize: '12px' }}>
-          * 切换后您将以所选用户的身份查看数据和API调用记录
+          {t('layout.switchNote')}
         </div>
       </Modal>
     </AntLayout>

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-启动管理服务脚本 - 低并发管理平台API
-"""
+Start management service script - low concurrency management platform API
+""" 
 import uvicorn
 from config import settings
 

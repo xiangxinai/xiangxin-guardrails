@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Upload, Button, Image, Space, message, Card } from 'antd';
-import { PlusOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { Upload, Image, message } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import type { UploadFile } from 'antd/es/upload/interface';
 
 interface ImageUploadProps {
@@ -14,6 +15,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   maxCount = 5,
   maxSize = 10
 }) => {
+  const { t } = useTranslation();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [previewImage, setPreviewImage] = useState('');
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -34,27 +36,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     });
   };
 
-  // 获取图片格式
-  const getImageFormat = (mimeType: string): string => {
-    const formats: Record<string, string> = {
-      'image/jpeg': 'jpeg',
-      'image/jpg': 'jpeg',
-      'image/png': 'png',
-      'image/gif': 'gif',
-      'image/bmp': 'bmp',
-      'image/webp': 'webp',
-      'image/tiff': 'tiff'
-    };
-    return formats[mimeType] || 'jpeg';
-  };
-
   // 处理文件选择
   const handleChange = async (info: any) => {
     let newFileList = [...info.fileList];
 
     // 限制数量
     if (newFileList.length > maxCount) {
-      message.warning(`最多只能上传${maxCount}张图片`);
+      message.warning(t('imageUpload.maxCountWarning', { count: maxCount }));
       newFileList = newFileList.slice(0, maxCount);
     }
 
@@ -72,7 +60,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       onChange?.(base64List);
     } catch (error) {
       console.error('Failed to convert images to base64:', error);
-      message.error('图片处理失败');
+      message.error(t('imageUpload.processingFailed'));
     }
   };
 
@@ -81,14 +69,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     // 验证文件类型
     const isImage = file.type.startsWith('image/');
     if (!isImage) {
-      message.error('只能上传图片文件！');
+      message.error(t('imageUpload.onlyImageFiles'));
       return Upload.LIST_IGNORE;
     }
 
     // 验证文件大小
     const isLtMaxSize = file.size / 1024 / 1024 < maxSize;
     if (!isLtMaxSize) {
-      message.error(`图片大小不能超过${maxSize}MB！`);
+      message.error(t('imageUpload.fileSizeExceeded', { size: maxSize }));
       return Upload.LIST_IGNORE;
     }
 
@@ -126,7 +114,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   const uploadButton = (
     <div>
       <PlusOutlined />
-      <div style={{ marginTop: 8 }}>上传图片</div>
+      <div style={{ marginTop: 8 }}>{t('imageUpload.uploadImage')}</div>
     </div>
   );
 
@@ -155,7 +143,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         />
       )}
       <div style={{ marginTop: 8, color: '#666', fontSize: 12 }}>
-        支持格式：JPEG, PNG, GIF, BMP, WEBP, TIFF | 单张最大{maxSize}MB | 最多{maxCount}张
+        {t('imageUpload.supportedFormats')} | {t('imageUpload.maxSizePerImage', { size: maxSize })} | {t('imageUpload.maxImageCount', { count: maxCount })}
       </div>
     </>
   );

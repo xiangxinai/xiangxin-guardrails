@@ -1,5 +1,5 @@
 """
-代理模型配置管理API - 管理服务端点
+Proxy model configuration management API - management service endpoint
 """
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse
@@ -19,7 +19,7 @@ router = APIRouter()
 logger = setup_logger()
 
 def _get_or_create_encryption_key() -> bytes:
-    """获取或创建加密密钥"""
+    """Get or create encryption key"""
     from config import settings
     key_file = f"{settings.data_dir}/proxy_encryption.key"
     os.makedirs(os.path.dirname(key_file), exist_ok=True)
@@ -34,18 +34,18 @@ def _get_or_create_encryption_key() -> bytes:
         return key
 
 def _encrypt_api_key(api_key: str) -> str:
-    """加密API密钥"""
+    """Encrypt API key"""
     cipher_suite = Fernet(_get_or_create_encryption_key())
     return cipher_suite.encrypt(api_key.encode()).decode()
 
 def _decrypt_api_key(encrypted_api_key: str) -> str:
-    """解密API密钥"""
+    """Decrypt API key"""
     cipher_suite = Fernet(_get_or_create_encryption_key())
     return cipher_suite.decrypt(encrypted_api_key.encode()).decode()
 
 @router.get("/proxy/models")
 async def get_user_proxy_models(request: Request):
-    """获取用户的代理模型配置"""
+    """Get user proxy model configuration"""
     try:
         auth_ctx = getattr(request.state, 'auth_context', None)
         if not auth_ctx:
@@ -53,11 +53,11 @@ async def get_user_proxy_models(request: Request):
 
         tenant_id = auth_ctx['data']['tenant_id']
 
-        # 标准化user_id为UUID对象
+        # Standardize user_id to UUID object
         try:
             if isinstance(tenant_id, str):
                 tenant_id_uuid = uuid.UUID(tenant_id)
-            elif hasattr(tenant_id, 'hex'):  # 已经是UUID对象
+            elif hasattr(tenant_id, 'hex'):  # Already UUID object
                 tenant_id_uuid = tenant_id
             else:
                 tenant_id_uuid = uuid.UUID(str(tenant_id))
@@ -65,7 +65,7 @@ async def get_user_proxy_models(request: Request):
             logger.error(f"Invalid tenant_id format: {tenant_id}, error: {e}")
             raise HTTPException(status_code=400, detail="Invalid user ID format")
 
-        # 直接使用数据库查询
+        # Directly use database query
         db = get_admin_db_session()
         try:
             models = db.query(ProxyModelConfig).filter(
@@ -100,7 +100,7 @@ async def get_user_proxy_models(request: Request):
 
 @router.post("/proxy/models")
 async def create_proxy_model(request: Request):
-    """创建代理模型配置"""
+    """Create proxy model configuration"""
     try:
         auth_ctx = getattr(request.state, 'auth_context', None)
         if not auth_ctx:
@@ -108,11 +108,11 @@ async def create_proxy_model(request: Request):
 
         tenant_id = auth_ctx['data']['tenant_id']
 
-        # 标准化user_id为UUID对象
+        # Standardize user_id to UUID object
         try:
             if isinstance(tenant_id, str):
                 tenant_id_uuid = uuid.UUID(tenant_id)
-            elif hasattr(tenant_id, 'hex'):  # 已经是UUID对象
+            elif hasattr(tenant_id, 'hex'):  # Already UUID object
                 tenant_id_uuid = tenant_id
             else:
                 tenant_id_uuid = uuid.UUID(str(tenant_id))
@@ -122,22 +122,22 @@ async def create_proxy_model(request: Request):
 
         request_data = await request.json()
         
-        # 调试日志
-        logger.info(f"创建代理模型 - 接收到的原始数据: {request_data}")
+        # Debug log
+        logger.info(f"Create proxy model - received original data: {request_data}")
         for key in ['enabled', 'block_on_input_risk', 'block_on_output_risk', 'enable_reasoning_detection', 'stream_chunk_size']:
             if key in request_data:
-                logger.info(f"{key}: {request_data[key]} (类型: {type(request_data[key])})")
+                logger.info(f"{key}: {request_data[key]} (Type: {type(request_data[key])})")
         
-        # 验证必要字段
+        # Verify necessary fields
         required_fields = ['config_name', 'api_base_url', 'api_key', 'model_name']
         for field in required_fields:
             if field not in request_data or not request_data[field]:
                 raise ValueError(f"Missing required field: {field}")
         
-        # 直接使用数据库操作
+        # Directly use database operation
         db = get_admin_db_session()
         try:
-            # 检查配置名称是否已存在
+            # Check if configuration name already exists
             existing = db.query(ProxyModelConfig).filter(
                 ProxyModelConfig.tenant_id == tenant_id_uuid,
                 ProxyModelConfig.config_name == request_data['config_name']
@@ -145,10 +145,10 @@ async def create_proxy_model(request: Request):
             if existing:
                 raise ValueError(f"Model configuration '{request_data['config_name']}' already exists")
             
-            # 加密API密钥
+            # Encrypt API key
             encrypted_api_key = _encrypt_api_key(request_data['api_key'])
             
-            # 创建模型配置，使用极简"3+3"设计
+            # Create model configuration, using "3+3" design
             model_config = ProxyModelConfig(
                 id=uuid.uuid4(),
                 tenant_id=tenant_id_uuid,
@@ -187,7 +187,7 @@ async def create_proxy_model(request: Request):
 
 @router.get("/proxy/models/{model_id}")
 async def get_proxy_model_detail(model_id: str, request: Request):
-    """获取单个代理模型配置详情（用于编辑表单）"""
+    """Get single proxy model configuration detail (for edit form)"""
     try:
         auth_ctx = getattr(request.state, 'auth_context', None)
         if not auth_ctx:
@@ -195,11 +195,11 @@ async def get_proxy_model_detail(model_id: str, request: Request):
 
         tenant_id = auth_ctx['data']['tenant_id']
 
-        # 标准化user_id为UUID对象
+        # Standardize user_id to UUID object
         try:
             if isinstance(tenant_id, str):
                 tenant_id_uuid = uuid.UUID(tenant_id)
-            elif hasattr(tenant_id, 'hex'):  # 已经是UUID对象
+            elif hasattr(tenant_id, 'hex'):  # Already UUID object
                 tenant_id_uuid = tenant_id
             else:
                 tenant_id_uuid = uuid.UUID(str(tenant_id))
@@ -244,7 +244,7 @@ async def get_proxy_model_detail(model_id: str, request: Request):
 
 @router.put("/proxy/models/{model_id}")
 async def update_proxy_model(model_id: str, request: Request):
-    """更新代理模型配置"""
+    """Update proxy model configuration"""
     try:
         auth_ctx = getattr(request.state, 'auth_context', None)
         if not auth_ctx:
@@ -252,11 +252,11 @@ async def update_proxy_model(model_id: str, request: Request):
 
         tenant_id = auth_ctx['data']['tenant_id']
 
-        # 标准化user_id为UUID对象
+        # Standardize user_id to UUID object
         try:
             if isinstance(tenant_id, str):
                 tenant_id_uuid = uuid.UUID(tenant_id)
-            elif hasattr(tenant_id, 'hex'):  # 已经是UUID对象
+            elif hasattr(tenant_id, 'hex'):  # Already UUID object
                 tenant_id_uuid = tenant_id
             else:
                 tenant_id_uuid = uuid.UUID(str(tenant_id))
@@ -266,13 +266,13 @@ async def update_proxy_model(model_id: str, request: Request):
 
         request_data = await request.json()
         
-        # 调试日志
-        logger.info(f"更新代理模型 {model_id} - 接收到的原始数据: {request_data}")
+        # Debug log
+        logger.info(f"Update proxy model {model_id} - received original data: {request_data}")
         for key in ['enabled', 'block_on_input_risk', 'block_on_output_risk', 'enable_reasoning_detection', 'stream_chunk_size']:
             if key in request_data:
                 logger.info(f"{key}: {request_data[key]} (类型: {type(request_data[key])})")
         
-        # 直接使用数据库操作
+        # Directly use database operation
         db = get_admin_db_session()
         try:
             model_config = db.query(ProxyModelConfig).filter(
@@ -283,27 +283,27 @@ async def update_proxy_model(model_id: str, request: Request):
             if not model_config:
                 raise ValueError(f"Model configuration not found")
 
-            # 检查配置名称是否与其他配置重复
+            # Check if configuration name already exists
             if 'config_name' in request_data:
                 existing = db.query(ProxyModelConfig).filter(
                     ProxyModelConfig.tenant_id == tenant_id_uuid,
                     ProxyModelConfig.config_name == request_data['config_name'],
-                    ProxyModelConfig.id != model_id  # 排除当前配置
+                    ProxyModelConfig.id != model_id  # Exclude current configuration
                 ).first()
                 if existing:
                     raise ValueError(f"Model configuration '{request_data['config_name']}' already exists")
             
-            # 更新字段
+            # Update fields
             for field, value in request_data.items():
                 if field == 'api_key':
-                    if value:  # 如果提供了API key，则更新
+                    if value:  # If API key is provided, update
                         model_config.api_key_encrypted = _encrypt_api_key(value)
 
                 elif field in ['enabled', 'block_on_input_risk', 'block_on_output_risk', 'enable_reasoning_detection']:
-                    # 明确处理布尔字段，确保正确设置false值
+                    # Explicitly handle boolean fields, ensure correct false value setting
                     setattr(model_config, field, bool(value))
                 elif field == 'stream_chunk_size':
-                    # 处理整数字段
+                    # Handle integer fields
                     setattr(model_config, field, int(value))
                 elif hasattr(model_config, field):
                     setattr(model_config, field, value)
@@ -332,7 +332,7 @@ async def update_proxy_model(model_id: str, request: Request):
 
 @router.delete("/proxy/models/{model_id}")
 async def delete_proxy_model(model_id: str, request: Request):
-    """删除代理模型配置"""
+    """Delete proxy model configuration"""
     try:
         auth_ctx = getattr(request.state, 'auth_context', None)
         if not auth_ctx:
@@ -340,11 +340,11 @@ async def delete_proxy_model(model_id: str, request: Request):
 
         tenant_id = auth_ctx['data']['tenant_id']
 
-        # 标准化user_id为UUID对象
+        # Standardize user_id to UUID object
         try:
             if isinstance(tenant_id, str):
                 tenant_id_uuid = uuid.UUID(tenant_id)
-            elif hasattr(tenant_id, 'hex'):  # 已经是UUID对象
+            elif hasattr(tenant_id, 'hex'):  # Already UUID object
                 tenant_id_uuid = tenant_id
             else:
                 tenant_id_uuid = uuid.UUID(str(tenant_id))
@@ -352,7 +352,7 @@ async def delete_proxy_model(model_id: str, request: Request):
             logger.error(f"Invalid tenant_id format: {tenant_id}, error: {e}")
             raise HTTPException(status_code=400, detail="Invalid user ID format")
 
-        # 直接使用数据库操作
+        # Directly use database operation
         db = get_admin_db_session()
         try:
             model_config = db.query(ProxyModelConfig).filter(
@@ -363,17 +363,17 @@ async def delete_proxy_model(model_id: str, request: Request):
             if not model_config:
                 raise ValueError(f"Model configuration not found")
             
-            # 先删除关联的请求日志记录
+            # First delete associated request log records
             deleted_logs_count = db.query(ProxyRequestLog).filter(
                 ProxyRequestLog.proxy_config_id == model_id
             ).delete()
             
-            # 删除关联的在线测试模型选择记录
+            # Delete associated online test model selection records
             deleted_selections_count = db.query(OnlineTestModelSelection).filter(
                 OnlineTestModelSelection.proxy_model_id == model_id
             ).delete()
             
-            # 最后删除代理模型配置
+            # Finally delete proxy model configuration
             db.delete(model_config)
             db.commit()
             

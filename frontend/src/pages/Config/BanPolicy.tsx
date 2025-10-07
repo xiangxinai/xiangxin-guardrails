@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Switch, Select, InputNumber, Button, Table, message, Modal, Tag, Space, Descriptions } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { useTranslation } from 'react-i18next';
 import { configApi } from '../../services/api';
 
 const { Option } = Select;
@@ -37,6 +38,7 @@ interface RiskTrigger {
 }
 
 const BanPolicy: React.FC = () => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const [policy, setPolicy] = useState<BanPolicy | null>(null);
   const [bannedUsers, setBannedUsers] = useState<BannedUser[]>([]);
@@ -60,7 +62,7 @@ const BanPolicy: React.FC = () => {
         ban_duration_minutes: policyData.ban_duration_minutes,
       });
     } catch (error: any) {
-      message.error('获取封禁策略失败');
+      message.error(t('banPolicy.fetchFailed'));
     } finally {
       setLoading(false);
     }
@@ -73,7 +75,7 @@ const BanPolicy: React.FC = () => {
       const data = await configApi.banPolicy.getBannedUsers();
       setBannedUsers(data.users);
     } catch (error: any) {
-      message.error('获取封禁用户列表失败');
+      message.error(t('banPolicy.getBannedUsersFailed'));
     } finally {
       setTableLoading(false);
     }
@@ -90,10 +92,10 @@ const BanPolicy: React.FC = () => {
       const values = await form.validateFields();
       setLoading(true);
       await configApi.banPolicy.update(values);
-      message.success('保存成功');
+      message.success(t('banPolicy.saveSuccess'));
       fetchPolicy();
     } catch (error: any) {
-      message.error('保存失败');
+      message.error(t('banPolicy.saveFailed'));
     } finally {
       setLoading(false);
     }
@@ -139,10 +141,10 @@ const BanPolicy: React.FC = () => {
   const handleUnban = async (userId: string) => {
     try {
       await configApi.banPolicy.unbanUser(userId);
-      message.success('解封成功');
+      message.success(t('banPolicy.unbanSuccess'));
       fetchBannedUsers();
     } catch (error: any) {
-      message.error('解封失败');
+      message.error(t('banPolicy.unbanFailed'));
     }
   };
 
@@ -154,76 +156,83 @@ const BanPolicy: React.FC = () => {
       setUserHistory(data.history);
       setHistoryVisible(true);
     } catch (error: any) {
-      message.error('获取用户历史失败');
+      message.error(t('banPolicy.getUserHistoryFailed'));
     }
   };
 
   const columns: ColumnsType<BannedUser> = [
     {
-      title: '用户ID',
+      title: t('banPolicy.userIdColumn'),
       dataIndex: 'user_id',
       key: 'user_id',
       width: 200,
     },
     {
-      title: '封禁时间',
+      title: t('banPolicy.banTimeColumn'),
       dataIndex: 'banned_at',
       key: 'banned_at',
       width: 180,
       render: (text) => new Date(text).toLocaleString('zh-CN'),
     },
     {
-      title: '解封时间',
+      title: t('banPolicy.unbanTimeColumn'),
       dataIndex: 'ban_until',
       key: 'ban_until',
       width: 180,
       render: (text) => new Date(text).toLocaleString('zh-CN'),
     },
     {
-      title: '触发次数',
+      title: t('banPolicy.triggerTimesColumn'),
       dataIndex: 'trigger_count',
       key: 'trigger_count',
       width: 100,
     },
     {
-      title: '风险等级',
+      title: t('banPolicy.riskLevelColumn'),
       dataIndex: 'risk_level',
       key: 'risk_level',
       width: 100,
       render: (level) => {
         const color = level === '高风险' ? 'red' : level === '中风险' ? 'orange' : 'blue';
-        return <Tag color={color}>{level}</Tag>;
+        let displayLevel = level;
+        if (level === '高风险') displayLevel = t('banPolicy.highRisk');
+        else if (level === '中风险') displayLevel = t('banPolicy.mediumRisk');
+        else if (level === '低风险') displayLevel = t('banPolicy.lowRisk');
+        return <Tag color={color}>{displayLevel}</Tag>;
       },
     },
     {
-      title: '封禁原因',
+      title: t('banPolicy.banReasonColumn'),
       dataIndex: 'reason',
       key: 'reason',
       ellipsis: true,
     },
     {
-      title: '状态',
+      title: t('banPolicy.statusColumn'),
       dataIndex: 'status',
       key: 'status',
       width: 100,
       render: (status) => {
         const color = status === '封禁中' ? 'red' : 'green';
-        return <Tag color={color}>{status}</Tag>;
+        let displayStatus = status;
+        if (status === '封禁中') displayStatus = t('banPolicy.banned');
+        else if (status === '已解封') displayStatus = t('banPolicy.unbanned');
+        return <Tag color={color}>{displayStatus}</Tag>;
       },
     },
     {
-      title: '操作',
+      title: t('banPolicy.operationColumn'),
       key: 'action',
       width: 150,
       render: (_, record) => (
         <Space size="small">
           {record.status === '封禁中' && (
             <Button type="link" size="small" onClick={() => handleUnban(record.user_id)}>
-              解封
+              {t('banPolicy.unbanUser')}
             </Button>
           )}
           <Button type="link" size="small" onClick={() => viewUserHistory(record.user_id)}>
-            查看历史
+            {t('banPolicy.viewHistory')}
           </Button>
         </Space>
       ),
@@ -232,22 +241,26 @@ const BanPolicy: React.FC = () => {
 
   const historyColumns: ColumnsType<RiskTrigger> = [
     {
-      title: '触发时间',
+      title: t('banPolicy.triggeredAt'),
       dataIndex: 'triggered_at',
       key: 'triggered_at',
       render: (text) => new Date(text).toLocaleString('zh-CN'),
     },
     {
-      title: '风险等级',
+      title: t('banPolicy.riskLevelColumn'),
       dataIndex: 'risk_level',
       key: 'risk_level',
       render: (level) => {
         const color = level === '高风险' ? 'red' : level === '中风险' ? 'orange' : 'blue';
-        return <Tag color={color}>{level}</Tag>;
+        let displayLevel = level;
+        if (level === '高风险') displayLevel = t('banPolicy.highRisk');
+        else if (level === '中风险') displayLevel = t('banPolicy.mediumRisk');
+        else if (level === '低风险') displayLevel = t('banPolicy.lowRisk');
+        return <Tag color={color}>{displayLevel}</Tag>;
       },
     },
     {
-      title: '检测结果ID',
+      title: t('banPolicy.detectionResultId'),
       dataIndex: 'detection_result_id',
       key: 'detection_result_id',
       render: (id) => id || '-',
@@ -256,76 +269,76 @@ const BanPolicy: React.FC = () => {
 
   return (
     <div>
-      <Card title="封禁策略配置" style={{ marginBottom: 16 }}>
+      <Card title={t('banPolicy.title')} style={{ marginBottom: 16 }}>
         <Form form={form} layout="vertical">
           <Form.Item
             name="enabled"
-            label="启用封禁策略"
+            label={t('banPolicy.enableBanPolicyLabel')}
             valuePropName="checked"
-            extra="启用后，当用户在指定时间窗口内触发指定次数的风险时，将自动封禁"
+            extra={t('banPolicy.enableBanPolicyDesc')}
           >
             <Switch />
           </Form.Item>
 
           <Form.Item
             name="risk_level"
-            label="触发风险等级"
-            extra="达到此等级及以上的风险才会被记录"
+            label={t('banPolicy.triggerRiskLevelLabel')}
+            extra={t('banPolicy.triggerRiskLevelDesc')}
           >
             <Select>
-              <Option value="高风险">高风险</Option>
-              <Option value="中风险">中风险</Option>
-              <Option value="低风险">低风险</Option>
+              <Option value="高风险">{t('banPolicy.highRisk')}</Option>
+              <Option value="中风险">{t('banPolicy.mediumRisk')}</Option>
+              <Option value="低风险">{t('banPolicy.lowRisk')}</Option>
             </Select>
           </Form.Item>
 
           <Form.Item
             name="trigger_count"
-            label="触发次数阈值"
-            extra="在时间窗口内触发多少次后封禁（1-100次）"
+            label={t('banPolicy.triggerCountThresholdLabel')}
+            extra={t('banPolicy.triggerCountThresholdDesc')}
           >
             <InputNumber min={1} max={100} style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
             name="time_window_minutes"
-            label="时间窗口（分钟）"
-            extra="统计触发次数的时间范围（1-1440分钟，即1天）"
+            label={t('banPolicy.timeWindowLabel')}
+            extra={t('banPolicy.timeWindowMinutesDesc')}
           >
             <InputNumber min={1} max={1440} style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
             name="ban_duration_minutes"
-            label="封禁时长（分钟）"
-            extra="封禁持续时间（1-10080分钟，即7天）"
+            label={t('banPolicy.banDurationLabel')}
+            extra={t('banPolicy.banDurationMinutesDesc')}
           >
             <InputNumber min={1} max={10080} style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item>
             <Button type="primary" onClick={handleSave} loading={loading}>
-              保存配置
+              {t('banPolicy.saveConfig')}
             </Button>
           </Form.Item>
         </Form>
       </Card>
 
-      <Card title="预设模板" style={{ marginBottom: 16 }}>
+      <Card title={t('banPolicy.presetTemplates')} style={{ marginBottom: 16 }}>
         <Space size="middle">
-          <Button onClick={() => applyTemplate('strict')}>严格模式</Button>
-          <Button onClick={() => applyTemplate('standard')}>标准模式</Button>
-          <Button onClick={() => applyTemplate('relaxed')}>宽松模式</Button>
-          <Button onClick={() => applyTemplate('disabled')}>关闭</Button>
+          <Button onClick={() => applyTemplate('strict')}>{t('banPolicy.strictModeTemplate')}</Button>
+          <Button onClick={() => applyTemplate('standard')}>{t('banPolicy.standardModeTemplate')}</Button>
+          <Button onClick={() => applyTemplate('relaxed')}>{t('banPolicy.lenientModeTemplate')}</Button>
+          <Button onClick={() => applyTemplate('disabled')}>{t('common.disabled')}</Button>
         </Space>
         <Descriptions column={1} size="small" style={{ marginTop: 16 }}>
-          <Descriptions.Item label="严格模式">高风险 ≥ 3次/10分钟 → 封禁60分钟</Descriptions.Item>
-          <Descriptions.Item label="标准模式">高风险 ≥ 5次/30分钟 → 封禁30分钟</Descriptions.Item>
-          <Descriptions.Item label="宽松模式">高风险 ≥ 10次/60分钟 → 封禁15分钟</Descriptions.Item>
+          <Descriptions.Item label={t('banPolicy.strictModeTemplate')}>{t('banPolicy.strictModeTemplateDesc')}</Descriptions.Item>
+          <Descriptions.Item label={t('banPolicy.standardModeTemplate')}>{t('banPolicy.standardModeTemplateDesc')}</Descriptions.Item>
+          <Descriptions.Item label={t('banPolicy.lenientModeTemplate')}>{t('banPolicy.lenientModeTemplateDesc')}</Descriptions.Item>
         </Descriptions>
       </Card>
 
-      <Card title="封禁用户列表">
+      <Card title={t('banPolicy.bannedUsersList')}>
         <Table
           columns={columns}
           dataSource={bannedUsers}
@@ -334,13 +347,13 @@ const BanPolicy: React.FC = () => {
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 条记录`,
+            showTotal: (total) => t('banPolicy.totalRecords', { total }),
           }}
         />
       </Card>
 
       <Modal
-        title={`用户 ${selectedUserId} 的风险历史`}
+        title={`${t('banPolicy.userRiskHistoryTitle')} - ${selectedUserId}`}
         open={historyVisible}
         onCancel={() => setHistoryVisible(false)}
         footer={null}
@@ -352,7 +365,7 @@ const BanPolicy: React.FC = () => {
           rowKey="id"
           pagination={{
             pageSize: 10,
-            showTotal: (total) => `共 ${total} 条记录`,
+            showTotal: (total) => t('banPolicy.totalRecords', { total }),
           }}
         />
       </Modal>

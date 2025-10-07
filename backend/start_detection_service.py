@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-启动检测服务脚本 - 高并发检测API
+Start detection service script - high-concurrency detection API
 """
 import uvicorn
 from config import settings

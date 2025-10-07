@@ -108,18 +108,18 @@ const WhitelistManagement: React.FC = () => {
 
   const columns = [
     {
-      title: t('config.whitelist.name'),
+      title: t('whitelist.name'),
       dataIndex: 'name',
       key: 'name',
     },
     {
-      title: t('config.whitelist.keywordCount'),
+      title: t('whitelist.keywordCount'),
       dataIndex: 'keywords',
       key: 'keywords',
       render: (keywords: string[]) => keywords?.length || 0,
     },
     {
-      title: t('config.whitelist.description'),
+      title: t('whitelist.description'),
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
@@ -166,7 +166,7 @@ const WhitelistManagement: React.FC = () => {
             danger
             icon={<DeleteOutlined />}
             onClick={() => {
-              if (confirm(t('config.whitelist.confirmDeleteContent', { name: record.name }))) {
+              if (confirm(t('whitelist.confirmDeleteContent', { name: record.name }))) {
                 handleDelete(record);
               }
             }}
@@ -186,7 +186,7 @@ const WhitelistManagement: React.FC = () => {
           icon={<PlusOutlined />}
           onClick={handleAdd}
         >
-          {t('config.whitelist.addWhitelist')}
+          {t('whitelist.addWhitelist')}
         </Button>
       </div>
 
@@ -198,7 +198,7 @@ const WhitelistManagement: React.FC = () => {
       />
 
       <Modal
-        title={editingItem ? t('config.whitelist.editWhitelist') : t('config.whitelist.addWhitelist')}
+        title={editingItem ? t('whitelist.editWhitelist') : t('whitelist.addWhitelist')}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         onOk={() => form.submit()}
@@ -211,31 +211,31 @@ const WhitelistManagement: React.FC = () => {
         >
           <Form.Item
             name="name"
-            label={t('config.whitelist.name')}
-            rules={[{ required: true, message: t('config.whitelist.nameRequired') }]}
+            label={t('whitelist.name')}
+            rules={[{ required: true, message: t('whitelist.nameRequired') }]}
           >
-            <Input placeholder={t('config.whitelist.namePlaceholder')} />
+            <Input placeholder={t('whitelist.namePlaceholder')} />
           </Form.Item>
 
           <Form.Item
             name="keywords"
-            label={t('config.whitelist.keywords')}
-            rules={[{ required: true, message: t('config.whitelist.keywordsRequired') }]}
-            extra={t('config.whitelist.keywordsExtra')}
+            label={t('whitelist.keywords')}
+            rules={[{ required: true, message: t('whitelist.keywordsRequired') }]}
+            extra={t('whitelist.keywordsExtra')}
           >
             <TextArea
               rows={6}
-              placeholder={t('config.whitelist.keywordsPlaceholder')}
+              placeholder={t('whitelist.keywordsPlaceholder')}
             />
           </Form.Item>
 
           <Form.Item
             name="description"
-            label={t('config.whitelist.description')}
+            label={t('whitelist.description')}
           >
             <TextArea
               rows={3}
-              placeholder={t('config.whitelist.descriptionPlaceholder')}
+              placeholder={t('whitelist.descriptionPlaceholder')}
             />
           </Form.Item>
 

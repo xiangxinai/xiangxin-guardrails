@@ -1,5 +1,5 @@
 """
-并发统计API - 管理服务查看各服务并发统计信息
+Concurrent stats API - Admin view concurrent stats for all services
 """
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any
@@ -9,20 +9,20 @@ from middleware.concurrent_limit_middleware import ConcurrentLimitMiddleware
 from routers.auth import get_current_admin
 from utils.logger import setup_logger
 
-router = APIRouter(prefix="/api/v1/concurrent", tags=["并发统计"])
+router = APIRouter(prefix="/api/v1/concurrent", tags=["Concurrent stats"])
 logger = setup_logger()
 
-@router.get("/stats", summary="获取所有服务的并发统计")
+@router.get("/stats", summary="Get concurrent stats for all services")
 async def get_concurrent_stats(admin_user=Depends(get_current_admin)) -> Dict[str, Any]:
     """
-    获取所有服务的并发统计信息
-    只有管理员可以访问此API
+    Get concurrent stats for all services
+    Only admin can access this API
     """
     try:
-        # 获取所有服务的并发统计
+        # Get concurrent stats for all services
         all_stats = ConcurrentLimitMiddleware.get_all_stats()
         
-        # 构建返回数据
+        # Build return data
         result = {
             "services": {},
             "summary": {
@@ -43,12 +43,12 @@ async def get_concurrent_stats(admin_user=Depends(get_current_admin)) -> Dict[st
                 "rejection_rate": stats["rejected_requests"] / max(stats["total_requests"], 1) * 100
             }
             
-            # 累计统计
+            # Accumulate stats
             result["summary"]["total_current_requests"] += stats["current_requests"]
             result["summary"]["total_processed_requests"] += stats["total_requests"]
             result["summary"]["total_rejected_requests"] += stats["rejected_requests"]
         
-        # 计算总体成功率
+        # Calculate overall success rate
         total_requests = result["summary"]["total_processed_requests"]
         if total_requests > 0:
             result["summary"]["overall_success_rate"] = (total_requests - result["summary"]["total_rejected_requests"]) / total_requests * 100
@@ -61,16 +61,16 @@ async def get_concurrent_stats(admin_user=Depends(get_current_admin)) -> Dict[st
         logger.error(f"Failed to get concurrent stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to get concurrent statistics")
 
-@router.get("/stats/{service_type}", summary="获取指定服务的并发统计")
+@router.get("/stats/{service_type}", summary="Get concurrent stats for specified service")
 async def get_service_concurrent_stats(
     service_type: str, 
     admin_user=Depends(get_current_admin)
 ) -> Dict[str, Any]:
     """
-    获取指定服务的并发统计信息
+    Get concurrent stats for specified service
     
     Args:
-        service_type: 服务类型 (admin/detection/proxy)
+        service_type: Service type (admin/detection/proxy)
     """
     try:
         if service_type not in ["admin", "detection", "proxy"]:
@@ -81,7 +81,7 @@ async def get_service_concurrent_stats(
         if stats is None:
             raise HTTPException(status_code=404, detail=f"No statistics found for service: {service_type}")
         
-        # 构建详细统计信息
+        # Build detailed stats
         result = {
             "service_type": service_type,
             "current_requests": stats["current_requests"],
@@ -101,11 +101,11 @@ async def get_service_concurrent_stats(
         logger.error(f"Failed to get stats for {service_type}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get statistics for {service_type}")
 
-@router.post("/stats/reset", summary="重置并发统计")
+@router.post("/stats/reset", summary="Reset concurrent stats")
 async def reset_concurrent_stats(admin_user=Depends(get_current_admin)) -> Dict[str, str]:
     """
-    重置所有服务的并发统计信息
-    只有管理员可以执行此操作
+    Reset concurrent stats for all services
+    Only admin can execute this operation
     """
     try:
         ConcurrentLimitMiddleware.reset_stats()
@@ -121,16 +121,16 @@ async def reset_concurrent_stats(admin_user=Depends(get_current_admin)) -> Dict[
         logger.error(f"Failed to reset concurrent stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to reset concurrent statistics")
 
-@router.post("/stats/{service_type}/reset", summary="重置指定服务的并发统计")
+@router.post("/stats/{service_type}/reset", summary="Reset concurrent stats for specified service")
 async def reset_service_concurrent_stats(
     service_type: str,
     admin_user=Depends(get_current_admin)
 ) -> Dict[str, str]:
     """
-    重置指定服务的并发统计信息
+    Reset concurrent stats for specified service
     
     Args:
-        service_type: 服务类型 (admin/detection/proxy)
+        service_type: Service type (admin/detection/proxy)
     """
     try:
         if service_type not in ["admin", "detection", "proxy"]:
@@ -151,11 +151,11 @@ async def reset_service_concurrent_stats(
         logger.error(f"Failed to reset stats for {service_type}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to reset statistics for {service_type}")
 
-@router.get("/health", summary="并发健康检查")
+@router.get("/health", summary="Concurrent health check")
 async def concurrent_health_check() -> Dict[str, Any]:
     """
-    检查所有服务的并发健康状态
-    无需管理员权限，用于监控
+    Check concurrent health status for all services
+    No admin permission, used for monitoring
     """
     try:
         all_stats = ConcurrentLimitMiddleware.get_all_stats()

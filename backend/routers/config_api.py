@@ -24,24 +24,24 @@ router = APIRouter(tags=["Configuration"])
 security = HTTPBearer()
 
 def get_current_user_from_request(request: Request, db: Session) -> Tenant:
-    """从请求获取当前租户（更健壮，兼容admin token与无切换状态）。"""
-    # 1) 优先检查是否有租户切换会话
+    """Get current tenant from request (more robust, compatible with admin token and no switch state)"""
+    # 1) Check if there is a tenant switch session
     switch_token = request.headers.get('x-switch-session')
     if switch_token:
         switched_tenant = admin_service.get_switched_user(db, switch_token)
         if switched_tenant:
             return switched_tenant
 
-    # 2) 从认证上下文获取租户
+    # 2) Get tenant from auth context
     auth_context = getattr(request.state, 'auth_context', None)
     if not auth_context or 'data' not in auth_context:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     data = auth_context['data']
-    tenant_id_value = data.get('tenant_id') or data.get('tenant_id')  # 兼容旧字段
+    tenant_id_value = data.get('tenant_id') or data.get('tenant_id')  # Compatible with old fields
     tenant_email_value = data.get('email')
 
-    # 2a) 尝试通过 tenant_id 解析为 UUID 并查询
+    # 2a) Try to parse tenant_id as UUID and query
     if tenant_id_value:
         try:
             tenant_uuid = uuid.UUID(str(tenant_id_value))
@@ -49,16 +49,16 @@ def get_current_user_from_request(request: Request, db: Session) -> Tenant:
             if tenant:
                 return tenant
         except ValueError:
-            # 继续尝试通过邮箱查找
+            # Continue trying to find by email
             pass
 
-    # 2b) 退化为使用 email 查找（兼容 admin token 或回退上下文）
+    # 2b) Fall back to using email (compatible with admin token or fallback context)
     if tenant_email_value:
         tenant = db.query(Tenant).filter(Tenant.email == tenant_email_value).first()
         if tenant:
             return tenant
 
-    # 2c) 最后手段：解析 Authorization 头部的JWT，再次尝试
+    # 2c) Last resort: parse JWT in Authorization header, try again
     auth_header = request.headers.get('authorization') or request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Bearer '):
         token = auth_header.split(' ', 1)[1]
@@ -81,13 +81,13 @@ def get_current_user_from_request(request: Request, db: Session) -> Tenant:
         except Exception:
             pass
 
-    # 无法定位到有效租户
+    # Unable to locate valid tenant
     raise HTTPException(status_code=401, detail="User not found or invalid context")
 
 # 黑名单管理
 @router.get("/config/blacklist", response_model=List[BlacklistResponse])
 async def get_blacklist(request: Request, db: Session = Depends(get_db)):
-    """获取黑名单配置"""
+    """Get blacklist configuration"""
     try:
         current_user = get_current_user_from_request(request, db)
         blacklists = db.query(Blacklist).filter(Blacklist.tenant_id == current_user.id).order_by(Blacklist.created_at.desc()).all()
@@ -108,7 +108,7 @@ async def get_blacklist(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/config/blacklist", response_model=ApiResponse)
 async def create_blacklist(blacklist_request: BlacklistRequest, request: Request, db: Session = Depends(get_db)):
-    """创建黑名单"""
+    """Create blacklist"""
     try:
         current_user = get_current_user_from_request(request, db)
         blacklist = Blacklist(
@@ -121,7 +121,7 @@ async def create_blacklist(blacklist_request: BlacklistRequest, request: Request
         db.add(blacklist)
         db.commit()
         
-        # 立即失效关键词缓存
+        # Invalidate keyword cache immediately
         await keyword_cache.invalidate_cache()
         
         logger.info(f"Blacklist created: {blacklist_request.name} for user: {current_user.email}")
@@ -134,7 +134,7 @@ async def create_blacklist(blacklist_request: BlacklistRequest, request: Request
 
 @router.put("/config/blacklist/{blacklist_id}", response_model=ApiResponse)
 async def update_blacklist(blacklist_id: int, blacklist_request: BlacklistRequest, request: Request, db: Session = Depends(get_db)):
-    """更新黑名单"""
+    """Update blacklist"""
     try:
         current_user = get_current_user_from_request(request, db)
         blacklist = db.query(Blacklist).filter_by(id=blacklist_id, tenant_id=current_user.id).first()
@@ -148,7 +148,7 @@ async def update_blacklist(blacklist_id: int, blacklist_request: BlacklistReques
         
         db.commit()
         
-        # 立即失效关键词缓存
+        # Invalidate keyword cache immediately
         await keyword_cache.invalidate_cache()
         
         logger.info(f"Blacklist updated: {blacklist_id} for user: {current_user.email}")
@@ -171,7 +171,7 @@ async def delete_blacklist(blacklist_id: int, request: Request, db: Session = De
         db.delete(blacklist)
         db.commit()
         
-        # 立即失效关键词缓存
+        # Invalidate keyword cache immediately
         await keyword_cache.invalidate_cache()
         
         logger.info(f"Blacklist deleted: {blacklist_id} for user: {current_user.email}")
@@ -185,10 +185,10 @@ async def delete_blacklist(blacklist_id: int, request: Request, db: Session = De
 # 白名单管理
 @router.get("/config/whitelist", response_model=List[WhitelistResponse])
 async def get_whitelist(request: Request, db: Session = Depends(get_db)):
-    """获取白名单配置"""
+    """Get whitelist configuration"""
     try:
         current_user = get_current_user_from_request(request, db)
-        # 若列缺失（升级前数据库），尝试无 tenant_id 过滤，回退支持
+        # If column is missing (pre-upgrade database), try without tenant_id filter, fallback support
         try:
             whitelists = db.query(Whitelist).filter(Whitelist.tenant_id == current_user.id).order_by(Whitelist.created_at.desc()).all()
         except Exception as e:
@@ -211,7 +211,7 @@ async def get_whitelist(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/config/whitelist", response_model=ApiResponse)
 async def create_whitelist(whitelist_request: WhitelistRequest, request: Request, db: Session = Depends(get_db)):
-    """创建白名单"""
+    """Create whitelist"""
     try:
         current_user = get_current_user_from_request(request, db)
         whitelist = Whitelist(
@@ -224,7 +224,7 @@ async def create_whitelist(whitelist_request: WhitelistRequest, request: Request
         db.add(whitelist)
         db.commit()
         
-        # 立即失效关键词缓存
+        # Invalidate keyword cache immediately
         await keyword_cache.invalidate_cache()
         
         logger.info(f"Whitelist created: {whitelist_request.name} for user: {current_user.email}")
@@ -237,7 +237,7 @@ async def create_whitelist(whitelist_request: WhitelistRequest, request: Request
 
 @router.put("/config/whitelist/{whitelist_id}", response_model=ApiResponse)
 async def update_whitelist(whitelist_id: int, whitelist_request: WhitelistRequest, request: Request, db: Session = Depends(get_db)):
-    """更新白名单"""
+    """Update whitelist"""
     try:
         current_user = get_current_user_from_request(request, db)
         whitelist = db.query(Whitelist).filter_by(id=whitelist_id, tenant_id=current_user.id).first()
@@ -251,7 +251,7 @@ async def update_whitelist(whitelist_id: int, whitelist_request: WhitelistReques
         
         db.commit()
         
-        # 立即失效关键词缓存
+        # Invalidate keyword cache immediately
         await keyword_cache.invalidate_cache()
         
         logger.info(f"Whitelist updated: {whitelist_id} for user: {current_user.email}")
@@ -264,7 +264,7 @@ async def update_whitelist(whitelist_id: int, whitelist_request: WhitelistReques
 
 @router.delete("/config/whitelist/{whitelist_id}", response_model=ApiResponse)
 async def delete_whitelist(whitelist_id: int, request: Request, db: Session = Depends(get_db)):
-    """删除白名单"""
+    """Delete whitelist"""
     try:
         current_user = get_current_user_from_request(request, db)
         whitelist = db.query(Whitelist).filter_by(id=whitelist_id, tenant_id=current_user.id).first()
@@ -274,7 +274,7 @@ async def delete_whitelist(whitelist_id: int, request: Request, db: Session = De
         db.delete(whitelist)
         db.commit()
         
-        # 立即失效关键词缓存
+        # Invalidate keyword cache immediately
         await keyword_cache.invalidate_cache()
         
         logger.info(f"Whitelist deleted: {whitelist_id} for user: {current_user.email}")
@@ -285,13 +285,13 @@ async def delete_whitelist(whitelist_id: int, request: Request, db: Session = De
         logger.error(f"Delete whitelist error: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete whitelist")
 
-# 代答模板管理
+# Response template management
 @router.get("/config/responses", response_model=List[ResponseTemplateResponse])
 async def get_response_templates(request: Request, db: Session = Depends(get_db)):
-    """获取代答模板配置"""
+    """Get response template configuration"""
     try:
         current_user = get_current_user_from_request(request, db)
-        # 若列缺失（升级前数据库），尝试全局模板回退
+        # If column is missing (pre-upgrade database), try global template fallback
         try:
             templates = db.query(ResponseTemplate).filter(ResponseTemplate.tenant_id == current_user.id).order_by(ResponseTemplate.created_at.desc()).all()
         except Exception as e:
@@ -358,7 +358,7 @@ async def update_response_template(template_id: int, template_request: ResponseT
         
         db.commit()
         
-        # 立即失效模板缓存
+        # Invalidate template cache immediately
         await template_cache.invalidate_cache()
         await enhanced_template_service.invalidate_cache()
         
@@ -372,7 +372,7 @@ async def update_response_template(template_id: int, template_request: ResponseT
 
 @router.delete("/config/responses/{template_id}", response_model=ApiResponse)
 async def delete_response_template(template_id: int, request: Request, db: Session = Depends(get_db)):
-    """删除代答模板"""
+    """Delete response template"""
     try:
         current_user = get_current_user_from_request(request, db)
         template = db.query(ResponseTemplate).filter_by(id=template_id, tenant_id=current_user.id).first()
@@ -382,7 +382,7 @@ async def delete_response_template(template_id: int, request: Request, db: Sessi
         db.delete(template)
         db.commit()
         
-        # 立即失效模板缓存
+        # Invalidate template cache immediately
         await template_cache.invalidate_cache()
         await enhanced_template_service.invalidate_cache()
         
@@ -394,10 +394,10 @@ async def delete_response_template(template_id: int, request: Request, db: Sessi
         logger.error(f"Delete response template error: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete response template")
 
-# 系统信息
+# System info
 @router.get("/config/system-info")
 async def get_system_info():
-    """获取系统信息"""
+    """Get system info"""
     try:
         return {
             "support_email": settings.support_email if settings.support_email else None,
@@ -410,10 +410,10 @@ async def get_system_info():
         logger.error(f"Get system info error: {e}")
         raise HTTPException(status_code=500, detail="Failed to get system info")
 
-# 缓存管理
+# Cache management
 @router.get("/config/cache-info")
 async def get_cache_info():
-    """获取缓存信息"""
+    """Get cache info"""
     try:
         keyword_cache_info = keyword_cache.get_cache_info()
         template_cache_info = template_cache.get_cache_info()
@@ -434,7 +434,7 @@ async def get_cache_info():
 
 @router.post("/config/cache/refresh")
 async def refresh_cache():
-    """手动刷新缓存"""
+    """Manually refresh cache"""
     try:
         await keyword_cache.invalidate_cache()
         await template_cache.invalidate_cache()
@@ -449,18 +449,18 @@ async def refresh_cache():
         logger.error(f"Refresh cache error: {e}")
         raise HTTPException(status_code=500, detail="Failed to refresh cache")
 
-# 知识库管理
+# Knowledge base management
 @router.get("/config/knowledge-bases", response_model=List[KnowledgeBaseResponse])
 async def get_knowledge_bases(
     category: Optional[str] = None,
     request: Request = None,
     db: Session = Depends(get_db)
 ):
-    """获取知识库列表"""
+    """Get knowledge base list"""
     try:
         current_user = get_current_user_from_request(request, db)
 
-        # 查询用户自己的知识库 + 全局知识库
+        # Query user's own knowledge base + global knowledge base
         query = db.query(KnowledgeBase).filter(
             (KnowledgeBase.tenant_id == current_user.id) | (KnowledgeBase.is_global == True)
         )
@@ -501,31 +501,31 @@ async def create_knowledge_base(
     request: Request = None,
     db: Session = Depends(get_db)
 ):
-    """创建知识库"""
+    """Create knowledge base"""
     try:
         current_user = get_current_user_from_request(request, db)
 
-        # 调试信息
+        # Debug info
         logger.info(f"Create knowledge base - category: {category}, name: {name}, description: {description}, is_active: {is_active}, is_global: {is_global}")
         logger.info(f"File info - filename: {file.filename}, content_type: {file.content_type}")
 
-        # 验证参数
+        # Validate parameters
         if not category or not name:
             logger.error(f"Missing required parameters - category: {category}, name: {name}")
             raise HTTPException(status_code=400, detail="Category and name are required")
 
-        # 检查全局权限（仅管理员可设置全局知识库）
+        # Check global permission (only admin can set global knowledge base)
         if is_global and not current_user.is_super_admin:
             raise HTTPException(status_code=403, detail="Only administrators can create global knowledge bases")
 
         if category not in ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12']:
             raise HTTPException(status_code=400, detail="Invalid category")
 
-        # 验证文件类型（不再严格依赖文件扩展名，改为依赖内容验证）
+        # Validate file type (no longer strictly depend on file extension, depend on content validation)
         # if not file.filename.endswith('.jsonl'):
         #     raise HTTPException(status_code=400, detail="File must be a JSONL file")
 
-        # 检查是否已存在同名知识库
+        # Check if there is already a knowledge base with the same name
         existing = db.query(KnowledgeBase).filter(
             KnowledgeBase.tenant_id == current_user.id,
             KnowledgeBase.category == category,
@@ -535,38 +535,38 @@ async def create_knowledge_base(
         if existing:
             raise HTTPException(status_code=400, detail="Knowledge base with this name already exists for this category")
 
-        # 读取文件内容
+        # Read file content
         file_content = await file.read()
 
-        # 解析JSONL文件
+        # Parse JSONL file
         qa_pairs = knowledge_base_service.parse_jsonl_file(file_content)
 
-        # 创建数据库记录
+        # Create database record
         knowledge_base = KnowledgeBase(
             tenant_id=current_user.id,
             category=category,
             name=name,
             description=description,
-            file_path="",  # 将在下面设置
+            file_path="",  # Will be set below
             total_qa_pairs=len(qa_pairs),
             is_active=is_active,
             is_global=is_global
         )
 
         db.add(knowledge_base)
-        db.flush()  # 获取 ID
+        db.flush()  # Get ID
 
-        # 保存原始文件
+        # Save original file
         file_path = knowledge_base_service.save_original_file(file_content, knowledge_base.id, file.filename)
         knowledge_base.file_path = file_path
 
-        # 创建向量索引
+        # Create vector index
         vector_file_path = knowledge_base_service.create_vector_index(qa_pairs, knowledge_base.id)
         knowledge_base.vector_file_path = vector_file_path
 
         db.commit()
 
-        # 立即失效增强模板缓存
+        # Invalidate enhanced template cache immediately
         await enhanced_template_service.invalidate_cache()
 
         logger.info(f"Knowledge base created: {name} for category {category}, user: {current_user.email}")
@@ -586,11 +586,11 @@ async def update_knowledge_base(
     request: Request = None,
     db: Session = Depends(get_db)
 ):
-    """更新知识库（仅基本信息，不包括文件）"""
+    """Update knowledge base (only basic information, not including file)"""
     try:
         current_user = get_current_user_from_request(request, db)
 
-        # 查找知识库（用户自己的或者全局的）
+        # Find knowledge base (user's own or global)
         knowledge_base = db.query(KnowledgeBase).filter(
             KnowledgeBase.id == kb_id
         ).first()
@@ -598,15 +598,15 @@ async def update_knowledge_base(
         if not knowledge_base:
             raise HTTPException(status_code=404, detail="Knowledge base not found")
 
-        # 权限检查：只能编辑自己的知识库，或者管理员可以编辑全局知识库
+        # Permission check: only edit user's own knowledge base, or admin can edit global knowledge base
         if knowledge_base.tenant_id != current_user.id and not (current_user.is_super_admin and knowledge_base.is_global):
             raise HTTPException(status_code=403, detail="Permission denied")
 
-        # 检查全局权限（仅管理员可设置全局知识库）
+        # Check global permission (only admin can set global knowledge base)
         if kb_request.is_global and not current_user.is_super_admin:
             raise HTTPException(status_code=403, detail="Only administrators can set knowledge bases as global")
 
-        # 检查是否与其他知识库重名
+        # Check if there is another knowledge base with the same name
         existing = db.query(KnowledgeBase).filter(
             KnowledgeBase.tenant_id == current_user.id,
             KnowledgeBase.category == kb_request.category,
@@ -625,7 +625,7 @@ async def update_knowledge_base(
 
         db.commit()
 
-        # 立即失效增强模板缓存
+        # Invalidate enhanced template cache immediately
         await enhanced_template_service.invalidate_cache()
 
         logger.info(f"Knowledge base updated: {kb_id} for user: {current_user.email}")
@@ -644,7 +644,7 @@ async def delete_knowledge_base(
     request: Request = None,
     db: Session = Depends(get_db)
 ):
-    """删除知识库"""
+    """Delete knowledge base"""
     try:
         current_user = get_current_user_from_request(request, db)
 
@@ -656,14 +656,14 @@ async def delete_knowledge_base(
         if not knowledge_base:
             raise HTTPException(status_code=404, detail="Knowledge base not found")
 
-        # 删除相关文件
+        # Delete related files
         knowledge_base_service.delete_knowledge_base_files(kb_id)
 
-        # 删除数据库记录
+        # Delete database record
         db.delete(knowledge_base)
         db.commit()
 
-        # 立即失效增强模板缓存
+        # Invalidate enhanced template cache immediately
         await enhanced_template_service.invalidate_cache()
 
         logger.info(f"Knowledge base deleted: {kb_id} for user: {current_user.email}")
@@ -683,7 +683,7 @@ async def replace_knowledge_base_file(
     request: Request = None,
     db: Session = Depends(get_db)
 ):
-    """替换知识库文件"""
+    """Replace knowledge base file"""
     try:
         current_user = get_current_user_from_request(request, db)
 
@@ -695,33 +695,33 @@ async def replace_knowledge_base_file(
         if not knowledge_base:
             raise HTTPException(status_code=404, detail="Knowledge base not found")
 
-        # 验证文件类型（不再严格依赖文件扩展名，改为依赖内容验证）
+        # Validate file type (no longer strictly depend on file extension, depend on content validation)
         # if not file.filename.endswith('.jsonl'):
         #     raise HTTPException(status_code=400, detail="File must be a JSONL file")
 
-        # 读取文件内容
+        # Read file content
         file_content = await file.read()
 
-        # 解析JSONL文件
+        # Parse JSONL file
         qa_pairs = knowledge_base_service.parse_jsonl_file(file_content)
 
-        # 删除旧文件
+        # Delete old file
         knowledge_base_service.delete_knowledge_base_files(kb_id)
 
-        # 保存新的原始文件
+        # Save new original file
         file_path = knowledge_base_service.save_original_file(file_content, kb_id, file.filename)
 
-        # 创建新的向量索引
+        # Create new vector index
         vector_file_path = knowledge_base_service.create_vector_index(qa_pairs, kb_id)
 
-        # 更新数据库记录
+        # Update database record
         knowledge_base.file_path = file_path
         knowledge_base.vector_file_path = vector_file_path
         knowledge_base.total_qa_pairs = len(qa_pairs)
 
         db.commit()
 
-        # 立即失效增强模板缓存
+        # Invalidate enhanced template cache immediately
         await enhanced_template_service.invalidate_cache()
 
         logger.info(f"Knowledge base file replaced: {kb_id} for user: {current_user.email}")
@@ -740,7 +740,7 @@ async def get_knowledge_base_info(
     request: Request = None,
     db: Session = Depends(get_db)
 ):
-    """获取知识库文件信息"""
+    """Get knowledge base file info"""
     try:
         current_user = get_current_user_from_request(request, db)
 
@@ -770,11 +770,11 @@ async def search_similar_questions(
     request: Request = None,
     db: Session = Depends(get_db)
 ):
-    """搜索相似问题"""
+    """Search similar questions"""
     try:
         current_user = get_current_user_from_request(request, db)
 
-        # 查找知识库（用户自己的或者全局的）
+        # Find knowledge base (user's own or global)
         knowledge_base = db.query(KnowledgeBase).filter(
             KnowledgeBase.id == kb_id,
             ((KnowledgeBase.tenant_id == current_user.id) | (KnowledgeBase.is_global == True)),
@@ -803,14 +803,14 @@ async def get_knowledge_bases_by_category(
     request: Request = None,
     db: Session = Depends(get_db)
 ):
-    """获取指定类别的知识库列表"""
+    """Get knowledge base list by category"""
     try:
         current_user = get_current_user_from_request(request, db)
 
         if category not in ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12']:
             raise HTTPException(status_code=400, detail="Invalid category")
 
-        # 查询用户自己的知识库 + 全局知识库
+        # Query user's own knowledge base + global knowledge base
         knowledge_bases = db.query(KnowledgeBase).filter(
             ((KnowledgeBase.tenant_id == current_user.id) | (KnowledgeBase.is_global == True)),
             KnowledgeBase.category == category,

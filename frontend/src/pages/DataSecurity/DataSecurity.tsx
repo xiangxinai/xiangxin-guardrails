@@ -1,11 +1,13 @@
 import React from 'react';
 import { Card, Alert, Typography, Space, Tag, Collapse } from 'antd';
 import { SafetyOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import EntityTypeManagement from './EntityTypeManagement';
 
 const { Paragraph, Text } = Typography;
 
 const DataSecurity: React.FC = () => {
+  const { t } = useTranslation();
 
   return (
     <div>
@@ -13,7 +15,7 @@ const DataSecurity: React.FC = () => {
         title={
           <Space>
             <SafetyOutlined />
-            <span>数据防泄漏</span>
+            <span>{t('dataSecurity.dataLeakPrevention')}</span>
           </Space>
         }
         bordered={false}
@@ -22,7 +24,7 @@ const DataSecurity: React.FC = () => {
           message={
             <Space>
               <InfoCircleOutlined />
-              <Text>通过<Tag color="blue">正则表达式</Tag>识别并脱敏敏感信息，防止个人/企业敏感数据在使用大模型时的泄露风险。</Text>
+              <Text>{t('dataSecurity.dataLeakPreventionDesc')}</Text>
             </Space>
           }
           type="info"
@@ -36,38 +38,38 @@ const DataSecurity: React.FC = () => {
           items={[
             {
               key: '1',
-              label: <Text strong style={{ fontSize: 14 }}>💡 功能说明与使用指南</Text>,
+              label: <Text strong style={{ fontSize: 14 }}>💡 {t('dataSecurity.functionalityGuide')}</Text>,
               children: (
                 <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                   <div>
-                    <Text strong style={{ fontSize: 13 }}>📥 输入数据防泄漏</Text>
+                    <Text strong style={{ fontSize: 13 }}>📥 {t('dataSecurity.inputDataPrevention')}</Text>
                     <Paragraph style={{ marginTop: 4, marginBottom: 8, fontSize: 13 }}>
-                      防止用户提供的敏感数据泄漏给大模型
+                      {t('dataSecurity.inputDataPreventionDesc')}
                     </Paragraph>
                     <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12 }}>
-                      <li>企业内部部署：保护企业内部数据不泄露给外部大模型</li>
-                      <li>公共服务：保护用户敏感数据不泄露给服务提供方</li>
+                      <li>{t('dataSecurity.enterpriseDeployment')}</li>
+                      <li>{t('dataSecurity.publicService')}</li>
                     </ul>
                   </div>
 
                   <div>
-                    <Text strong style={{ fontSize: 13 }}>📤 输出数据防泄漏</Text>
+                    <Text strong style={{ fontSize: 13 }}>📤 {t('dataSecurity.outputDataPrevention')}</Text>
                     <Paragraph style={{ marginTop: 4, marginBottom: 8, fontSize: 13 }}>
-                      防止模型输出泄漏敏感数据给用户
+                      {t('dataSecurity.outputDataPreventionDesc')}
                     </Paragraph>
                     <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12 }}>
-                      <li>企业内部部署：防止企业数据泄露给内部用户（越权访问等）</li>
-                      <li>公共服务：防止服务方敏感数据泄露给外部用户</li>
+                      <li>{t('dataSecurity.enterpriseInternal')}</li>
+                      <li>{t('dataSecurity.publicServiceOutput')}</li>
                     </ul>
                   </div>
 
                   <div>
-                    <Text strong style={{ fontSize: 13 }}>📋 使用步骤</Text>
+                    <Text strong style={{ fontSize: 13 }}>📋 {t('sensitivity.usageSteps')}</Text>
                     <ol style={{ marginTop: 4, marginBottom: 0, paddingLeft: 20, fontSize: 12 }}>
-                      <li><Text strong>配置实体类型</Text>：定义需要识别的敏感数据类型（如身份证、手机号等）</li>
-                      <li><Text strong>设置识别规则</Text>：使用正则表达式定义识别模式</li>
-                      <li><Text strong>选择脱敏方法</Text>：选择合适的脱敏方式（替换、掩码、加密等）</li>
-                      <li><Text strong>配置检测范围</Text>：选择输入/输出检测</li>
+                      <li>{t('sensitivity.configEntityTypes')}</li>
+                      <li>{t('sensitivity.setRecognitionRules')}</li>
+                      <li>{t('sensitivity.selectDesensitizationMethod')}</li>
+                      <li>{t('sensitivity.configDetectionScope')}</li>
                     </ol>
                   </div>
                 </Space>

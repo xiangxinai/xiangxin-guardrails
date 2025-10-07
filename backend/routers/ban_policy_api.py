@@ -1,5 +1,5 @@
 """
-封禁策略 API 路由
+Ban policy API routes
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -8,7 +8,7 @@ from services.ban_policy_service import BanPolicyService
 import logging
 
 def get_current_tenant_id(request: Request) -> str:
-    """从请求上下文获取当前租户ID"""
+    """Get current tenant ID from request context"""
     auth_context = getattr(request.state, 'auth_context', None)
     if not auth_context:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -25,27 +25,27 @@ router = APIRouter(prefix="/api/v1/ban-policy", tags=["ban-policy"])
 
 
 class BanPolicyUpdate(BaseModel):
-    """封禁策略更新模型"""
-    enabled: bool = Field(False, description="是否启用封禁策略")
-    risk_level: str = Field("高风险", description="触发封禁的最低风险等级", pattern="^(高风险|中风险|低风险)$")
-    trigger_count: int = Field(3, ge=1, le=100, description="触发次数阈值")
-    time_window_minutes: int = Field(10, ge=1, le=1440, description="时间窗口（分钟）")
-    ban_duration_minutes: int = Field(60, ge=1, le=10080, description="封禁时长（分钟）")
+    """Ban policy update model"""
+    enabled: bool = Field(False, description="Whether to enable ban policy")
+    risk_level: str = Field("High risk", description="Minimum risk level to trigger ban", pattern="^(High risk|Medium risk|Low risk)$")
+    trigger_count: int = Field(3, ge=1, le=100, description="Trigger count threshold")
+    time_window_minutes: int = Field(10, ge=1, le=1440, description="Time window (minutes)")
+    ban_duration_minutes: int = Field(60, ge=1, le=10080, description="Ban duration (minutes)")
 
 
 class UnbanUserRequest(BaseModel):
-    """解封用户请求模型"""
-    user_id: str = Field(..., description="要解封的用户ID")
+    """Unban user request model"""
+    user_id: str = Field(..., description="User ID to unban")
 
 
 @router.get("")
 async def get_ban_policy(tenant_id: str = Depends(get_current_tenant_id)):
-    """获取当前租户的封禁策略配置"""
+    """Get current tenant's ban policy configuration"""
     try:
         policy = await BanPolicyService.get_ban_policy(tenant_id)
 
         if not policy:
-            # 如果没有策略，返回默认值
+            # If no policy, return default values
             return {
                 "enabled": False,
                 "risk_level": "高风险",
@@ -58,7 +58,7 @@ async def get_ban_policy(tenant_id: str = Depends(get_current_tenant_id)):
 
     except Exception as e:
         logger.error(f"Failed to get ban policy: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"获取封禁策略失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get ban policy: {str(e)}")
 
 
 @router.put("")
@@ -66,7 +66,7 @@ async def update_ban_policy(
     policy_data: BanPolicyUpdate,
     tenant_id: str = Depends(get_current_tenant_id)
 ):
-    """更新封禁策略配置"""
+    """Update ban policy configuration"""
     try:
         policy = await BanPolicyService.update_ban_policy(
             tenant_id,
@@ -75,52 +75,52 @@ async def update_ban_policy(
 
         return {
             "success": True,
-            "message": "封禁策略已更新",
+            "message": "Ban policy updated",
             "policy": policy
         }
 
     except Exception as e:
         logger.error(f"Failed to update ban policy: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"更新封禁策略失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update ban policy: {str(e)}")
 
 
 @router.get("/templates")
 async def get_ban_policy_templates():
-    """获取封禁策略预设模板"""
+    """Get ban policy preset templates"""
     return {
         "templates": [
             {
-                "name": "严格模式",
-                "description": "适用于高安全要求场景",
+                "name": "Strict mode",
+                "description": "High security requirements",
                 "enabled": True,
-                "risk_level": "高风险",
+                "risk_level": "High risk",
                 "trigger_count": 3,
                 "time_window_minutes": 10,
                 "ban_duration_minutes": 60
             },
             {
-                "name": "标准模式",
-                "description": "平衡安全性和用户体验",
+                "name": "Standard mode",
+                "description": "Balance security and user experience",
                 "enabled": True,
-                "risk_level": "高风险",
+                "risk_level": "High risk",
                 "trigger_count": 5,
                 "time_window_minutes": 30,
                 "ban_duration_minutes": 30
             },
             {
-                "name": "宽松模式",
-                "description": "适用于测试或低风险场景",
+                "name": "Relaxed mode",
+                "description": "Test or low risk scenarios",
                 "enabled": True,
-                "risk_level": "高风险",
+                "risk_level": "High risk",
                 "trigger_count": 10,
                 "time_window_minutes": 60,
                 "ban_duration_minutes": 15
             },
             {
-                "name": "关闭",
-                "description": "不启用封禁策略",
+                "name": "Disabled",
+                "description": "Disable ban policy",
                 "enabled": False,
-                "risk_level": "高风险",
+                "risk_level": "High risk",
                 "trigger_count": 3,
                 "time_window_minutes": 10,
                 "ban_duration_minutes": 60
@@ -131,11 +131,11 @@ async def get_ban_policy_templates():
 
 @router.get("/banned-users")
 async def get_banned_users(
-    skip: int = Query(0, ge=0, description="跳过的记录数"),
-    limit: int = Query(100, ge=1, le=1000, description="返回的最大记录数"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     tenant_id: str = Depends(get_current_tenant_id)
 ):
-    """获取被封禁的用户列表"""
+    """Get list of banned users"""
     try:
         users = await BanPolicyService.get_banned_users(
             tenant_id,
@@ -147,7 +147,7 @@ async def get_banned_users(
 
     except Exception as e:
         logger.error(f"Failed to get banned users: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"获取封禁用户列表失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get banned users: {str(e)}")
 
 
 @router.post("/unban")
@@ -155,33 +155,33 @@ async def unban_user(
     request: UnbanUserRequest,
     tenant_id: str = Depends(get_current_tenant_id)
 ):
-    """手动解除用户封禁"""
+    """Manually unban user"""
     try:
         success = await BanPolicyService.unban_user(tenant_id, request.user_id)
 
         if success:
             return {
                 "success": True,
-                "message": f"用户 {request.user_id} 已解除封禁"
+                "message": f"User {request.user_id} has been unbanned"
             }
         else:
             return {
                 "success": False,
-                "message": f"用户 {request.user_id} 未被封禁或已解封"
+                "message": f"User {request.user_id} is not banned or has already been unbanned"
             }
 
     except Exception as e:
         logger.error(f"Failed to unban user: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"解除封禁失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to unban user: {str(e)}")
 
 
 @router.get("/user-history/{user_id}")
 async def get_user_risk_history(
     user_id: str,
-    days: int = Query(7, ge=1, le=30, description="查询最近多少天的历史"),
+    days: int = Query(7, ge=1, le=30, description="Number of days to query"),
     tenant_id: str = Depends(get_current_tenant_id)
 ):
-    """获取用户的风险触发历史"""
+    """Get user risk trigger history"""
     try:
         history = await BanPolicyService.get_user_risk_history(
             tenant_id,
@@ -198,7 +198,7 @@ async def get_user_risk_history(
 
     except Exception as e:
         logger.error(f"Failed to get user risk history: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"获取用户风险历史失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get user risk history: {str(e)}")
 
 
 @router.get("/check-status/{user_id}")
@@ -206,7 +206,7 @@ async def check_user_ban_status(
     user_id: str,
     tenant_id: str = Depends(get_current_tenant_id)
 ):
-    """检查用户的封禁状态"""
+    """Check user ban status"""
     try:
         ban_record = await BanPolicyService.check_user_banned(tenant_id, user_id)
 
@@ -223,4 +223,4 @@ async def check_user_ban_status(
 
     except Exception as e:
         logger.error(f"Failed to check user ban status: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"检查封禁状态失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to check user ban status: {str(e)}")

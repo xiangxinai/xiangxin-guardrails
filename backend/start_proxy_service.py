@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-启动代理服务脚本
+Start proxy service script
 """
 import sys
 from pathlib import Path
 
-# 确保模块路径
+# Ensure module path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import uvicorn

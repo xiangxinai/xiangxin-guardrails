@@ -1,7 +1,7 @@
 {
   "name": "xiangxin-guardrails-frontend",
-  "version": "2.3.0",
-  "description": "象信AI安全护栏平台前端",
+  "version": "2.6.0",
+  "description": "Xiangxin AI Guardrails Frontend",
   "private": true,
   "scripts": {
     "dev": "vite",

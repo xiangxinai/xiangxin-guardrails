@@ -16,6 +16,7 @@ import {
   Typography,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, GlobalOutlined, UserOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { dataSecurityApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -39,22 +40,23 @@ interface EntityType {
   updated_at: string;
 }
 
-const RISK_LEVELS = [
-  { value: '低', label: '低风险', color: 'green' },
-  { value: '中', label: '中风险', color: 'orange' },
-  { value: '高', label: '高风险', color: 'red' },
-];
-
-const ANONYMIZATION_METHODS = [
-  { value: 'replace', label: '替换' },
-  { value: 'mask', label: '掩码' },
-  { value: 'hash', label: '哈希' },
-  { value: 'encrypt', label: '加密' },
-  { value: 'shuffle', label: '重排' },
-  { value: 'random', label: '随机替换' },
-];
-
 const EntityTypeManagement: React.FC = () => {
+  const { t } = useTranslation();
+  
+  const RISK_LEVELS = [
+    { value: '低', label: t('entityType.lowRisk'), color: 'green' },
+    { value: '中', label: t('entityType.mediumRisk'), color: 'orange' },
+    { value: '高', label: t('entityType.highRisk'), color: 'red' },
+  ];
+
+  const ANONYMIZATION_METHODS = [
+    { value: 'replace', label: t('entityType.replace') },
+    { value: 'mask', label: t('entityType.mask') },
+    { value: 'hash', label: t('entityType.hash') },
+    { value: 'encrypt', label: t('entityType.encrypt') },
+    { value: 'shuffle', label: t('entityType.shuffle') },
+    { value: 'random', label: t('entityType.randomReplace') },
+  ];
   const [entityTypes, setEntityTypes] = useState<EntityType[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -74,7 +76,7 @@ const EntityTypeManagement: React.FC = () => {
       const response = await dataSecurityApi.getEntityTypes();
       setEntityTypes(response.items || []);
     } catch (error) {
-      message.error('加载实体类型配置失败');
+      message.error(t('entityType.loadEntityTypesFailed'));
     } finally {
       setLoading(false);
     }
@@ -105,10 +107,10 @@ const EntityTypeManagement: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await dataSecurityApi.deleteEntityType(id);
-      message.success('删除成功');
+      message.success(t('common.deleteSuccess'));
       loadEntityTypes();
     } catch (error) {
-      message.error('删除失败');
+      message.error(t('common.deleteFailed'));
     }
   };
 
@@ -122,7 +124,7 @@ const EntityTypeManagement: React.FC = () => {
       try {
         anonymization_config = JSON.parse(values.anonymization_config_text || '{}');
       } catch (e) {
-        message.error('脱敏配置JSON格式错误');
+        message.error(t('entityType.invalidJsonConfig'));
         return;
       }
 
@@ -140,15 +142,15 @@ const EntityTypeManagement: React.FC = () => {
 
       if (editingEntity) {
         await dataSecurityApi.updateEntityType(editingEntity.id, data);
-        message.success('更新成功');
+        message.success(t('common.updateSuccess'));
       } else {
         // 根据is_global字段决定调用哪个API
         if (values.is_global && user?.is_super_admin) {
           await dataSecurityApi.createGlobalEntityType(data);
-          message.success('创建系统配置成功');
+          message.success(t('entityType.createGlobalSuccess'));
         } else {
           await dataSecurityApi.createEntityType(data);
-          message.success('创建成功');
+          message.success(t('common.createSuccess'));
         }
       }
 
@@ -161,19 +163,19 @@ const EntityTypeManagement: React.FC = () => {
 
   const columns = [
     {
-      title: '实体类型',
+      title: t('entityType.entityTypeColumn'),
       dataIndex: 'entity_type',
       key: 'entity_type',
       width: 150,
     },
     {
-      title: '显示名称',
+      title: t('entityType.displayNameColumn'),
       dataIndex: 'display_name',
       key: 'display_name',
       width: 120,
     },
     {
-      title: '风险等级',
+      title: t('entityType.riskLevelColumn'),
       dataIndex: 'risk_level',
       key: 'risk_level',
       width: 100,
@@ -183,7 +185,7 @@ const EntityTypeManagement: React.FC = () => {
       },
     },
     {
-      title: '识别规则',
+      title: t('entityType.recognitionRulesColumn'),
       dataIndex: 'pattern',
       key: 'pattern',
       width: 200,
@@ -195,7 +197,7 @@ const EntityTypeManagement: React.FC = () => {
       ),
     },
     {
-      title: '脱敏方法',
+      title: t('entityType.desensitizationMethodColumn'),
       dataIndex: 'anonymization_method',
       key: 'anonymization_method',
       width: 100,
@@ -205,43 +207,43 @@ const EntityTypeManagement: React.FC = () => {
       },
     },
     {
-      title: '检测范围',
+      title: t('entityType.detectionScopeColumn'),
       key: 'check_scope',
       width: 100,
       render: (_: any, record: EntityType) => (
         <Space size={4}>
-          {record.check_input && <Tag color="blue" style={{ margin: 0 }}>输入</Tag>}
-          {record.check_output && <Tag color="green" style={{ margin: 0 }}>输出</Tag>}
+          {record.check_input && <Tag color="blue" style={{ margin: 0 }}>{t('entityType.input')}</Tag>}
+          {record.check_output && <Tag color="green" style={{ margin: 0 }}>{t('entityType.output')}</Tag>}
         </Space>
       ),
     },
     {
-      title: '状态',
+      title: t('entityType.statusColumn'),
       dataIndex: 'is_active',
       key: 'is_active',
       width: 80,
       render: (is_active: boolean) => (
-        <Tag color={is_active ? 'green' : 'default'}>{is_active ? '启用' : '禁用'}</Tag>
+        <Tag color={is_active ? 'green' : 'default'}>{is_active ? t('common.enabled') : t('common.disabled')}</Tag>
       ),
     },
     {
-      title: '来源',
+      title: t('entityType.sourceColumn'),
       dataIndex: 'is_global',
       key: 'is_global',
       width: 80,
       render: (is_global: boolean) => (
         <Tag icon={is_global ? <GlobalOutlined /> : <UserOutlined />} color={is_global ? 'blue' : 'default'}>
-          {is_global ? '系统' : '自定义'}
+          {is_global ? t('entityType.system') : t('entityType.custom')}
         </Tag>
       ),
     },
     {
-      title: '操作',
+      title: t('entityType.operationColumn'),
       key: 'action',
       width: 120,
       render: (_: any, record: EntityType) => (
         <Space size="small">
-          <Tooltip title="编辑">
+          <Tooltip title={t('common.edit')}>
             <Button
               type="link"
               size="small"
@@ -250,8 +252,8 @@ const EntityTypeManagement: React.FC = () => {
               disabled={record.is_global && !user?.is_super_admin}
             />
           </Tooltip>
-          <Popconfirm title="确定要删除吗？" onConfirm={() => handleDelete(record.id)}>
-            <Tooltip title="删除">
+          <Popconfirm title={t('common.confirmDelete')} onConfirm={() => handleDelete(record.id)}>
+            <Tooltip title={t('common.delete')}>
               <Button
                 type="link"
                 size="small"
@@ -281,10 +283,10 @@ const EntityTypeManagement: React.FC = () => {
   return (
     <div>
       <Card
-        title="实体类型配置"
+        title={t('entityType.entityTypeConfig')}
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            添加实体类型配置
+            {t('entityType.addEntityTypeConfig')}
           </Button>
         }
         bordered={false}
@@ -292,13 +294,13 @@ const EntityTypeManagement: React.FC = () => {
         <Space style={{ marginBottom: 16, width: '100%' }} direction="vertical">
           <Space>
             <Input.Search
-              placeholder="搜索实体类型、显示名称或规则"
+              placeholder={t('entityType.searchPlaceholder')}
               allowClear
               style={{ width: 300 }}
               onChange={(e) => setSearchText(e.target.value)}
             />
             <Select
-              placeholder="筛选风险等级"
+              placeholder={t('entityType.filterRiskLevel')}
               allowClear
               style={{ width: 150 }}
               onChange={(value) => setRiskLevelFilter(value)}
@@ -319,19 +321,19 @@ const EntityTypeManagement: React.FC = () => {
           loading={loading}
           pagination={{
             pageSize: 10,
-            showTotal: (total) => `共 ${total} 条`,
+            showTotal: (total) => t('banPolicy.totalRecords', { total }),
           }}
         />
       </Card>
 
       <Modal
-        title={editingEntity ? '编辑实体类型' : '添加实体类型'}
+        title={editingEntity ? t('entityType.editEntityType') : t('entityType.addEntityType')}
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
         width={800}
-        okText="确定"
-        cancelText="取消"
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
       >
         <Form form={form} layout="vertical">
           <Form.Item

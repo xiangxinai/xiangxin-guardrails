@@ -6,6 +6,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import text
 from database.connection import get_admin_db_session
+from utils.i18n import format_ban_reason
 import logging
 import uuid
 
@@ -169,7 +170,8 @@ class BanPolicyService:
         tenant_id: str,
         user_id: str,
         risk_level: str,
-        detection_result_id: Optional[str] = None
+        detection_result_id: Optional[str] = None,
+        language: str = 'zh'
     ) -> Optional[Dict[str, Any]]:
         """检查并应用封禁策略"""
         logger.info(f"check_and_apply_ban_policy called: tenant_id={tenant_id}, user_id={user_id}, risk_level={risk_level}")
@@ -270,7 +272,12 @@ class BanPolicyService:
                     logger.info(f"No existing ban found, creating new ban record")
                     # 创建新的封禁记录
                     ban_until = utcnow() + timedelta(minutes=ban_duration_minutes)
-                    reason = f"在 {time_window_minutes} 分钟内触发 {trigger_count_actual} 次{policy_risk_level}风险"
+                    reason = format_ban_reason(
+                        time_window=time_window_minutes,
+                        trigger_count=trigger_count_actual,
+                        risk_level=policy_risk_level,
+                        language=language
+                    )
 
                     result = db.execute(
                         text("""

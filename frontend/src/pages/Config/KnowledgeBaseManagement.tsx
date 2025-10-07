@@ -416,14 +416,14 @@ const KnowledgeBaseManagement: React.FC = () => {
       ),
     },
     {
-      title: t('knowledge.scope'),
+      title: t('entityType.sourceColumn'),
       dataIndex: 'is_global',
       key: 'is_global',
       width: 100,
       align: 'center' as const,
       render: (isGlobal: boolean) => (
-        <Tag color={isGlobal ? 'purple' : 'default'}>
-          {isGlobal ? t('knowledge.global') : t('knowledge.personal')}
+        <Tag color={isGlobal ? 'blue' : 'default'}>
+          {isGlobal ? t('entityType.system') : t('entityType.custom')}
         </Tag>
       ),
     },
@@ -497,9 +497,9 @@ const KnowledgeBaseManagement: React.FC = () => {
         <div style={{ marginBottom: 16 }}>
           <Row justify="space-between" align="middle">
             <Col>
-              <h3>代答知识库管理</h3>
+              <h3>{t('knowledge.knowledgeBaseManagement')}</h3>
               <p style={{ color: '#666', margin: 0 }}>
-                管理各风险类别的问答对知识库，支持向量相似度搜索
+                {t('knowledge.knowledgeBaseDescription')}
               </p>
             </Col>
             <Col>
@@ -508,23 +508,23 @@ const KnowledgeBaseManagement: React.FC = () => {
                 icon={<PlusOutlined />}
                 onClick={handleAdd}
               >
-                添加知识库
+                {t('knowledge.addKnowledgeBase')}
               </Button>
             </Col>
           </Row>
         </div>
 
         <Alert
-          message="文件格式说明"
+          message={t('knowledge.fileFormatDescription')}
           description={
             <div>
-              <p>上传文本文件，每行一个 JSON 对象，包含以下字段：</p>
+              <p>{t('knowledge.fileFormatDetails')}</p>
               <pre style={{ backgroundColor: '#f5f5f5', padding: '8px', borderRadius: '4px' }}>
-{`{"questionid": "唯一问题ID", "question": "问题内容", "answer": "回答内容"}`}
+{`{"questionid": "Unique question ID", "question": "Question content", "answer": "Answer content"}`}
               </pre>
               <p style={{ margin: 0 }}>
                 <InfoCircleOutlined style={{ color: '#1890ff' }} />
-                系统会自动验证文件内容，支持任何扩展名的文本文件。检测到风险时，会先在知识库中搜索相似问题，找到则返回对应答案。
+                {t('knowledge.fileFormatNote')}
               </p>
             </div>
           }
@@ -544,7 +544,7 @@ const KnowledgeBaseManagement: React.FC = () => {
 
       {/* 添加/编辑知识库弹窗 */}
       <Modal
-        title={editingItem ? '编辑知识库' : '添加知识库'}
+        title={editingItem ? t('knowledge.editKnowledgeBase') : t('knowledge.addKnowledgeBase')}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         onOk={() => form.submit()}
@@ -558,10 +558,10 @@ const KnowledgeBaseManagement: React.FC = () => {
         >
           <Form.Item
             name="category"
-            label="风险类别"
-            rules={[{ required: true, message: '请选择风险类别' }]}
+            label={t('knowledge.riskCategory')}
+            rules={[{ required: true, message: t('knowledge.selectRiskCategory') }]}
           >
-            <Select placeholder="请选择风险类别">
+            <Select placeholder={t('knowledge.selectRiskCategoryPlaceholder')}>
               {categories.map(category => (
                 <Option key={category.value} value={category.value}>
                   {category.label}
@@ -572,27 +572,27 @@ const KnowledgeBaseManagement: React.FC = () => {
 
           <Form.Item
             name="name"
-            label="知识库名称"
-            rules={[{ required: true, message: '请输入知识库名称' }]}
+            label={t('knowledge.knowledgeBaseName')}
+            rules={[{ required: true, message: t('knowledge.knowledgeBaseNameRequired') }]}
           >
-            <Input placeholder="请输入知识库名称" />
+            <Input placeholder={t('knowledge.knowledgeBaseNamePlaceholder')} />
           </Form.Item>
 
           <Form.Item
             name="description"
-            label="描述"
+            label={t('common.description')}
           >
             <TextArea
               rows={3}
-              placeholder="请输入知识库描述（可选）"
+              placeholder={t('knowledge.descriptionPlaceholder')}
             />
           </Form.Item>
 
           {!editingItem && (
             <Form.Item
               name="file"
-              label="文件"
-              rules={[{ required: true, message: '请选择文件' }]}
+              label={t('knowledge.file')}
+              rules={[{ required: true, message: t('knowledge.selectFile') }]}
               valuePropName="fileList"
               getValueFromEvent={(e) => {
                 if (Array.isArray(e)) {
@@ -624,14 +624,14 @@ const KnowledgeBaseManagement: React.FC = () => {
                   console.log('================================');
                 }}
               >
-                <Button icon={<UploadOutlined />}>选择文件</Button>
+                <Button icon={<UploadOutlined />}>{t('knowledge.chooseFile')}</Button>
               </Upload>
             </Form.Item>
           )}
 
           <Form.Item
             name="is_active"
-            label="启用状态"
+            label={t('knowledge.enableStatus')}
             valuePropName="checked"
             initialValue={true}
           >
@@ -643,8 +643,8 @@ const KnowledgeBaseManagement: React.FC = () => {
               name="is_global"
               label={
                 <span>
-                  全局知识库
-                  <Tooltip title="全局知识库将对所有用户生效，只有管理员可以设置">
+                  {t('knowledge.globalKnowledgeBase')}
+                  <Tooltip title={t('knowledge.globalKnowledgeBaseTooltip')}>
                     <InfoCircleOutlined style={{ marginLeft: 4 }} />
                   </Tooltip>
                 </span>
@@ -660,7 +660,7 @@ const KnowledgeBaseManagement: React.FC = () => {
 
       {/* 替换文件弹窗 */}
       <Modal
-        title={`替换知识库文件 - ${replacingKb?.name}`}
+        title={t('knowledge.replaceFileTitle', { name: replacingKb?.name })}
         open={fileReplaceModalVisible}
         onCancel={() => {
           setFileReplaceModalVisible(false);
@@ -670,8 +670,8 @@ const KnowledgeBaseManagement: React.FC = () => {
         confirmLoading={fileUploadLoading}
       >
         <Alert
-          message="注意"
-          description="替换文件将会删除原有的问答对和向量索引，并重新生成。此操作不可撤销。"
+          message={t('knowledge.attention')}
+          description={t('knowledge.replaceFileWarning')}
           type="warning"
           showIcon
           style={{ marginBottom: 16 }}
@@ -682,8 +682,8 @@ const KnowledgeBaseManagement: React.FC = () => {
         >
           <Form.Item
             name="file"
-            label="选择新文件"
-            rules={[{ required: true, message: '请选择文件' }]}
+            label={t('knowledge.selectNewFile')}
+            rules={[{ required: true, message: t('knowledge.selectFile') }]}
             valuePropName="fileList"
             getValueFromEvent={(e) => {
               if (Array.isArray(e)) {
@@ -715,7 +715,7 @@ const KnowledgeBaseManagement: React.FC = () => {
                 console.log('==========================================');
               }}
             >
-              <Button icon={<UploadOutlined />}>选择文件</Button>
+              <Button icon={<UploadOutlined />}>{t('knowledge.chooseFile')}</Button>
             </Upload>
           </Form.Item>
         </Form>
@@ -723,7 +723,7 @@ const KnowledgeBaseManagement: React.FC = () => {
 
       {/* 搜索测试弹窗 */}
       <Modal
-        title={`搜索测试 - ${searchingKb?.name}`}
+        title={t('knowledge.searchTestTitle', { name: searchingKb?.name })}
         open={searchModalVisible}
         onCancel={() => {
           setSearchModalVisible(false);
@@ -742,32 +742,32 @@ const KnowledgeBaseManagement: React.FC = () => {
           <Form.Item
             name="query"
             style={{ flex: 1 }}
-            rules={[{ required: true, message: '请输入搜索内容' }]}
+            rules={[{ required: true, message: t('knowledge.searchContent') }]}
           >
-            <Input placeholder="请输入要搜索的问题" />
+            <Input placeholder={t('knowledge.searchPlaceholder')} />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" loading={searchLoading}>
-              搜索
+              {t('common.search')}
             </Button>
           </Form.Item>
         </Form>
 
         {searchResults.length > 0 && (
           <div>
-            <h4>搜索结果：</h4>
+            <h4>{t('knowledge.searchResults')}</h4>
             {searchResults.map((result, index) => (
               <Card key={index} size="small" style={{ marginBottom: 8 }}>
                 <div>
                   <div style={{ marginBottom: 8 }}>
-                    <Tag color="blue">相似度: {(result.similarity_score * 100).toFixed(1)}%</Tag>
-                    <Tag color="green">排名: {result.rank}</Tag>
+                    <Tag color="blue">{t('knowledge.similarity', { score: (result.similarity_score * 100).toFixed(1) })}</Tag>
+                    <Tag color="green">{t('knowledge.rank', { rank: result.rank })}</Tag>
                   </div>
                   <div style={{ marginBottom: 8 }}>
-                    <strong>问题：</strong>{result.question}
+                    <strong>{t('knowledge.questionLabel')}</strong>{result.question}
                   </div>
                   <div>
-                    <strong>回答：</strong>{result.answer}
+                    <strong>{t('knowledge.answerLabel')}</strong>{result.answer}
                   </div>
                 </div>
               </Card>

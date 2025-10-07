@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Tabs } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import BlacklistManagement from './BlacklistManagement';
 import WhitelistManagement from './WhitelistManagement';
 import ResponseTemplateManagement from './ResponseTemplateManagement';
@@ -13,6 +14,7 @@ import DataSecurity from '../DataSecurity';
 import BanPolicy from './BanPolicy';
 
 const Config: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -38,54 +40,54 @@ const Config: React.FC = () => {
   const items = [
     {
       key: 'risk-types',
-      label: '风险类型',
+      label: t('config.riskType'),
       children: <RiskTypeManagement />,
     },
     {
       key: 'sensitivity-thresholds',
-      label: '敏感度阈值',
+      label: t('config.sensitivity'),
       children: <SensitivityThresholdManagement />,
     },
     {
       key: 'data-security',
-      label: '数据防泄漏',
+      label: t('config.dataSecurity'),
       children: <DataSecurity />,
     },
     {
       key: 'ban-policy',
-      label: '封禁策略',
+      label: t('config.banPolicy'),
       children: <BanPolicy />,
     },
     {
       key: 'blacklist',
-      label: '黑名单管理',
+      label: t('config.blacklist'),
       children: <BlacklistManagement />,
     },
     {
       key: 'whitelist',
-      label: '白名单管理',
+      label: t('config.whitelist'),
       children: <WhitelistManagement />,
     },
     {
       key: 'responses',
-      label: '拒答答案库',
+      label: t('config.rejectAnswers'),
       children: <ResponseTemplateManagement />,
     },
     {
       key: 'knowledge-bases',
-      label: '代答知识库',
+      label: t('config.knowledge'),
       children: <KnowledgeBaseManagement />,
     },
     {
       key: 'proxy-models',
-      label: '安全网关配置',
+      label: t('config.proxy'),
       children: <ProxyModelManagement />,
     },
   ];
 
   return (
     <div>
-      <h2 style={{ marginBottom: 24 }}>防护配置</h2>
+      <h2 style={{ marginBottom: 24 }}>{t('config.title')}</h2>
       
       <Tabs
         activeKey={getActiveKey()}

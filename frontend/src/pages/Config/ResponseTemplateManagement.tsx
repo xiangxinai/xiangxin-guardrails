@@ -67,8 +67,8 @@ const ResponseTemplateManagement: React.FC = () => {
       
       // 为缺失的类别创建默认拒答内容
       for (const category of missingCategories) {
-        const categoryName = category.label.split(' - ')[1];
-        const defaultContent = t('template.defaultContent', { category: categoryName });
+        // 使用国际化的默认拒答内容
+        const defaultContent = t(`template.defaultContents.${category.value}`);
         try {
           await configApi.responses.create({
             category: category.value,

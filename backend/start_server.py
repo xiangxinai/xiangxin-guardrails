@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-启动服务器脚本
+Start server script
 """
 import uvicorn
 from config import settings
