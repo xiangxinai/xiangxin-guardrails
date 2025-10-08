@@ -1,5 +1,5 @@
 services:
-  # PostgreSQL数据库
+  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: xiangxin-guardrails-postgres
@@ -21,7 +21,7 @@ services:
     networks:
       - xiangxin-network
 
-  # 后端管理服务（处理管理平台API）
+  # Backend Management Service (Handles Management Platform APIs)
   admin-service:
     build:
       context: ./backend
@@ -31,27 +31,27 @@ services:
     ports:
       - "5000:5000"
     environment:
-      # 数据库配置
+      # Database configuration
       - DATABASE_URL=postgresql://xiangxin:your_password@postgres:5432/xiangxin_guardrails
       - RESET_DATABASE_ON_STARTUP=true
       
-      # 应用配置
+      # Application configuration
       - DEBUG=false
       - JWT_SECRET_KEY=your-secret-key-change-in-production
-      - DEPLOYMENT_MODE=local
+      - DEPLOYMENT_MODE=locals
       
-      # 数据目录配置
+      # Data directory configuration
       - DATA_DIR=/app/data
       - LOG_LEVEL=INFO
       
-      # CORS配置
+      # CORS configuration
       - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
       
-      # 管理员配置
+      # Administrator configuration
       - SUPER_ADMIN_USERNAME=admin@yourdomain.com
       - SUPER_ADMIN_PASSWORD=CHANGE-THIS-PASSWORD-IN-PRODUCTION
       
-      # 嵌入模型API配置
+      # Embedding model API configuration
       - EMBEDDING_API_BASE_URL=http://your-host-ip:your-port/v1
       - EMBEDDING_API_KEY=your-embedding-api-key
       - EMBEDDING_MODEL_NAME=Xiangxin-Embedding-1024
@@ -59,7 +59,7 @@ services:
       - EMBEDDING_SIMILARITY_THRESHOLD=0.7
       - EMBEDDING_MAX_RESULTS=5
 
-      # SMTP邮件配置
+      # SMTP email configuration
       - SMTP_SERVER=
       - SMTP_PORT=587
       - SMTP_USERNAME=
@@ -67,12 +67,12 @@ services:
       - SMTP_USE_TLS=false
       - SMTP_USE_SSL=false
       
-      # 双服务配置
+      # Dual service configuration
       - ADMIN_PORT=5000
       - ADMIN_UVICORN_WORKERS=2
       - ADMIN_MAX_CONCURRENT_REQUESTS=50
       
-      # 检测服务主机配置（Docker环境使用服务名）
+      # Detection service host configuration (use service name in Docker environment)
       - DETECTION_HOST=detection-service
       
     command: ["python3", "start_admin_service.py"]
@@ -93,7 +93,7 @@ services:
       timeout: 10s
       retries: 3
       
-  # 后端检测服务（高并发处理检测API）
+  # Backend Detection Service (Handles high-concurrency detection APIs)
   detection-service:
     build:
       context: ./backend
@@ -103,31 +103,31 @@ services:
     ports:
       - "5001:5001"
     environment:
-      # 数据库配置
+      # Database configuration
       - DATABASE_URL=postgresql://xiangxin:your_password@postgres:5432/xiangxin_guardrails
 
-      # 应用配置
+      # Application configuration
       - DEBUG=false
       - JWT_SECRET_KEY=your-secret-key-change-in-production
       - DEPLOYMENT_MODE=local
 
-      # 模型API配置（请根据实际情况修改）
+      # Model API configuration (please modify according to actual situation)
       - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
       - GUARDRAILS_MODEL_API_KEY=your-guardrails-model-api-key
 
-      # 多模态模型API配置
+      # Multimodal model API configuration
       - GUARDRAILS_VL_MODEL_API_URL=http://host.docker.internal:58003/v1
       - GUARDRAILS_VL_MODEL_API_KEY=your-vl-model-api-key
       - GUARDRAILS_VL_MODEL_NAME=Xiangxin-Guardrails-VL
 
-      # 数据目录配置
+      # Data directory configuration
       - DATA_DIR=/app/data
       - LOG_LEVEL=INFO
 
-      # CORS配置
+      # CORS configuration
       - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 
-      # 双服务配置
+      # Dual service configuration
       - DETECTION_PORT=5001
       - DETECTION_UVICORN_WORKERS=32
       - DETECTION_MAX_CONCURRENT_REQUESTS=400
@@ -150,7 +150,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # 后端代理服务（OpenAI兼容的反向代理）
+  # Backend Proxy Service (OpenAI compatible reverse proxy)
   proxy-service:
     build:
       context: ./backend
@@ -160,36 +160,36 @@ services:
     ports:
       - "5002:5002"
     environment:
-      # 数据库配置
+      # Database configuration
       - DATABASE_URL=postgresql://xiangxin:your_password@postgres:5432/xiangxin_guardrails
 
-      # 应用配置
+      # Application configuration
       - DEBUG=false
       - JWT_SECRET_KEY=your-secret-key-change-in-production
       - DEPLOYMENT_MODE=local
 
-      # 模型API配置（请根据实际情况修改）
+      # Model API configuration (please modify according to actual situation)
       - GUARDRAILS_MODEL_API_URL=http://host.docker.internal:58002/v1
       - GUARDRAILS_MODEL_API_KEY=your-guardrails-model-api-key
 
-      # 多模态模型API配置
+      # Multimodal model API configuration
       - GUARDRAILS_VL_MODEL_API_URL=http://host.docker.internal:58003/v1
       - GUARDRAILS_VL_MODEL_API_KEY=your-vl-model-api-key
       - GUARDRAILS_VL_MODEL_NAME=Xiangxin-Guardrails-VL
 
-      # 数据目录配置
+      # Data directory configuration
       - DATA_DIR=/app/data
       - LOG_LEVEL=INFO
 
-      # CORS配置
+      # CORS configuration
       - CORS_ORIGINS=*
 
-      # 代理服务配置（高并发）
+      # Proxy service configuration (high concurrency)
       - PROXY_PORT=5002
       - PROXY_UVICORN_WORKERS=24
       - PROXY_MAX_CONCURRENT_REQUESTS=300
       
-      # 检测服务主机配置（Docker环境使用服务名）
+      # Detection service host configuration (use service name in Docker environment)
       - DETECTION_HOST=detection-service
       
     command: ["python3", "start_proxy_service.py"]
@@ -210,7 +210,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # 前端Web界面
+  # Frontend Web Interface
   frontend:
     build:
       context: .

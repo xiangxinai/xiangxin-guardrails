@@ -1,6 +1,6 @@
 """
-并发限制中间件
-基于asyncio.Semaphore实现服务级别的并发控制，防止资源耗尽
+Concurrent limit middleware
+Based on asyncio.Semaphore to implement service-level concurrent control, prevent resource exhaustion
 """
 import asyncio
 import time
@@ -13,26 +13,26 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 class ConcurrentLimitMiddleware(BaseHTTPMiddleware):
-    """并发限制中间件"""
+    """Concurrent limit middleware"""
     
-    # 全局信号量字典，按服务类型存储
+    # Global signal dictionary, stored by service type
     _semaphores: Dict[str, asyncio.Semaphore] = {}
     _stats: Dict[str, Dict[str, int]] = {}
     
     def __init__(self, app, service_type: str, max_concurrent: int):
         """
-        初始化并发限制中间件
+        Initialize concurrent limit middleware
         
         Args:
-            app: FastAPI应用
-            service_type: 服务类型 (admin/detection/proxy)
-            max_concurrent: 最大并发请求数
+            app: FastAPI application
+            service_type: Service type (admin/detection/proxy)
+            max_concurrent: Maximum concurrent requests
         """
         super().__init__(app)
         self.service_type = service_type
         self.max_concurrent = max_concurrent
         
-        # 创建服务级信号量
+        # Create service-level semaphore
         if service_type not in self._semaphores:
             self._semaphores[service_type] = asyncio.Semaphore(max_concurrent)
             self._stats[service_type] = {
@@ -44,21 +44,21 @@ class ConcurrentLimitMiddleware(BaseHTTPMiddleware):
             logger.info(f"Concurrent limit middleware initialized for {service_type}: max_concurrent={max_concurrent}")
     
     async def dispatch(self, request: Request, call_next):
-        """处理请求的并发控制"""
+        """Handle concurrent control for requests"""
         semaphore = self._semaphores[self.service_type]
         stats = self._stats[self.service_type]
         
-        # 更新统计
+        # Update statistics
         stats['total_requests'] += 1
         
-        # 尝试获取信号量
+        # Try to acquire semaphore
         acquired = False
         try:
-            # 非阻塞方式尝试获取信号量
+            # Non-blocking way to try to acquire semaphore
             acquired = semaphore.locked() == False and await self._try_acquire(semaphore)
             
             if not acquired:
-                # 并发数已达上限，返回429错误
+                # Concurrent limit reached, return 429 error
                 stats['rejected_requests'] += 1
                 current_concurrent = self.max_concurrent - (semaphore._value if hasattr(semaphore, '_value') else 0)
                 
@@ -82,18 +82,18 @@ class ConcurrentLimitMiddleware(BaseHTTPMiddleware):
                     headers={"Retry-After": "1"}
                 )
             
-            # 更新并发统计
+            # Update concurrent statistics
             stats['current_requests'] += 1
             current_concurrent = stats['current_requests']
             if current_concurrent > stats['max_concurrent_reached']:
                 stats['max_concurrent_reached'] = current_concurrent
             
-            # 处理请求
+            # Handle request
             start_time = time.time()
             response = await call_next(request)
             end_time = time.time()
             
-            # 添加性能头信息
+            # Add performance header information
             response.headers["X-Service-Type"] = self.service_type
             response.headers["X-Concurrent-Limit"] = str(self.max_concurrent)
             response.headers["X-Current-Concurrent"] = str(current_concurrent)
@@ -103,20 +103,20 @@ class ConcurrentLimitMiddleware(BaseHTTPMiddleware):
             
         finally:
             if acquired:
-                # 释放信号量
+                # Release semaphore
                 semaphore.release()
                 stats['current_requests'] -= 1
     
     async def _try_acquire(self, semaphore: asyncio.Semaphore, timeout: float = 0.001) -> bool:
         """
-        非阻塞尝试获取信号量
+        Non-blocking way to try to acquire semaphore
         
         Args:
-            semaphore: 异步信号量
-            timeout: 超时时间（秒）
+            semaphore: Asynchronous semaphore
+            timeout: Timeout (seconds)
             
         Returns:
-            bool: 是否成功获取
+            bool: Whether to successfully acquire
         """
         try:
             await asyncio.wait_for(semaphore.acquire(), timeout=timeout)
@@ -126,17 +126,17 @@ class ConcurrentLimitMiddleware(BaseHTTPMiddleware):
     
     @classmethod
     def get_stats(cls, service_type: str) -> Optional[Dict[str, int]]:
-        """获取服务并发统计信息"""
+        """Get service concurrent statistics information"""
         return cls._stats.get(service_type)
     
     @classmethod
     def get_all_stats(cls) -> Dict[str, Dict[str, int]]:
-        """获取所有服务的并发统计信息"""
+        """Get all service concurrent statistics information"""
         return cls._stats.copy()
     
     @classmethod
     def reset_stats(cls, service_type: str = None):
-        """重置统计信息"""
+        """Reset statistics information"""
         if service_type:
             if service_type in cls._stats:
                 stats = cls._stats[service_type]

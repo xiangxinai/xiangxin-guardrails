@@ -33,6 +33,7 @@ ENV/
 *.swp
 *.swo
 CLAUDE.md
+.claude/
 
 # Database
 *.db

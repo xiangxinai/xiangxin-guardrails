@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-检测服务 - 高并发护栏检测API
-专门处理 /v1/guardrails 检测请求，优化高并发性能
+Detection service - high-concurrency guardrail detection API
+Specialized for /v1/guardrails detection requests, optimized for high concurrency performance
 """
 from fastapi import FastAPI, HTTPException, Depends, Security, Request
 from contextlib import asynccontextmanager
@@ -20,17 +20,17 @@ from routers import detection_guardrails
 from services.async_logger import async_detection_logger
 from utils.logger import setup_logger
 
-# 设置安全验证
+# Set security verification
 security = HTTPBearer()
 
-# 导入并发控制中间件
+# Import concurrent control middleware
 from middleware.concurrent_limit_middleware import ConcurrentLimitMiddleware
 
 class AuthContextMiddleware(BaseHTTPMiddleware):
-    """认证上下文中间件 - 检测服务版本（简化版）"""
+    """Authentication context middleware - detection service version (simplified version)"""
     
     async def dispatch(self, request: Request, call_next):
-        # 只处理检测API路由
+        # Only handle detection API routes
         if request.url.path.startswith('/v1/guardrails'):
             auth_header = request.headers.get('authorization')
             
@@ -48,15 +48,15 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         return response
     
     async def _get_auth_context(self, token: str):
-        """获取认证上下文（优化版）"""
+        """Get authentication context (optimized version)"""
         from utils.auth_cache import auth_cache
         
-        # 检查缓存
+        # Check cache
         cached_auth = auth_cache.get(token)
         if cached_auth:
             return cached_auth
         
-        # 缓存未命中，验证token
+        # Cache miss, verify token
         from database.connection import get_detection_db_session
         from database.models import Tenant
         from utils.user import get_user_by_api_key
@@ -66,7 +66,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         try:
             auth_context = None
             
-            # JWT验证
+            # JWT verification
             try:
                 user_data = verify_token(token)
                 raw_tenant_id = user_data.get('tenant_id') or user_data.get('sub')
@@ -86,7 +86,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                     except ValueError:
                         pass
             except:
-                # API key验证
+                # API key verification
                 user = get_user_by_api_key(db, token)
                 if user:
                     auth_context = {
@@ -98,7 +98,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                         }
                     }
             
-            # 缓存认证结果
+            # Cache authentication result
             if auth_context:
                 auth_cache.set(token, auth_context)
             
@@ -107,18 +107,18 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         finally:
             db.close()
 
-# 创建FastAPI应用
+# Create FastAPI application
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动阶段
+    # Startup phase
     os.makedirs(settings.data_dir, exist_ok=True)
     os.makedirs(settings.log_dir, exist_ok=True)
     os.makedirs(settings.detection_log_dir, exist_ok=True)
 
-    # 初始化数据库（检测服务不需要完整初始化）
+    # Initialize database (detection service does not need full initialization)
     await init_db(minimal=True)
 
-    # 启动异步日志服务
+    # Start asynchronous logging service
     await async_detection_logger.start()
 
     logger.info(f"{settings.app_name} Detection Service started")
@@ -128,7 +128,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        # 关闭阶段
+        # Shutdown phase
         await async_detection_logger.stop()
         from services.model_service import model_service
         await model_service.close()
@@ -137,23 +137,23 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=f"{settings.app_name} - Detection Service",
     version=settings.app_version,
-    description="象信AI安全护栏检测服务 - 高并发检测API",
+    description="Xiangxin AI security guardrails detection service - high-concurrency detection API",
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
     lifespan=lifespan,
 )
 
-# 添加并发控制中间件（优先级最高，最后添加）
+# Add concurrent control middleware (highest priority, added last)
 app.add_middleware(ConcurrentLimitMiddleware, service_type="detection", max_concurrent=settings.detection_max_concurrent_requests)
 
-# 添加限速中间件
+# Add rate limit middleware
 from middleware.rate_limit_middleware import RateLimitMiddleware
 app.add_middleware(RateLimitMiddleware)
 
-# 添加认证上下文中间件
+# Add authentication context middleware
 app.add_middleware(AuthContextMiddleware)
 
-# 配置CORS
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -162,12 +162,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 设置日志
+# Set log
 logger = setup_logger()
 
 @app.get("/")
 async def root():
-    """根路径"""
+    """Root path"""
     return {
         "name": f"{settings.app_name} - Detection Service",
         "version": settings.app_version,
@@ -180,20 +180,20 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """健康检查"""
+    """Health check"""
     return {
         "status": "healthy", 
         "version": settings.app_version,
         "service": "detection"
     }
 
-# 用户认证函数（简化版）
+# User authentication function (simplified version)
 async def verify_user_auth(
     credentials: HTTPAuthorizationCredentials = Security(security),
     request: Request = None,
 ):
-    """验证用户认证（检测服务专用）"""
-    # 使用中间件解析的认证上下文
+    """Verify user authentication (detection service专用)"""
+    # Use middleware parsed authentication context
     if request is not None:
         auth_ctx = getattr(request.state, 'auth_context', None)
         if auth_ctx:
@@ -201,10 +201,10 @@ async def verify_user_auth(
     
     raise HTTPException(status_code=401, detail="Invalid credentials")
 
-# 注册检测路由（专用版本）
+# Register detection routes (special version)
 app.include_router(detection_guardrails.router, prefix="/v1", dependencies=[Depends(verify_user_auth)])
 
-# 全局异常处理
+# Global exception handling
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     logger.error(f"Detection service exception: {exc}")

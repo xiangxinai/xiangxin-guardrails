@@ -12,18 +12,18 @@ from utils.auth import verify_token
 from pydantic import BaseModel, Field
 
 logger = setup_logger()
-router = APIRouter(prefix="/api/v1/config", tags=["风险类型配置"])
+router = APIRouter(prefix="/api/v1/config", tags=["Risk type configuration"])
 
 def get_current_user_from_request(request: Request, db: Session) -> Tenant:
-    """从请求获取当前用户（支持用户切换）"""
-    # 1) 优先检查是否有用户切换会话
+    """Get current user from request (support user switch)"""
+    # 1) Priority check if there is user switch session
     switch_token = request.headers.get('x-switch-session')
     if switch_token:
         switched_user = admin_service.get_switched_user(db, switch_token)
         if switched_user:
             return switched_user
 
-    # 2) 从认证上下文获取用户
+    # 2) Get user from auth context
     auth_context = getattr(request.state, 'auth_context', None)
     if not auth_context or 'data' not in auth_context:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -32,7 +32,7 @@ def get_current_user_from_request(request: Request, db: Session) -> Tenant:
     tenant_id_value = data.get('tenant_id')
     user_email_value = data.get('email')
 
-    # 2a) 尝试通过 tenant_id 解析为 UUID 并查询
+    # 2a) Try to parse tenant_id as UUID and query
     if tenant_id_value:
         try:
             tenant_uuid = uuid.UUID(str(tenant_id_value))
@@ -42,13 +42,13 @@ def get_current_user_from_request(request: Request, db: Session) -> Tenant:
         except ValueError:
             pass
 
-    # 2b) 退化为使用 email 查找
+    # 2b) Fall back to using email find
     if user_email_value:
         user = db.query(Tenant).filter(Tenant.email == user_email_value).first()
         if user:
             return user
 
-    # 2c) 最后手段：解析 Authorization 头部的JWT，再次尝试
+    # 2c) Last resort: parse JWT in Authorization header, try again
     auth_header = request.headers.get('authorization') or request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Bearer '):
         token = auth_header.split(' ', 1)[1]
@@ -71,7 +71,7 @@ def get_current_user_from_request(request: Request, db: Session) -> Tenant:
         except Exception:
             pass
 
-    # 无法定位到有效用户
+    # Unable to locate valid user
     raise HTTPException(status_code=401, detail="User not found or invalid context")
 
 class RiskConfigRequest(BaseModel):
@@ -125,7 +125,7 @@ async def get_risk_config(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """获取用户风险类型配置"""
+    """Get user risk type configuration"""
     try:
         current_user = get_current_user_from_request(request, db)
         risk_service = RiskConfigService(db)
@@ -133,7 +133,7 @@ async def get_risk_config(
         return RiskConfigResponse(**config_dict)
     except Exception as e:
         logger.error(f"Failed to get risk config: {e}")
-        raise HTTPException(status_code=500, detail="获取风险配置失败")
+        raise HTTPException(status_code=500, detail="Failed to get risk config")
 
 @router.put("/risk-types", response_model=RiskConfigResponse)
 async def update_risk_config(
@@ -141,7 +141,7 @@ async def update_risk_config(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """更新用户风险类型配置"""
+    """Update user risk type configuration"""
     try:
         current_user = get_current_user_from_request(request, db)
         risk_service = RiskConfigService(db)
@@ -149,12 +149,12 @@ async def update_risk_config(
 
         updated_config = risk_service.update_risk_config(str(current_user.id), config_data)
         if not updated_config:
-            raise HTTPException(status_code=500, detail="更新风险配置失败")
+            raise HTTPException(status_code=500, detail="Failed to update risk config")
         
-        # 清空该用户的缓存，强制重新加载
+        # Clear the user's cache, force reload
         await risk_config_cache.invalidate_user_cache(str(current_user.id))
 
-        # 返回更新后的配置
+        # Return updated configuration
         config_dict = risk_service.get_risk_config_dict(str(current_user.id))
         logger.info(f"Updated risk config for user {current_user.id}")
         
@@ -163,14 +163,14 @@ async def update_risk_config(
         raise
     except Exception as e:
         logger.error(f"Failed to update risk config: {e}")
-        raise HTTPException(status_code=500, detail="更新风险配置失败")
+        raise HTTPException(status_code=500, detail="Failed to update risk config")
 
 @router.get("/risk-types/enabled", response_model=Dict[str, bool])
 async def get_enabled_risk_types(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """获取用户启用的风险类型映射"""
+    """Get user enabled risk type mapping"""
     try:
         current_user = get_current_user_from_request(request, db)
         risk_service = RiskConfigService(db)
@@ -178,14 +178,14 @@ async def get_enabled_risk_types(
         return enabled_types
     except Exception as e:
         logger.error(f"Failed to get enabled risk types: {e}")
-        raise HTTPException(status_code=500, detail="获取启用风险类型失败")
+        raise HTTPException(status_code=500, detail="Failed to get enabled risk types")
 
 @router.post("/risk-types/reset")
 async def reset_risk_config(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """重置风险类型配置为默认值（全部启用）"""
+    """Reset risk type configuration to default (all enabled)"""
     try:
         current_user = get_current_user_from_request(request, db)
         risk_service = RiskConfigService(db)
@@ -197,25 +197,25 @@ async def reset_risk_config(
 
         updated_config = risk_service.update_risk_config(str(current_user.id), default_config)
         if not updated_config:
-            raise HTTPException(status_code=500, detail="重置风险配置失败")
+            raise HTTPException(status_code=500, detail="Failed to reset risk config")
 
-        # 清空该用户的缓存
+        # Clear the user's cache
         await risk_config_cache.invalidate_user_cache(str(current_user.id))
 
         logger.info(f"Reset risk config to default for user {current_user.id}")
-        return {"message": "风险配置已重置为默认值"}
+        return {"message": "Risk config has been reset to default"}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to reset risk config: {e}")
-        raise HTTPException(status_code=500, detail="重置风险配置失败")
+        raise HTTPException(status_code=500, detail="Failed to reset risk config")
 
 @router.get("/sensitivity-thresholds", response_model=SensitivityThresholdResponse)
 async def get_sensitivity_thresholds(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """获取用户敏感度阈值配置"""
+    """Get user sensitivity threshold configuration"""
     try:
         current_user = get_current_user_from_request(request, db)
         risk_service = RiskConfigService(db)
@@ -223,7 +223,7 @@ async def get_sensitivity_thresholds(
         return SensitivityThresholdResponse(**config_dict)
     except Exception as e:
         logger.error(f"Failed to get sensitivity thresholds: {e}")
-        raise HTTPException(status_code=500, detail="获取敏感度阈值配置失败")
+        raise HTTPException(status_code=500, detail="Failed to get sensitivity thresholds")
 
 @router.put("/sensitivity-thresholds", response_model=SensitivityThresholdResponse)
 async def update_sensitivity_thresholds(
@@ -231,7 +231,7 @@ async def update_sensitivity_thresholds(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """更新用户敏感度阈值配置"""
+    """Update user sensitivity threshold configuration"""
     try:
         current_user = get_current_user_from_request(request, db)
         risk_service = RiskConfigService(db)
@@ -239,12 +239,12 @@ async def update_sensitivity_thresholds(
 
         updated_config = risk_service.update_sensitivity_thresholds(str(current_user.id), threshold_data)
         if not updated_config:
-            raise HTTPException(status_code=500, detail="更新敏感度阈值配置失败")
+            raise HTTPException(status_code=500, detail="Failed to update sensitivity thresholds")
 
-        # 清空该用户的敏感度缓存，强制重新加载
+        # Clear the user's sensitivity cache, force reload
         await risk_config_cache.invalidate_sensitivity_cache(str(current_user.id))
 
-        # 返回更新后的配置
+        # Return updated configuration
         config_dict = risk_service.get_sensitivity_threshold_dict(str(current_user.id))
         logger.info(f"Updated sensitivity thresholds for user {current_user.id}")
 
@@ -253,14 +253,14 @@ async def update_sensitivity_thresholds(
         raise
     except Exception as e:
         logger.error(f"Failed to update sensitivity thresholds: {e}")
-        raise HTTPException(status_code=500, detail="更新敏感度阈值配置失败")
+        raise HTTPException(status_code=500, detail="Failed to update sensitivity thresholds")
 
 @router.post("/sensitivity-thresholds/reset")
 async def reset_sensitivity_thresholds(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """重置敏感度阈值配置为默认值"""
+    """Reset sensitivity threshold configuration to default"""
     try:
         current_user = get_current_user_from_request(request, db)
         risk_service = RiskConfigService(db)
@@ -273,15 +273,15 @@ async def reset_sensitivity_thresholds(
 
         updated_config = risk_service.update_sensitivity_thresholds(str(current_user.id), default_config)
         if not updated_config:
-            raise HTTPException(status_code=500, detail="重置敏感度阈值配置失败")
+            raise HTTPException(status_code=500, detail="Failed to reset sensitivity thresholds")
 
-        # 清空该用户的敏感度缓存
+        # Clear the user's sensitivity cache
         await risk_config_cache.invalidate_sensitivity_cache(str(current_user.id))
 
         logger.info(f"Reset sensitivity thresholds to default for user {current_user.id}")
-        return {"message": "敏感度阈值配置已重置为默认值"}
+        return {"message": "Sensitivity thresholds have been reset to default"}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to reset sensitivity thresholds: {e}")
-        raise HTTPException(status_code=500, detail="重置敏感度阈值配置失败")
+        raise HTTPException(status_code=500, detail="Failed to reset sensitivity thresholds")

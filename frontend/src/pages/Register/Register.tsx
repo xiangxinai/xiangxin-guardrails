@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Card, Typography, message, Space, Steps } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import './Register.css';
 
 const { Title, Text } = Typography;
@@ -24,6 +25,7 @@ const Register: React.FC = () => {
   const [userEmail, setUserEmail] = useState('');
   const [countdown, setCountdown] = useState(0);
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
 
   // 倒计时处理
   useEffect(() => {
@@ -41,7 +43,7 @@ const Register: React.FC = () => {
   const handleResendCode = async () => {
     try {
       setResendLoading(true);
-      
+
       const response = await fetch('/api/v1/users/resend-verification-code', {
         method: 'POST',
         headers: {
@@ -49,16 +51,17 @@ const Register: React.FC = () => {
         },
         body: JSON.stringify({
           email: userEmail,
+          language: i18n.language,
         }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.detail || '重发失败');
+        throw new Error(error.detail || t('register.registerFailed'));
       }
 
-      setCountdown(60); // 设置60秒倒计时
-      message.success('验证码已重新发送！请检查您的邮箱。');
+      setCountdown(60);
+      message.success(t('register.resendCodeSuccess'));
     } catch (error: any) {
       message.error(error.message);
     } finally {
@@ -69,7 +72,7 @@ const Register: React.FC = () => {
   const handleRegister = async (values: RegisterFormData) => {
     try {
       setLoading(true);
-      
+
       const response = await fetch('/api/v1/users/register', {
         method: 'POST',
         headers: {
@@ -78,18 +81,19 @@ const Register: React.FC = () => {
         body: JSON.stringify({
           email: values.email,
           password: values.password,
+          language: i18n.language,
         }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.detail || '注册失败');
+        throw new Error(error.detail || t('register.registerFailed'));
       }
 
       setUserEmail(values.email);
       setCurrentStep(1);
-      setCountdown(60); // 设置初始倒计时
-      message.success('注册成功！请检查您的邮箱获取验证码。');
+      setCountdown(60);
+      message.success(t('register.registerSuccess'));
     } catch (error: any) {
       message.error(error.message);
     } finally {
@@ -100,7 +104,7 @@ const Register: React.FC = () => {
   const handleVerify = async (values: VerifyFormData) => {
     try {
       setLoading(true);
-      
+
       const response = await fetch('/api/v1/users/verify-email', {
         method: 'POST',
         headers: {
@@ -114,10 +118,10 @@ const Register: React.FC = () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.detail || '验证失败');
+        throw new Error(error.detail || t('register.verifyFailed'));
       }
 
-      message.success('邮箱验证成功！即将跳转到登录页面。');
+      message.success(t('register.verifySuccess'));
       setTimeout(() => {
         navigate('/login');
       }, 1500);
@@ -139,13 +143,13 @@ const Register: React.FC = () => {
       <Form.Item
         name="email"
         rules={[
-          { required: true, message: '请输入邮箱地址' },
-          { type: 'email', message: '请输入有效的邮箱地址' },
+          { required: true, message: t('register.emailRequired') },
+          { type: 'email', message: t('register.emailInvalid') },
         ]}
       >
         <Input
           prefix={<MailOutlined />}
-          placeholder="邮箱地址"
+          placeholder={t('register.emailPlaceholder')}
           autoComplete="email"
         />
       </Form.Item>
@@ -153,13 +157,13 @@ const Register: React.FC = () => {
       <Form.Item
         name="password"
         rules={[
-          { required: true, message: '请输入密码' },
-          { min: 8, message: '密码长度至少8位' },
+          { required: true, message: t('register.passwordRequired') },
+          { min: 8, message: t('register.passwordMinLength') },
         ]}
       >
         <Input.Password
           prefix={<LockOutlined />}
-          placeholder="密码（至少8位）"
+          placeholder={t('register.passwordPlaceholder')}
           autoComplete="new-password"
         />
       </Form.Item>
@@ -168,20 +172,20 @@ const Register: React.FC = () => {
         name="confirmPassword"
         dependencies={['password']}
         rules={[
-          { required: true, message: '请确认密码' },
+          { required: true, message: t('register.confirmPasswordRequired') },
           ({ getFieldValue }) => ({
             validator(_, value) {
               if (!value || getFieldValue('password') === value) {
                 return Promise.resolve();
               }
-              return Promise.reject(new Error('两次输入的密码不一致'));
+              return Promise.reject(new Error(t('register.passwordMismatch')));
             },
           }),
         ]}
       >
         <Input.Password
           prefix={<LockOutlined />}
-          placeholder="确认密码"
+          placeholder={t('register.confirmPasswordPlaceholder')}
           autoComplete="new-password"
         />
       </Form.Item>
@@ -194,7 +198,7 @@ const Register: React.FC = () => {
           block
           className="register-button"
         >
-          注册账户
+          {t('register.registerButton')}
         </Button>
       </Form.Item>
     </Form>
@@ -210,24 +214,24 @@ const Register: React.FC = () => {
     >
       <div style={{ marginBottom: 24, textAlign: 'center' }}>
         <Text type="secondary">
-          验证码已发送到 <strong>{userEmail}</strong>
+          {t('register.verificationCodeSentTo')} <strong>{userEmail}</strong>
         </Text>
         <br />
         <Text type="secondary" style={{ fontSize: '12px' }}>
-          您也可以稍后在 <Link to={`/verify?email=${encodeURIComponent(userEmail)}`}>验证页面</Link> 完成验证
+          {t('register.verifyLaterNote')} <Link to={`/verify?email=${encodeURIComponent(userEmail)}`}>{t('register.verifyLaterLink')}</Link>
         </Text>
       </div>
 
       <Form.Item
         name="verificationCode"
         rules={[
-          { required: true, message: '请输入验证码' },
-          { len: 6, message: '验证码为6位数字' },
+          { required: true, message: t('register.verificationCodeRequired') },
+          { len: 6, message: t('register.verificationCodeLength') },
         ]}
       >
         <Input
           prefix={<SafetyOutlined />}
-          placeholder="6位验证码"
+          placeholder={t('register.verificationCodePlaceholder')}
           maxLength={6}
           style={{ textAlign: 'center', fontSize: '18px', letterSpacing: '4px' }}
         />
@@ -241,14 +245,14 @@ const Register: React.FC = () => {
           block
           className="verify-button"
         >
-          验证邮箱
+          {t('register.verifyButton')}
         </Button>
       </Form.Item>
 
       <Form.Item>
         <Space direction="vertical" style={{ width: '100%' }}>
           <div style={{ textAlign: 'center' }}>
-            <Text type="secondary">没有收到验证码？</Text>
+            <Text type="secondary">{t('register.resendCodeQuestion')}</Text>
             <Button
               type="link"
               onClick={handleResendCode}
@@ -256,7 +260,7 @@ const Register: React.FC = () => {
               disabled={countdown > 0}
               style={{ padding: '0 4px' }}
             >
-              {countdown > 0 ? `重新发送 (${countdown}s)` : '重新发送验证码'}
+              {countdown > 0 ? t('register.resendCodeCountdown', { count: countdown }) : t('register.resendCode')}
             </Button>
           </div>
           <Button
@@ -264,7 +268,7 @@ const Register: React.FC = () => {
             onClick={() => setCurrentStep(0)}
             block
           >
-            返回重新注册
+            {t('register.backToRegister')}
           </Button>
         </Space>
       </Form.Item>
@@ -277,16 +281,16 @@ const Register: React.FC = () => {
         <Card className="register-card">
           <div className="register-header">
             <Title level={2} className="register-title">
-              象信AI安全护栏
+              {t('register.title')}
             </Title>
             <Text type="secondary" className="register-subtitle">
-              用户注册
+              {t('register.subtitle')}
             </Text>
           </div>
 
           <Steps current={currentStep} className="register-steps">
-            <Step title="填写信息" description="输入邮箱和密码" />
-            <Step title="邮箱验证" description="验证邮箱地址" />
+            <Step title={t('register.stepFillInfo')} description={t('register.stepFillInfoDesc')} />
+            <Step title={t('register.stepVerifyEmail')} description={t('register.stepVerifyEmailDesc')} />
           </Steps>
 
           <div className="register-form">
@@ -296,10 +300,10 @@ const Register: React.FC = () => {
           <div className="register-footer">
             <Space direction="vertical" align="center">
               <Text type="secondary">
-                已有账户？ <Link to="/login">立即登录</Link>
+                {t('register.alreadyHaveAccount')} <Link to="/login">{t('register.loginNow')}</Link>
               </Text>
               <Text type="secondary" style={{ fontSize: '12px' }}>
-                © 2025 象信AI. All rights reserved.
+                {t('register.copyright')}
               </Text>
             </Space>
           </div>

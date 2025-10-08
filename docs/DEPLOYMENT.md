@@ -1,89 +1,93 @@
-# 部署说明
+# Deployment Guide
 
-## Docker Compose 部署（推荐）
+## Docker Compose Deployment (Recommended)
 
-使用Docker Compose是最简单的部署方式，所有服务会自动配置好网络连接。
+Using Docker Compose is the simplest deployment method — all services will be automatically networked and configured.
 
-象信AI安全护栏2.0采用三服务架构：
-- **管理服务** (5000端口)：处理管理平台API 
-- **检测服务** (5001端口)：高并发护栏检测API
-- **代理服务** (5002端口)：安全网关反向代理 🆕
+**Xiangxin AI Guardrails 2.0** adopts a three-service architecture:
+
+* **Admin Service** (Port 5000): Handles management platform APIs
+* **Detection Service** (Port 5001): High-concurrency guardrail detection API
+* **Proxy Service** (Port 5002): Secure gateway reverse proxy 🆕
 
 ```bash
-# 启动所有服务
+# Start all services
 docker compose up -d
 
-# 查看服务状态
+# View service status
 docker compose ps
 
-# 查看日志
+# View logs
 docker compose logs -f
 
-# 查看特定服务日志
-docker compose logs -f admin-service      # 管理服务
-docker compose logs -f detection-service  # 检测服务
-docker compose logs -f proxy-service      # 代理服务
+# View specific service logs
+docker compose logs -f admin-service      # Admin Service
+docker compose logs -f detection-service  # Detection Service
+docker compose logs -f proxy-service      # Proxy Service
 ```
 
-## 本地手动部署
+## Manual Local Deployment
 
-如果需要手动分别启动各个服务（开发调试用），需要注意以下配置：
+If you prefer to start each service manually (for development or debugging), please pay attention to the following configuration details:
 
-### 1. 环境配置
+### 1. Environment Configuration
 
-复制并修改环境配置文件：
+Copy and modify the environment configuration file:
 
 ```bash
 cp backend/.env.local.example backend/.env
 ```
 
-关键配置项：
-- `DETECTION_HOST=localhost`  # 本地环境使用localhost
-- `DATABASE_URL=postgresql://...`  # 数据库连接
-- 其他配置根据实际情况修改
+Key configuration items:
 
-### 2. 启动顺序
+* `DETECTION_HOST=localhost`  # Use localhost in local environment
+* `DATABASE_URL=postgresql://...`  # Database connection URL
+* Modify other settings as needed
 
-1. 启动PostgreSQL数据库
-2. 启动detection服务（端口5001）
-3. 启动admin服务（端口5000）
-4. 启动proxy服务（端口5002） 🆕
-5. 启动frontend（端口3000）
+### 2. Startup Order
 
-### 3. 服务间连接配置
+1. Start the PostgreSQL database
+2. Start the detection service (port 5001)
+3. Start the admin service (port 5000)
+4. Start the proxy service (port 5002) 🆕
+5. Start the frontend (port 3000)
 
-系统会根据 `DETECTION_HOST` 环境变量自动选择连接方式：
+### 3. Service Connection Configuration
 
-- **Docker环境**: `DETECTION_HOST=detection-service`（使用Docker服务名）
-- **本地环境**: `DETECTION_HOST=localhost`（使用本地主机）
+The system automatically determines connection settings based on the `DETECTION_HOST` environment variable:
 
-## 环境变量说明
+* **Docker Environment**: `DETECTION_HOST=detection-service` (use Docker service name)
+* **Local Environment**: `DETECTION_HOST=localhost` (use local host)
 
-| 变量名 | Docker默认值 | 本地默认值 | 说明 |
-|-------|-------------|-----------|------|
-| `DETECTION_HOST` | `detection-service` | `localhost` | 检测服务主机名 |
-| `DETECTION_PORT` | `5001` | `5001` | 检测服务端口 |
-| `ADMIN_PORT` | `5000` | `5000` | 管理服务端口 |
-| `PROXY_PORT` | `5002` | `5002` | 代理服务端口 🆕 |
+## Environment Variable Reference
 
-## 故障排除
+| Variable         | Docker Default      | Local Default | Description                |
+| ---------------- | ------------------- | ------------- | -------------------------- |
+| `DETECTION_HOST` | `detection-service` | `localhost`   | Detection service hostname |
+| `DETECTION_PORT` | `5001`              | `5001`        | Detection service port     |
+| `ADMIN_PORT`     | `5000`              | `5000`        | Admin service port         |
+| `PROXY_PORT`     | `5002`              | `5002`        | Proxy service port 🆕      |
 
-### 连接失败问题
+## Troubleshooting
 
-如果看到 "Guardrail API call failed: All connection attempts failed" 错误：
+### Connection Failure
 
-1. 检查 `DETECTION_HOST` 配置是否正确
-2. 确认detection-service正在运行且可访问
-3. 验证API密钥是否有效
+If you see the error message **“Guardrail API call failed: All connection attempts failed”**, try the following:
 
-### 环境切换
+1. Check whether `DETECTION_HOST` is correctly configured
+2. Ensure that `detection-service` is running and accessible
+3. Verify that your API key is valid
 
-从Docker切换到本地开发：
+### Switching Environments
+
+Switch from Docker to local development:
+
 ```bash
 export DETECTION_HOST=localhost
 ```
 
-从本地切换到Docker：
+Switch from local to Docker:
+
 ```bash
 export DETECTION_HOST=detection-service
 ```

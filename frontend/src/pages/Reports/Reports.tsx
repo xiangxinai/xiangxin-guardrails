@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Row, Col, Spin, Alert, DatePicker, Statistic } from 'antd';
 import { SafetyOutlined, LockOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import ReactECharts from 'echarts-for-react';
 import dayjs from 'dayjs';
 import { dashboardApi } from '../../services/api';
@@ -9,6 +10,7 @@ import type { DashboardStats } from '../../types';
 const { RangePicker } = DatePicker;
 
 const Reports: React.FC = () => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [categoryData, setCategoryData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ const Reports: React.FC = () => {
     try {
       setLoading(true);
       
-      // 并行获取统计数据和类别分布数据
+      // get stats and category distribution data in parallel
       const [statsData, categoryDistributionData] = await Promise.all([
         dashboardApi.getStats(),
         dashboardApi.getCategoryDistribution({
@@ -39,7 +41,7 @@ const Reports: React.FC = () => {
       setCategoryData(categoryDistributionData.categories || []);
       setError(null);
     } catch (err) {
-      setError('获取报表数据失败');
+      setError(t('reports.errorFetchingReports'));
       console.error('Error fetching report data:', err);
     } finally {
       setLoading(false);
@@ -49,7 +51,7 @@ const Reports: React.FC = () => {
   const getCategoryDistributionOption = () => {
     return {
       title: {
-        text: '风险类别分布',
+        text: t('reports.categoryDistribution'),
         left: 'center',
       },
       tooltip: {
@@ -62,7 +64,7 @@ const Reports: React.FC = () => {
       },
       series: [
         {
-          name: '风险类别',
+          name: t('reports.riskCategory'),
           type: 'pie',
           radius: '50%',
           data: categoryData,
@@ -82,30 +84,36 @@ const Reports: React.FC = () => {
     if (!stats || !stats.daily_trends || stats.daily_trends.length === 0) {
       return {
         title: {
-          text: `风险趋势（${dateRange[0].format('MM月DD日')} - ${dateRange[1].format('MM月DD日')}）`,
+          text: t('reports.riskTrendPeriod', {
+            from: dateRange[0].format('MM-DD'),
+            to: dateRange[1].format('MM-DD')
+          }),
           left: 'center',
         },
         xAxis: { type: 'category', data: [] },
         yAxis: { type: 'value' },
-        series: [{ name: '风险检出数', type: 'line', data: [] }]
+        series: [{ name: t('reports.riskDetectionCount'), type: 'line', data: [] }]
       };
     }
 
     const dates = stats.daily_trends.map(item => item.date);
-    const riskData = stats.daily_trends.map(item => 
+    const riskData = stats.daily_trends.map(item =>
       (item.high_risk || 0) + (item.medium_risk || 0) + (item.low_risk || 0)
     );
 
     return {
       title: {
-        text: `风险趋势（${dateRange[0].format('MM月DD日')} - ${dateRange[1].format('MM月DD日')}）`,
+        text: t('reports.riskTrendPeriod', {
+          from: dateRange[0].format('MM-DD'),
+          to: dateRange[1].format('MM-DD')
+        }),
         left: 'center',
       },
       tooltip: {
         trigger: 'axis',
         formatter: (params: any) => {
-          const date = dayjs(params[0].name).format('YYYY年MM月DD日');
-          return `${date}<br/>风险检出数: ${params[0].value}`;
+          const date = dayjs(params[0].name).format('YYYY-MM-DD');
+          return `${date}<br/>${t('reports.riskDetectionCount')}: ${params[0].value}`;
         },
       },
       xAxis: {
@@ -117,7 +125,7 @@ const Reports: React.FC = () => {
       },
       series: [
         {
-          name: '风险检出数',
+          name: t('reports.riskDetectionCount'),
           type: 'line',
           data: riskData,
           itemStyle: { color: '#ff4d4f' },
@@ -138,13 +146,13 @@ const Reports: React.FC = () => {
   if (error) {
     return (
       <Alert
-        message="错误"
+        message={t('reports.error')}
         description={error}
         type="error"
         showIcon
         action={
           <button onClick={fetchReportData} style={{ border: 'none', background: 'none', color: '#1890ff', cursor: 'pointer' }}>
-            重试
+            {t('reports.retry')}
           </button>
         }
       />
@@ -154,52 +162,52 @@ const Reports: React.FC = () => {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2>风险报表</h2>
+        <h2>{t('reports.title')}</h2>
         <RangePicker
           value={dateRange}
           onChange={(dates) => {
             if (dates) {
-              setDateRange([dates[0], dates[1]]);
+              setDateRange([dates[0]!, dates[1]!]);
             }
           }}
           format="YYYY-MM-DD"
-          placeholder={['开始日期', '结束日期']}
+          placeholder={[t('reports.startDate'), t('reports.endDate')]}
         />
       </div>
 
-      {/* 风险统计卡片 */}
+      {/* Risk statistics cards */}
       {stats && (
         <Row gutter={16} style={{ marginBottom: 24 }}>
           <Col span={8}>
             <Card>
               <Statistic
-                title="发现安全风险"
+                title={t('reports.securityRisksDetected')}
                 value={stats.security_risks}
                 prefix={<SafetyOutlined />}
                 valueStyle={{ color: '#fa8c16' }}
-                suffix="次"
+                suffix={t('reports.times')}
               />
             </Card>
           </Col>
           <Col span={8}>
             <Card>
               <Statistic
-                title="发现合规风险"
+                title={t('reports.complianceRisksDetected')}
                 value={stats.compliance_risks}
                 prefix={<SafetyOutlined />}
                 valueStyle={{ color: '#722ed1' }}
-                suffix="次"
+                suffix={t('reports.times')}
               />
             </Card>
           </Col>
           <Col span={8}>
             <Card>
               <Statistic
-                title="发现数据泄漏"
+                title={t('reports.dataLeaksDetected')}
                 value={stats.data_leaks}
                 prefix={<LockOutlined />}
                 valueStyle={{ color: '#eb2f96' }}
-                suffix="次"
+                suffix={t('reports.times')}
               />
             </Card>
           </Col>
@@ -208,23 +216,23 @@ const Reports: React.FC = () => {
 
       <Row gutter={16}>
         <Col span={12}>
-          <Card title="风险类别分布">
+          <Card title={t('reports.categoryDistribution')}>
             {categoryData.length > 0 ? (
               <ReactECharts option={getCategoryDistributionOption()} style={{ height: 400 }} />
             ) : (
               <div style={{ height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-                暂无风险类别数据
+                {t('reports.noRiskCategoryData')}
               </div>
             )}
           </Card>
         </Col>
         <Col span={12}>
-          <Card title="风险趋势">
+          <Card title={t('reports.riskTrend')}>
             {stats ? (
               <ReactECharts option={getTrendOption()} style={{ height: 400 }} />
             ) : (
               <div style={{ height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-                暂无趋势数据
+                {t('reports.noTrendData')}
               </div>
             )}
           </Card>

@@ -2,36 +2,36 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# 复制package文件
+# Copy package files
 COPY frontend/package*.json ./
 
-# 安装依赖
+# Install dependencies
 RUN npm install
 
-# 复制源代码
+# Copy source code
 COPY frontend/ .
 
-# 构建参数：允许设置 Vite base 前缀
+# Build parameters: allow setting Vite base prefix
 ARG VITE_BASE=/platform/
 ENV VITE_BASE=${VITE_BASE}
 
-# 构建项目（将 VITE_BASE 注入）
+# Build project (inject VITE_BASE)
 RUN VITE_BASE=${VITE_BASE} npm run build
 
-# 生产阶段
+# Production stage
 FROM nginx:alpine
 
-# 复制构建产物到platform目录
+# Copy build artifacts to platform directory
 COPY --from=builder /app/dist /usr/share/nginx/html/platform
 
-# 复制landing页面
+# Copy landing page
 COPY landing /usr/share/nginx/html/landing
 
-# 复制nginx配置
+# Copy nginx configuration
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
-# 暴露端口
+# Expose port
 EXPOSE 80
 
-# 启动nginx
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]

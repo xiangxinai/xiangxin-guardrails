@@ -1,6 +1,6 @@
 """
-代答模板服务
-用于管理租户的代答模板，包括为新租户创建默认模板等功能
+Answer template service
+Use to manage answer templates for tenants, including creating default templates for new tenants
 """
 from sqlalchemy.orm import Session
 from database.models import ResponseTemplate
@@ -10,24 +10,24 @@ from typing import Optional
 
 def create_user_default_templates(db: Session, tenant_id: uuid.UUID) -> int:
     """
-    为新租户从系统模版复制创建租户级模版
+    Create user-level templates for new tenants from system templates
 
-    注意：为保持向后兼容，函数名保持为 create_user_default_templates，参数名保持为 tenant_id，但实际处理的是 tenant_id
+    Note: For backward compatibility, function name remains create_user_default_templates, parameter name remains tenant_id, but tenant_id is actually processed
 
     Args:
-        db: 数据库会话
-        tenant_id: 租户ID（实际是tenant_id，参数名为向后兼容）
+        db: Database session
+        tenant_id: Tenant ID (actually tenant_id, parameter name for backward compatibility)
     Returns:
-        创建的模板数量
+        Number of created templates
     """
-    tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
+    tenant_id = tenant_id  # For backward compatibility, internally use tenant_id
     try:
-        # 检查租户是否已有模版
+        # Check if tenant already has templates
         existing_count = db.query(ResponseTemplate).filter_by(tenant_id=tenant_id).count()
         if existing_count > 0:
             return existing_count
 
-        # 获取所有系统级模版（tenant_id为None）
+        # Get all system-level templates (tenant_id is None)
         system_templates = db.query(ResponseTemplate).filter(
             ResponseTemplate.tenant_id.is_(None),
             ResponseTemplate.is_default == True
@@ -35,7 +35,7 @@ def create_user_default_templates(db: Session, tenant_id: uuid.UUID) -> int:
 
         created_count = 0
         for template in system_templates:
-            # 为租户创建对应模版
+            # Create corresponding template for tenant
             tenant_template = ResponseTemplate(
                 tenant_id=tenant_id,
                 category=template.category,
@@ -57,13 +57,13 @@ def create_user_default_templates(db: Session, tenant_id: uuid.UUID) -> int:
 
 def get_user_template(db: Session, tenant_id: uuid.UUID, category: str, risk_level: str) -> Optional[ResponseTemplate]:
     """
-    获取租户特定的代答模板
-    如果租户没有对应模板，则返回系统默认模板
+    Get tenant-specific answer templates
+    If tenant has no corresponding template, return system default template
 
-    注意：为保持向后兼容，函数名保持为 get_user_template，参数名保持为 tenant_id，但实际处理的是 tenant_id
+    Note: For backward compatibility, function name remains get_user_template, parameter name remains tenant_id, but tenant_id is actually processed
     """
-    tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
-    # 先查找租户模板
+    tenant_id = tenant_id  # For backward compatibility, internally use tenant_id
+    # First find tenant templates
     tenant_template = db.query(ResponseTemplate).filter(
         ResponseTemplate.tenant_id == tenant_id,
         ResponseTemplate.category == category,
@@ -74,7 +74,7 @@ def get_user_template(db: Session, tenant_id: uuid.UUID, category: str, risk_lev
     if tenant_template:
         return tenant_template
 
-    # 如果没有租户模板，查找系统默认模板
+    # If tenant has no templates, find system default template
     system_template = db.query(ResponseTemplate).filter(
         ResponseTemplate.tenant_id.is_(None),
         ResponseTemplate.category == category,
@@ -87,13 +87,13 @@ def get_user_template(db: Session, tenant_id: uuid.UUID, category: str, risk_lev
 
 def get_default_template(db: Session, tenant_id: Optional[uuid.UUID] = None) -> Optional[ResponseTemplate]:
     """
-    获取默认模板（当找不到特定类别模板时使用）
+    Get default template (when no specific category template is found)
 
-    注意：为保持向后兼容，参数名保持为 tenant_id，但实际处理的是 tenant_id
+    Note: For backward compatibility, parameter name remains tenant_id, but tenant_id is actually processed
     """
-    tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
+    tenant_id = tenant_id  # For backward compatibility, internally use tenant_id
     if tenant_id:
-        # 先查找租户的默认模板
+        # First find tenant default template
         tenant_default = db.query(ResponseTemplate).filter(
             ResponseTemplate.tenant_id == tenant_id,
             ResponseTemplate.category == "default",
@@ -103,7 +103,7 @@ def get_default_template(db: Session, tenant_id: Optional[uuid.UUID] = None) -> 
         if tenant_default:
             return tenant_default
 
-    # 查找系统默认模板
+    # Find system default template
     system_default = db.query(ResponseTemplate).filter(
         ResponseTemplate.tenant_id.is_(None),
         ResponseTemplate.category == "default",

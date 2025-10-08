@@ -25,7 +25,7 @@ class ModelConfig(BaseModel):
     api_key: str
     model_name: str
     enabled: bool = True
-    # 允许以 model_ 开头的字段名
+    # Allow fields to start with model_
     model_config = ConfigDict(protected_namespaces=())
 
 class ModelIdRequest(BaseModel):
@@ -36,7 +36,7 @@ class OnlineTestRequest(BaseModel):
     content: str
     input_type: str  # 'question' or 'qa_pair'
     models: Optional[List[ModelIdRequest]] = []
-    images: Optional[List[str]] = []  # base64编码的图片数据列表
+    images: Optional[List[str]] = []  # base64 encoded image data list
 
 class ModelResponse(BaseModel):
     content: Optional[str] = None
@@ -53,7 +53,7 @@ class OnlineTestModelInfo(BaseModel):
     api_base_url: str
     model_name: str
     enabled: bool
-    selected: bool = False  # 是否被选中用于在线测试
+    selected: bool = False  # Whether it is selected for online test
     
     # 允许以 model_ 开头的字段名
     model_config = ConfigDict(protected_namespaces=())
@@ -61,7 +61,7 @@ class OnlineTestModelInfo(BaseModel):
 class UpdateModelSelectionRequest(BaseModel):
     model_selections: List[Dict[str, Any]]  # [{"id": "model_id", "selected": True/False}]
     
-    # 允许以 model_ 开头的字段名
+    # Allow fields to start with model_
     model_config = ConfigDict(protected_namespaces=())
 
 @router.get("/test/models", response_model=List[OnlineTestModelInfo])
@@ -69,9 +69,9 @@ async def get_online_test_models(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """获取在线测试可用的代理模型列表"""
+    """Get available proxy models for online test"""
     try:
-        # 获取用户上下文
+        # Get user context
         auth_context = getattr(request.state, 'auth_context', None)
         tenant_id = None
         if auth_context:
@@ -80,29 +80,29 @@ async def get_online_test_models(
         if not tenant_id:
             raise HTTPException(status_code=401, detail="User ID not found in auth context")
         
-        # 获取用户UUID
+        # Get user UUID
         try:
             tenant_uuid = uuid.UUID(tenant_id)
         except ValueError:
             logger.error(f"Invalid tenant_id format: {tenant_id}")
-            raise HTTPException(status_code=400, detail="无效的用户ID格式")
+            raise HTTPException(status_code=400, detail="Invalid user ID format")
         
-        # 获取用户的代理模型配置
+        # Get user's proxy model configuration
         from database.models import ProxyModelConfig, OnlineTestModelSelection
         proxy_models = db.query(ProxyModelConfig).filter(
             ProxyModelConfig.tenant_id == tenant_uuid,
             ProxyModelConfig.enabled == True
         ).all()
         
-        # 获取用户的在线测试模型选择
+        # Get user's online test model selection
         selections = db.query(OnlineTestModelSelection).filter(
             OnlineTestModelSelection.tenant_id == tenant_uuid
         ).all()
         
-        # 创建选择映射
+        # Create selection mapping
         selection_map = {str(sel.proxy_model_id): sel.selected for sel in selections}
         
-        # 构造返回数据
+        # Construct return data
         result = []
         for model in proxy_models:
             model_info = OnlineTestModelInfo(
@@ -121,7 +121,7 @@ async def get_online_test_models(
         raise
     except Exception as e:
         logger.error(f"Get online test models error: {e}")
-        raise HTTPException(status_code=500, detail=f"获取模型列表失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Get model list failed: {str(e)}")
 
 @router.post("/test/models/selection")
 async def update_model_selection(
@@ -129,9 +129,9 @@ async def update_model_selection(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """更新在线测试模型选择"""
+    """Update online test model selection"""
     try:
-        # 获取用户上下文
+        # Get user context
         auth_context = getattr(request.state, 'auth_context', None)
         tenant_id = None
         if auth_context:
@@ -140,47 +140,47 @@ async def update_model_selection(
         if not tenant_id:
             raise HTTPException(status_code=401, detail="User ID not found in auth context")
         
-        # 获取用户UUID
+        # Get user UUID
         try:
             tenant_uuid = uuid.UUID(tenant_id)
         except ValueError:
             logger.error(f"Invalid tenant_id format: {tenant_id}")
-            raise HTTPException(status_code=400, detail="无效的用户ID格式")
+            raise HTTPException(status_code=400, detail="Invalid user ID format")
         
         from database.models import OnlineTestModelSelection, ProxyModelConfig
         
-        # 更新每个模型的选择状态
+        # Update selection status for each model
         for selection in request_data.model_selections:
             model_id = selection['id']
             selected = selection['selected']
             
-            # 验证模型ID格式
+            # Validate model ID format
             try:
                 proxy_model_uuid = uuid.UUID(model_id)
             except ValueError:
                 logger.error(f"Invalid model_id format: {model_id}")
                 continue
             
-            # 验证模型是否属于该用户
+            # Validate model belongs to the user
             proxy_model = db.query(ProxyModelConfig).filter(
                 ProxyModelConfig.id == proxy_model_uuid,
                 ProxyModelConfig.tenant_id == tenant_uuid
             ).first()
             
             if not proxy_model:
-                continue  # 跳过不属于该用户的模型
+                continue  # Skip models that do not belong to the user
             
-            # 查找现有的选择记录
+            # Find existing selection record
             existing_selection = db.query(OnlineTestModelSelection).filter(
                 OnlineTestModelSelection.tenant_id == tenant_uuid,
                 OnlineTestModelSelection.proxy_model_id == proxy_model_uuid
             ).first()
             
             if existing_selection:
-                # 更新现有记录
+                # Update existing record
                 existing_selection.selected = selected
             else:
-                # 创建新记录
+                # Create new record
                 new_selection = OnlineTestModelSelection(
                     tenant_id=tenant_uuid,
                     proxy_model_id=proxy_model_uuid,
@@ -189,14 +189,14 @@ async def update_model_selection(
                 db.add(new_selection)
         
         db.commit()
-        return {"message": "模型选择已更新"}
+        return {"message": "Model selection updated"}
         
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
         logger.error(f"Update model selection error: {e}")
-        raise HTTPException(status_code=500, detail=f"更新模型选择失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Update model selection failed: {str(e)}")
 
 @router.post("/test/online", response_model=OnlineTestResponse)
 async def online_test(
@@ -205,12 +205,12 @@ async def online_test(
     db: Session = Depends(get_db)
 ):
     """
-    在线测试API
+    Online test API
     
-    支持测试护栏检测能力，同时可以测试被保护模型的响应
+    Support testing guardrail detection capability, and also test the response of the protected model
     """
     try:
-        # 获取用户上下文
+        # Get user context
         auth_context = getattr(request.state, 'auth_context', None)
         tenant_id = None
         if auth_context:
@@ -219,17 +219,17 @@ async def online_test(
         if not tenant_id:
             raise HTTPException(status_code=401, detail="User ID not found in auth context")
         
-        # 构造消息格式
+        # Construct message format
         messages = []
         if request_data.input_type == 'question':
-            # 检查是否有图片数据
+            # Check if there is image data
             if request_data.images and len(request_data.images) > 0:
-                # 多模态消息格式
+                # Multimodal message format
                 content = []
-                # 添加文本内容（如果有）
+                # Add text content (if any)
                 if request_data.content.strip():
                     content.append({"type": "text", "text": request_data.content})
-                # 添加图片内容
+                # Add image content
                 for image_base64 in request_data.images:
                     content.append({
                         "type": "image_url",
@@ -237,10 +237,10 @@ async def online_test(
                     })
                 messages = [{"role": "user", "content": content}]
             else:
-                # 纯文本消息格式
+                # Pure text message format
                 messages = [{"role": "user", "content": request_data.content}]
         else:  # qa_pair
-            # 解析问答对
+            # Parse qa pair
             lines = request_data.content.split('\n')
             question = None
             answer = None
@@ -252,48 +252,48 @@ async def online_test(
                     answer = line[2:].strip()
             
             if not question or not answer:
-                raise HTTPException(status_code=400, detail="问答对格式错误，请使用 Q: 问题\\nA: 回答 的格式")
+                raise HTTPException(status_code=400, detail="Qa pair format error, please use Q: question\\nA: answer format")
             
             messages = [
                 {"role": "user", "content": question},
                 {"role": "assistant", "content": answer}
             ]
         
-        # 获取用户API key
+        # Get user API key
         user_api_key = None
         if auth_context and auth_context.get('type') in ['api_key', 'api_key_switched']:
             user_api_key = auth_context['data'].get('api_key')
         
-        # 获取用户UUID
+        # Get user UUID
         try:
             tenant_uuid = uuid.UUID(tenant_id)
         except ValueError:
             logger.error(f"Invalid tenant_id format: {tenant_id}")
-            raise HTTPException(status_code=400, detail="无效的用户ID格式")
+            raise HTTPException(status_code=400, detail="Invalid user ID format")
         
         if not user_api_key:
-            # 如果是JWT登录，需要从数据库获取租户的API key
+            # If JWT login, need to get tenant's API key from database
             tenant = db.query(Tenant).filter(Tenant.id == tenant_uuid).first()
             if tenant:
                 user_api_key = tenant.api_key
         
         if not user_api_key:
-            raise HTTPException(status_code=400, detail="用户API key未找到")
+            raise HTTPException(status_code=400, detail="User API key not found")
         
-        # 使用用户API key调用护栏API
+        # Use user API key to call guardrail API
         has_images = request_data.images and len(request_data.images) > 0
         guardrail_dict = await call_guardrail_api(user_api_key, messages, tenant_uuid, db, has_images)
         
-        # 如果是问题类型，获取用户选择的代理模型进行测试
+        # If question type, get user selected proxy model for test
         model_results = {}
         original_responses = {}
         if request_data.input_type == 'question':
-            # 从数据库获取用户选择的代理模型配置
+            # Get user selected proxy model configuration from database
             from database.models import ProxyModelConfig, OnlineTestModelSelection
             
-            # 如果请求中指定了模型，使用指定的模型，否则使用用户之前选择的模型
+            # If specified model in request, use specified model, otherwise use user selected model
             if request_data.models:
-                # 兼容原有的请求格式，但现在使用proxy_model_configs
+                # Compatible with original request format, but now using proxy_model_configs
                 enabled_model_ids = [m.id for m in request_data.models if m.enabled]
                 logger.info(f"Testing specific models: {enabled_model_ids}")
                 
@@ -303,7 +303,7 @@ async def online_test(
                     ProxyModelConfig.enabled == True
                 ).all()
             else:
-                # 获取用户选择的代理模型
+                # Get user selected proxy model
                 selected_models_query = db.query(ProxyModelConfig).join(
                     OnlineTestModelSelection,
                     ProxyModelConfig.id == OnlineTestModelSelection.proxy_model_id
@@ -317,17 +317,17 @@ async def online_test(
             
             logger.info(f"Found {len(db_models)} models in database")
             
-            # 并行调用所有启用的模型获取原始响应（不经过护栏）
+            # Call all enabled models to get original response (not through guardrail)
             original_tasks = []
             for db_model in db_models:
-                # 解密API key
+                # Decrypt API key
                 try:
                     decrypted_api_key = proxy_service._decrypt_api_key(db_model.api_key_encrypted)
                 except Exception as e:
                     logger.error(f"Failed to decrypt API key for model {db_model.id}: {e}")
                     continue
                 
-                # 创建ModelConfig对象
+                # Create ModelConfig object
                 model_config = ModelConfig(
                     id=str(db_model.id),
                     name=db_model.config_name,
@@ -336,11 +336,11 @@ async def online_test(
                     model_name=db_model.model_name,
                     enabled=db_model.enabled
                 )
-                # 直接调用模型获取原始响应
+                # Directly call model to get original response
                 original_task = test_model_api(model_config, messages)
                 original_tasks.append((str(db_model.id), original_task))
             
-            # 等待所有模型的原始响应
+            # Wait for all models' original response
             if original_tasks:
                 original_results = await asyncio.gather(
                     *[task for _, task in original_tasks], 
@@ -352,24 +352,24 @@ async def online_test(
                     if isinstance(result, Exception):
                         original_responses[model_id] = ModelResponse(
                             content=None,
-                            error=f"请求失败: {str(result)}"
+                            error=f"Request failed: {str(result)}"
                         )
                     else:
                         original_responses[model_id] = result
             
-            # 基于护栏结果生成护栏保护响应
+            # Generate guardrail protected response based on guardrail result
             for model_id in original_responses:
                 if (guardrail_dict.get('suggest_action', '') == '通过' or 
                     guardrail_dict.get('overall_risk_level', '') in ['无风险', 'safe']):
-                    # 如果护栏通过，护栏保护响应直接使用原始响应
+                    # If guardrail passed, guardrail protected response directly use original response
                     model_results[model_id] = original_responses[model_id]
                 else:
-                    # 如果护栏阻断，使用建议回答或拒答消息
+                    # If guardrail blocked, use suggested answer or reject message
                     suggest_answer = guardrail_dict.get('suggest_answer', '')
                     if suggest_answer:
                         model_results[model_id] = ModelResponse(content=suggest_answer)
                     else:
-                        model_results[model_id] = ModelResponse(content="抱歉，我无法回答这个问题，因为它可能违反了安全准则。")
+                        model_results[model_id] = ModelResponse(content="Sorry, I cannot answer this question, because it may violate the security criteria.")
         
         return OnlineTestResponse(
             guardrail=guardrail_dict,
@@ -378,33 +378,33 @@ async def online_test(
         )
         
     except HTTPException:
-        # 重新抛出HTTPException（包括429限速错误），不要转换为500错误
+        # Re-throw HTTPException (including 429 rate limit error), do not convert to 500 error
         raise
     except Exception as e:
         import traceback
         error_msg = f"Online test error: {e}\nTraceback: {traceback.format_exc()}"
         logger.error(error_msg)
         
-        # 改进超时错误处理
+        # Improve timeout error handling
         error_str = str(e).lower()
         if "timeout" in error_str or "timed out" in error_str:
             raise HTTPException(
                 status_code=408, 
-                detail="测试执行超时，这可能是由于模型响应时间过长导致的。请稍后重试，或联系管理员检查模型配置。"
+                detail="Test execution timeout, this may be due to model response time being too long. Please try again later, or contact the administrator to check the model configuration."
             )
         else:
-            raise HTTPException(status_code=500, detail=f"测试执行失败: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Test execution failed: {str(e)}")
 
 async def call_guardrail_api(api_key: str, messages: List[Dict[str, Any]], tenant_uuid: uuid.UUID, db: Session, has_images: bool = False) -> Dict[str, Any]:
-    """调用护栏API"""
+    """Call guardrail API"""
     try:
-        # 构建护栏API的URL - 根据配置自动适配环境
+        # Build guardrail API URL - automatically adapt to environment based on configuration
         guardrail_url = f"http://{settings.detection_host}:{settings.detection_port}/v1/guardrails"
         
-        # 根据是否有图片选择合适的模型
+        # Select appropriate model based on whether there is image
         model_name = "Xiangxin-Guardrails-VL" if has_images else "Xiangxin-Guardrails-Text"
         
-        async with httpx.AsyncClient(timeout=180.0) as client:  # 增加护栏API超时到3分钟
+        async with httpx.AsyncClient(timeout=180.0) as client:  # Increase guardrail API timeout to 3 minutes
             response = await client.post(
                 guardrail_url,
                 headers={
@@ -437,36 +437,36 @@ async def call_guardrail_api(api_key: str, messages: List[Dict[str, Any]], tenan
                     "suggest_answer": result.get('suggest_answer', '')
                 }
             elif response.status_code == 429:
-                # 处理限速错误，获取用户限速配置
+                # Handle rate limit error, get user rate limit configuration
                 try:
                     from services.rate_limiter import RateLimitService
                     rate_limit_service = RateLimitService(db)
                     rate_limit_config = rate_limit_service.get_user_rate_limit(str(tenant_uuid))
                     rate_limit = rate_limit_config.requests_per_second if rate_limit_config and rate_limit_config.is_active else 1
                     
-                    rate_limit_text = "无限制" if rate_limit == 0 else f"{rate_limit} 请求/秒"
+                    rate_limit_text = "No limit" if rate_limit == 0 else f"{rate_limit} requests/second"
                     
                     raise HTTPException(
                         status_code=429, 
-                        detail=f"API调用频率超过限制，请稍后再试。当前限速：{rate_limit_text}。如需调整请联系管理员 {settings.support_email}"
+                        detail=f"API call frequency exceeds limit, please try again later. Current rate limit: {rate_limit_text}. If you need to adjust, please contact the administrator {settings.support_email}"
                     )
                 except HTTPException:
                     raise
                 except Exception as e:
-                    logger.error(f"获取用户限速配置失败: {e}")
+                    logger.error(f"Get user rate limit configuration failed: {e}")
                     raise HTTPException(
                         status_code=429, 
-                        detail="API调用频率超过限制，请稍后再试。请检查您的API速度限制设置。"
+                        detail="API call frequency exceeds limit, please try again later. Please check your API speed limit settings."
                     )
             else:
-                raise Exception(f"护栏API调用失败: HTTP {response.status_code}")
+                raise Exception(f"Guardrail API call failed: HTTP {response.status_code}")
                 
     except HTTPException:
-        # 重新抛出HTTPException，不要捕获
+        # Re-throw HTTPException, do not catch
         raise
     except Exception as e:
         logger.error(f"Guardrail API call failed: {e}")
-        # 检查是否是限速相关的错误
+        # Check if it is a rate limit related error
         error_str = str(e).lower()
         if "rate limit" in error_str or "429" in error_str or "too many requests" in error_str:
             try:
@@ -475,63 +475,63 @@ async def call_guardrail_api(api_key: str, messages: List[Dict[str, Any]], tenan
                 rate_limit_config = rate_limit_service.get_user_rate_limit(str(tenant_uuid))
                 rate_limit = rate_limit_config.requests_per_second if rate_limit_config and rate_limit_config.is_active else 1
                 
-                rate_limit_text = "无限制" if rate_limit == 0 else f"{rate_limit} 请求/秒"
+                rate_limit_text = "No limit" if rate_limit == 0 else f"{rate_limit} requests/second"
                 
                 raise HTTPException(
                     status_code=429, 
-                    detail=f"API调用频率超过限制，请稍后再试。当前限速：{rate_limit_text}。如需调整请联系管理员 {settings.support_email}"
+                    detail=f"API call frequency exceeds limit, please try again later. Current rate limit: {rate_limit_text}. If you need to adjust, please contact the administrator {settings.support_email}"
                 )
             except HTTPException:
                 raise
             except Exception as ex:
-                logger.error(f"获取用户限速配置失败: {ex}")
+                logger.error(f"Get user rate limit configuration failed: {ex}")
                 raise HTTPException(
                     status_code=429, 
-                    detail="API调用频率超过限制，请稍后再试。请检查您的API速度限制设置。"
+                    detail="API call frequency exceeds limit, please try again later. Please check your API speed limit settings."
                 )
         
         return {
             "compliance": {
-                "risk_level": "检测失败",
-                "categories": ["系统错误"]
+                "risk_level": "Test failed",
+                "categories": ["System error"]
             },
             "security": {
-                "risk_level": "检测失败",
-                "categories": ["系统错误"]
+                "risk_level": "Test failed",
+                "categories": ["System error"]
             },
             "data": {
-                "risk_level": "无风险",
+                "risk_level": "Test failed",
                 "categories": []
             },
-            "overall_risk_level": "检测失败",
-            "suggest_action": "系统错误",
-            "suggest_answer": f"护栏检测系统出现错误: {str(e)}"
+            "overall_risk_level": "Test failed",
+            "suggest_action": "System error",
+            "suggest_answer": f"Guardrail detection system error: {str(e)}"
         }
 
 async def test_model_api(model: ModelConfig, messages: List[Dict[str, Any]]) -> ModelResponse:
     """使用OpenAI SDK测试单个模型API"""
     try:
-        # 创建OpenAI客户端，使用更长的超时时间以支持代理模型
+        # Create OpenAI client, use longer timeout to support proxy model
         client = AsyncOpenAI(
             api_key=model.api_key,
             base_url=model.base_url.rstrip('/'),
-            timeout=600.0  # 10分钟超时
+            timeout=600.0  # 10 minutes timeout
         )
         
-        # 调用模型API
+        # Call model API
         response = await client.chat.completions.create(
             model=model.model_name,
             messages=messages,
             temperature=0.0
         )
         
-        # 提取响应内容
-        # 如果有reasoning_content,则返回reasoning_content
+        # Extract response content
+        # If there is reasoning_content, return reasoning_content
         reasoning_content = None
         if response.choices[0].message.reasoning_content:
             reasoning_content = response.choices[0].message.reasoning_content
         
-        answer_content = response.choices[0].message.content if response.choices else '无响应'
+        answer_content = response.choices[0].message.content if response.choices else 'No response'
         if reasoning_content:
             content = f"<think>\n{reasoning_content}\n</think>\n\n{answer_content}"
         else:
@@ -542,15 +542,15 @@ async def test_model_api(model: ModelConfig, messages: List[Dict[str, Any]]) -> 
     except Exception as e:
         error_message = str(e)
         if "401" in error_message or "Unauthorized" in error_message:
-            error_message = "API Key无效或未授权"
+            error_message = "API Key invalid or unauthorized"
         elif "404" in error_message or "Not Found" in error_message:
-            error_message = "API端点未找到或模型不存在"
+            error_message = "API endpoint not found or model not exists"
         elif "timeout" in error_message.lower() or "timed out" in error_message.lower():
-            error_message = "请求超时，模型响应时间过长，请稍后重试或联系管理员"
+            error_message = "Request timeout, model response time too long, please try again later or contact the administrator"
         elif "rate limit" in error_message.lower():
-            error_message = "API调用频率限制"
+            error_message = "API call frequency limit"
         else:
-            error_message = f"请求失败: {error_message}"
+            error_message = f"Request failed: {error_message}"
             
         logger.error(f"Model API call failed for {model.name}: {error_message}")
         return ModelResponse(

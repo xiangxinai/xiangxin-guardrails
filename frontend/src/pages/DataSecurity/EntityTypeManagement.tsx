@@ -16,6 +16,7 @@ import {
   Typography,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, GlobalOutlined, UserOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { dataSecurityApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -39,22 +40,23 @@ interface EntityType {
   updated_at: string;
 }
 
-const RISK_LEVELS = [
-  { value: '低', label: '低风险', color: 'green' },
-  { value: '中', label: '中风险', color: 'orange' },
-  { value: '高', label: '高风险', color: 'red' },
-];
-
-const ANONYMIZATION_METHODS = [
-  { value: 'replace', label: '替换' },
-  { value: 'mask', label: '掩码' },
-  { value: 'hash', label: '哈希' },
-  { value: 'encrypt', label: '加密' },
-  { value: 'shuffle', label: '重排' },
-  { value: 'random', label: '随机替换' },
-];
-
 const EntityTypeManagement: React.FC = () => {
+  const { t } = useTranslation();
+  
+  const RISK_LEVELS = [
+    { value: '低', label: t('entityType.lowRisk'), color: 'green' },
+    { value: '中', label: t('entityType.mediumRisk'), color: 'orange' },
+    { value: '高', label: t('entityType.highRisk'), color: 'red' },
+  ];
+
+  const ANONYMIZATION_METHODS = [
+    { value: 'replace', label: t('entityType.replace') },
+    { value: 'mask', label: t('entityType.mask') },
+    { value: 'hash', label: t('entityType.hash') },
+    { value: 'encrypt', label: t('entityType.encrypt') },
+    { value: 'shuffle', label: t('entityType.shuffle') },
+    { value: 'random', label: t('entityType.randomReplace') },
+  ];
   const [entityTypes, setEntityTypes] = useState<EntityType[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -74,7 +76,7 @@ const EntityTypeManagement: React.FC = () => {
       const response = await dataSecurityApi.getEntityTypes();
       setEntityTypes(response.items || []);
     } catch (error) {
-      message.error('加载实体类型配置失败');
+      message.error(t('entityType.loadEntityTypesFailed'));
     } finally {
       setLoading(false);
     }
@@ -88,7 +90,7 @@ const EntityTypeManagement: React.FC = () => {
       check_input: true,
       check_output: true,
       anonymization_method: 'replace',
-      is_global: false, // 默认为个人配置
+      is_global: false, // Default to custom configuration
     });
     setModalVisible(true);
   };
@@ -105,10 +107,10 @@ const EntityTypeManagement: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await dataSecurityApi.deleteEntityType(id);
-      message.success('删除成功');
+      message.success(t('common.deleteSuccess'));
       loadEntityTypes();
     } catch (error) {
-      message.error('删除失败');
+      message.error(t('common.deleteFailed'));
     }
   };
 
@@ -116,13 +118,13 @@ const EntityTypeManagement: React.FC = () => {
     try {
       const values = await form.validateFields();
 
-      // 解析JSON配置
+      // Parse JSON config
       let anonymization_config = {};
 
       try {
         anonymization_config = JSON.parse(values.anonymization_config_text || '{}');
       } catch (e) {
-        message.error('脱敏配置JSON格式错误');
+        message.error(t('entityType.invalidJsonConfig'));
         return;
       }
 
@@ -140,15 +142,15 @@ const EntityTypeManagement: React.FC = () => {
 
       if (editingEntity) {
         await dataSecurityApi.updateEntityType(editingEntity.id, data);
-        message.success('更新成功');
+        message.success(t('common.updateSuccess'));
       } else {
-        // 根据is_global字段决定调用哪个API
+        // Determine which API to call based on is_global field
         if (values.is_global && user?.is_super_admin) {
           await dataSecurityApi.createGlobalEntityType(data);
-          message.success('创建系统配置成功');
+          message.success(t('entityType.createGlobalSuccess'));
         } else {
           await dataSecurityApi.createEntityType(data);
-          message.success('创建成功');
+          message.success(t('common.createSuccess'));
         }
       }
 
@@ -161,19 +163,19 @@ const EntityTypeManagement: React.FC = () => {
 
   const columns = [
     {
-      title: '实体类型',
+      title: t('entityType.entityTypeColumn'),
       dataIndex: 'entity_type',
       key: 'entity_type',
       width: 150,
     },
     {
-      title: '显示名称',
+      title: t('entityType.displayNameColumn'),
       dataIndex: 'display_name',
       key: 'display_name',
       width: 120,
     },
     {
-      title: '风险等级',
+      title: t('entityType.riskLevelColumn'),
       dataIndex: 'risk_level',
       key: 'risk_level',
       width: 100,
@@ -183,7 +185,7 @@ const EntityTypeManagement: React.FC = () => {
       },
     },
     {
-      title: '识别规则',
+      title: t('entityType.recognitionRulesColumn'),
       dataIndex: 'pattern',
       key: 'pattern',
       width: 200,
@@ -195,7 +197,7 @@ const EntityTypeManagement: React.FC = () => {
       ),
     },
     {
-      title: '脱敏方法',
+      title: t('entityType.desensitizationMethodColumn'),
       dataIndex: 'anonymization_method',
       key: 'anonymization_method',
       width: 100,
@@ -205,43 +207,43 @@ const EntityTypeManagement: React.FC = () => {
       },
     },
     {
-      title: '检测范围',
+      title: t('entityType.detectionScopeColumn'),
       key: 'check_scope',
       width: 100,
       render: (_: any, record: EntityType) => (
         <Space size={4}>
-          {record.check_input && <Tag color="blue" style={{ margin: 0 }}>输入</Tag>}
-          {record.check_output && <Tag color="green" style={{ margin: 0 }}>输出</Tag>}
+          {record.check_input && <Tag color="blue" style={{ margin: 0 }}>{t('entityType.input')}</Tag>}
+          {record.check_output && <Tag color="green" style={{ margin: 0 }}>{t('entityType.output')}</Tag>}
         </Space>
       ),
     },
     {
-      title: '状态',
+      title: t('entityType.statusColumn'),
       dataIndex: 'is_active',
       key: 'is_active',
       width: 80,
       render: (is_active: boolean) => (
-        <Tag color={is_active ? 'green' : 'default'}>{is_active ? '启用' : '禁用'}</Tag>
+        <Tag color={is_active ? 'green' : 'default'}>{is_active ? t('common.enabled') : t('common.disabled')}</Tag>
       ),
     },
     {
-      title: '来源',
+      title: t('entityType.sourceColumn'),
       dataIndex: 'is_global',
       key: 'is_global',
       width: 80,
       render: (is_global: boolean) => (
         <Tag icon={is_global ? <GlobalOutlined /> : <UserOutlined />} color={is_global ? 'blue' : 'default'}>
-          {is_global ? '系统' : '自定义'}
+          {is_global ? t('entityType.system') : t('entityType.custom')}
         </Tag>
       ),
     },
     {
-      title: '操作',
+      title: t('entityType.operationColumn'),
       key: 'action',
       width: 120,
       render: (_: any, record: EntityType) => (
         <Space size="small">
-          <Tooltip title="编辑">
+          <Tooltip title={t('common.edit')}>
             <Button
               type="link"
               size="small"
@@ -250,8 +252,8 @@ const EntityTypeManagement: React.FC = () => {
               disabled={record.is_global && !user?.is_super_admin}
             />
           </Tooltip>
-          <Popconfirm title="确定要删除吗？" onConfirm={() => handleDelete(record.id)}>
-            <Tooltip title="删除">
+          <Popconfirm title={t('common.confirmDelete')} onConfirm={() => handleDelete(record.id)}>
+            <Tooltip title={t('common.delete')}>
               <Button
                 type="link"
                 size="small"
@@ -266,7 +268,7 @@ const EntityTypeManagement: React.FC = () => {
     },
   ];
 
-  // 过滤数据
+  // Filter data
   const filteredEntityTypes = entityTypes.filter(item => {
     const matchesSearch = !searchText ||
       item.entity_type.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -281,10 +283,10 @@ const EntityTypeManagement: React.FC = () => {
   return (
     <div>
       <Card
-        title="实体类型配置"
+        title={t('entityType.entityTypeConfig')}
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            添加实体类型配置
+            {t('entityType.addEntityTypeConfig')}
           </Button>
         }
         bordered={false}
@@ -292,13 +294,13 @@ const EntityTypeManagement: React.FC = () => {
         <Space style={{ marginBottom: 16, width: '100%' }} direction="vertical">
           <Space>
             <Input.Search
-              placeholder="搜索实体类型、显示名称或规则"
+              placeholder={t('entityType.searchPlaceholder')}
               allowClear
               style={{ width: 300 }}
               onChange={(e) => setSearchText(e.target.value)}
             />
             <Select
-              placeholder="筛选风险等级"
+              placeholder={t('entityType.filterRiskLevel')}
               allowClear
               style={{ width: 150 }}
               onChange={(value) => setRiskLevelFilter(value)}
@@ -319,39 +321,39 @@ const EntityTypeManagement: React.FC = () => {
           loading={loading}
           pagination={{
             pageSize: 10,
-            showTotal: (total) => `共 ${total} 条`,
+            showTotal: (total) => t('banPolicy.totalRecords', { total }),
           }}
         />
       </Card>
 
       <Modal
-        title={editingEntity ? '编辑实体类型' : '添加实体类型'}
+        title={editingEntity ? t('entityType.editEntityType') : t('entityType.addEntityType')}
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
         width={800}
-        okText="确定"
-        cancelText="取消"
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
       >
         <Form form={form} layout="vertical">
           <Form.Item
             name="entity_type"
-            label="实体类型代码"
-            rules={[{ required: true, message: '请输入实体类型代码' }]}
+            label="Entity type code"
+            rules={[{ required: true, message: 'Please enter entity type code' }]}
           >
-            <Input placeholder="例如: ID_CARD_NUMBER, PHONE_NUMBER, EMAIL" disabled={!!editingEntity} />
+            <Input placeholder="E.g. ID_CARD_NUMBER, PHONE_NUMBER, EMAIL" disabled={!!editingEntity} />
           </Form.Item>
 
           <Form.Item
             name="display_name"
-            label="显示名称"
-            rules={[{ required: true, message: '请输入显示名称' }]}
+            label="Display name"
+            rules={[{ required: true, message: 'Please enter display name' }]}
           >
-            <Input placeholder="例如: 身份证号, 手机号, 电子邮箱" />
+            <Input placeholder="E.g. ID Card Number, Phone Number, Email" />
           </Form.Item>
 
-          <Form.Item name="risk_level" label="风险等级" rules={[{ required: true, message: '请选择风险等级' }]}>
-            <Select placeholder="请选择风险等级">
+          <Form.Item name="risk_level" label="Risk level" rules={[{ required: true, message: 'Please select risk level' }]}>
+            <Select placeholder="Please select risk level">
               {RISK_LEVELS.map((level) => (
                 <Option key={level.value} value={level.value}>
                   {level.label}
@@ -362,23 +364,23 @@ const EntityTypeManagement: React.FC = () => {
 
           <Form.Item
             name="pattern"
-            label="识别规则（正则表达式）"
-            rules={[{ required: true, message: '请输入正则表达式' }]}
-            tooltip="使用正则表达式定义敏感数据的识别规则"
+            label="Recognition rule (regex)"
+            rules={[{ required: true, message: 'Please enter regex' }]}
+            tooltip="Use regex to define the recognition rule for sensitive data"
           >
             <TextArea
               rows={3}
-              placeholder='例如: 1[3-9]\d{9} (手机号)'
+              placeholder='E.g. 1[3-9]\d{9} (Phone Number)'
               style={{ fontFamily: 'monospace' }}
             />
           </Form.Item>
 
           <Form.Item
             name="anonymization_method"
-            label="脱敏方法"
-            rules={[{ required: true, message: '请选择脱敏方法' }]}
+            label="Anonymization method"
+            rules={[{ required: true, message: 'Please select anonymization method' }]}
           >
-            <Select placeholder="请选择脱敏方法">
+            <Select placeholder="Please select anonymization method">
               {ANONYMIZATION_METHODS.map((method) => (
                 <Option key={method.value} value={method.value}>
                   {method.label}
@@ -389,51 +391,51 @@ const EntityTypeManagement: React.FC = () => {
 
           <Form.Item
             name="anonymization_config_text"
-            label="脱敏配置 (JSON)"
+            label="Anonymization config (JSON)"
           >
             <TextArea
               rows={4}
-              placeholder='例如: {"mask_char": "*", "keep_prefix": 3, "keep_suffix": 4}'
+              placeholder='E.g. {"mask_char": "*", "keep_prefix": 3, "keep_suffix": 4}'
               style={{ fontFamily: 'monospace' }}
             />
             <Card size="small" style={{ marginTop: 8, backgroundColor: '#f5f5f5' }}>
-              <Text strong style={{ fontSize: 12 }}>脱敏方法配置说明：</Text>
+              <Text strong style={{ fontSize: 12 }}>Anonymization method config description:</Text>
               <ul style={{ margin: '8px 0', paddingLeft: 20, fontSize: 11 }}>
-                <li><Text code>replace</Text> - 替换为占位符
+                <li><Text code>replace</Text> - Replace with placeholder
                   <br /><Text type="secondary">{"{"}"replacement": "&lt;PHONE_NUMBER&gt;"{"}"}  → 13912345678 变为 &lt;PHONE_NUMBER&gt;</Text>
                 </li>
-                <li><Text code>mask</Text> - 部分掩码显示
+                <li><Text code>mask</Text> - Partial masking display
                   <br /><Text type="secondary">{"{"}"mask_char": "*", "keep_prefix": 3, "keep_suffix": 4{"}"}</Text>
-                  <br /><Text type="secondary">→ 13912345678 变为 139****5678</Text>
+                  <br /><Text type="secondary">→ 13912345678 becomes 139****5678</Text>
                 </li>
-                <li><Text code>hash</Text> - SHA256哈希（无需配置）
-                  <br /><Text type="secondary">{"{}"} → 13912345678 变为 sha256_abc123...</Text>
+                <li><Text code>hash</Text> - SHA256 hash (no config)
+                  <br /><Text type="secondary">{"{}"} → 13912345678 becomes sha256_abc123...</Text>
                 </li>
-                <li><Text code>encrypt</Text> - 加密处理（无需配置）
-                  <br /><Text type="secondary">{"{}"} → 13912345678 变为 &lt;ENCRYPTED_a1b2c3d4&gt;</Text>
+                <li><Text code>encrypt</Text> - Encryption (no config)
+                  <br /><Text type="secondary">{"{}"} → 13912345678 becomes &lt;ENCRYPTED_a1b2c3d4&gt;</Text>
                 </li>
-                <li><Text code>shuffle</Text> - 字符重排（无需配置）
-                  <br /><Text type="secondary">{"{}"} → 13912345678 变为 87654321913</Text>
+                <li><Text code>shuffle</Text> - Character reordering (no config)
+                  <br /><Text type="secondary">{"{}"} → 13912345678 becomes 87654321913</Text>
                 </li>
-                <li><Text code>random</Text> - 随机字符替换（无需配置）
-                  <br /><Text type="secondary">{"{}"} → 13912345678 变为 48273569102</Text>
+                <li><Text code>random</Text> - Random character replacement (no config)
+                  <br /><Text type="secondary">{"{}"} → 13912345678 becomes 48273569102</Text>
                 </li>
               </ul>
             </Card>
           </Form.Item>
 
-          <Form.Item label="检测范围">
+          <Form.Item label="Detection scope">
             <Space>
               <Form.Item name="check_input" valuePropName="checked" noStyle>
-                <Switch checkedChildren="输入" unCheckedChildren="输入" />
+                <Switch checkedChildren="Input" unCheckedChildren="Input" />
               </Form.Item>
               <Form.Item name="check_output" valuePropName="checked" noStyle>
-                <Switch checkedChildren="输出" unCheckedChildren="输出" />
+                <Switch checkedChildren="Output" unCheckedChildren="Output" />
               </Form.Item>
             </Space>
           </Form.Item>
 
-          <Form.Item name="is_active" label="是否启用" valuePropName="checked">
+          <Form.Item name="is_active" label="Enable status" valuePropName="checked">
             <Switch />
           </Form.Item>
 
@@ -442,8 +444,8 @@ const EntityTypeManagement: React.FC = () => {
               name="is_global"
               label={
                 <span>
-                  系统配置
-                  <Tooltip title="系统配置将对所有用户生效，只有管理员可以设置和修改">
+                  System configuration
+                  <Tooltip title="System configuration will take effect for all users, only administrators can set and modify">
                     <InfoCircleOutlined style={{ marginLeft: 4 }} />
                   </Tooltip>
                 </span>

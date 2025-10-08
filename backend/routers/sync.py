@@ -10,33 +10,33 @@ router = APIRouter(tags=["Data Sync"])
 
 @router.post("/sync/force")
 async def force_sync_data(
-    start_date: Optional[str] = Query(None, description="开始日期 (YYYYMMDD)"),
-    end_date: Optional[str] = Query(None, description="结束日期 (YYYYMMDD)")
+    start_date: Optional[str] = Query(None, description="Start date (YYYYMMDD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYYMMDD)")
 ):
     """
-    强制同步日志数据到数据库
+    Force sync log data to database
     
     Args:
-        start_date: 开始日期，格式 YYYYMMDD
-        end_date: 结束日期，格式 YYYYMMDD
+        start_date: Start date, format YYYYMMDD
+        end_date: End date, format YYYYMMDD
     """
     try:
         date_range = None
         if start_date and end_date:
-            # 验证日期格式
+            # Validate date format
             try:
                 datetime.strptime(start_date, '%Y%m%d')
                 datetime.strptime(end_date, '%Y%m%d')
                 date_range = (start_date, end_date)
             except ValueError:
-                raise HTTPException(status_code=400, detail="日期格式错误，请使用 YYYYMMDD 格式")
+                raise HTTPException(status_code=400, detail="Date format error, please use YYYYMMDD format")
         
-        # 执行强制同步
+        # Execute force sync
         await data_sync_service.force_sync(date_range)
         
         return {
             "status": "success",
-            "message": "数据同步完成",
+            "message": "Data sync completed",
             "date_range": date_range,
             "timestamp": datetime.now().isoformat()
         }
@@ -48,15 +48,15 @@ async def force_sync_data(
 @router.get("/sync/status")
 async def get_sync_status():
     """
-    获取数据同步服务状态
+    Get data sync service status
     """
     try:
-        # 获取日志文件信息
+        # Get log file information
         log_files = async_detection_logger.get_log_files()
         
-        # 统计日志文件信息
+        # Count log file information
         file_info = []
-        for log_file in log_files[-5:]:  # 只显示最近5个文件
+        for log_file in log_files[-5:]:  # Only show the last 5 files
             try:
                 stat = log_file.stat()
                 file_info.append({
@@ -81,23 +81,23 @@ async def get_sync_status():
 @router.post("/sync/restart")
 async def restart_sync_service():
     """
-    重启数据同步服务
+    Restart data sync service
     """
     try:
-        # 停止服务
+        # Stop service
         await data_sync_service.stop()
         await async_detection_logger.stop()
         
-        # 启动服务
+        # Start service
         await async_detection_logger.start()
         await data_sync_service.start()
         
         return {
             "status": "success",
-            "message": "数据同步服务重启完成",
+            "message": "Data sync service restarted",
             "timestamp": datetime.now().isoformat()
         }
         
     except Exception as e:
         logger.error(f"Restart sync service failed: {e}")
-        raise HTTPException(status_code=500, detail=f"重启失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Restart failed: {str(e)}")

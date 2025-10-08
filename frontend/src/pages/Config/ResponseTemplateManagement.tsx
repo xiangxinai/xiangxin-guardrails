@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, message, Tag, Select } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { configApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { ResponseTemplate } from '../../types';
@@ -9,6 +10,7 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 const ResponseTemplateManagement: React.FC = () => {
+  const { t } = useTranslation();
   const [data, setData] = useState<ResponseTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -16,27 +18,37 @@ const ResponseTemplateManagement: React.FC = () => {
   const [form] = Form.useForm();
   const { onUserSwitch } = useAuth();
 
+  const getRiskLevelLabel = (riskLevel: string) => {
+    const riskLevelMap: { [key: string]: string } = {
+      'high_risk': t('risk.level.high_risk'),
+      'medium_risk': t('risk.level.medium_risk'),
+      'low_risk': t('risk.level.low_risk'),
+      'no_risk': t('risk.level.no_risk'),
+    };
+    return riskLevelMap[riskLevel] || riskLevel;
+  };
+
   const categories = [
-    { value: 'S1', label: 'S1 - 一般政治话题', riskLevel: '中风险' },
-    { value: 'S2', label: 'S2 - 敏感政治话题', riskLevel: '高风险' },
-    { value: 'S3', label: 'S3 - 损害国家形象', riskLevel: '高风险' },
-    { value: 'S4', label: 'S4 - 伤害未成年人', riskLevel: '中风险' },
-    { value: 'S5', label: 'S5 - 暴力犯罪', riskLevel: '高风险' },
-    { value: 'S6', label: 'S6 - 违法犯罪', riskLevel: '中风险' },
-    { value: 'S7', label: 'S7 - 色情', riskLevel: '中风险' },
-    { value: 'S8', label: 'S8 - 歧视内容', riskLevel: '低风险' },
-    { value: 'S9', label: 'S9 - 提示词攻击', riskLevel: '高风险' },
-    { value: 'S10', label: 'S10 - 辱骂', riskLevel: '低风险' },
-    { value: 'S11', label: 'S11 - 侵犯个人隐私', riskLevel: '低风险' },
-    { value: 'S12', label: 'S12 - 商业违法违规', riskLevel: '低风险' },
-    { value: 'default', label: '默认拒答', riskLevel: '无风险' },
+    { value: 'S1', label: `S1 - ${t('category.S1')}`, riskLevel: 'medium_risk' },
+    { value: 'S2', label: `S2 - ${t('category.S2')}`, riskLevel: 'high_risk' },
+    { value: 'S3', label: `S3 - ${t('category.S3')}`, riskLevel: 'high_risk' },
+    { value: 'S4', label: `S4 - ${t('category.S4')}`, riskLevel: 'medium_risk' },
+    { value: 'S5', label: `S5 - ${t('category.S5')}`, riskLevel: 'high_risk' },
+    { value: 'S6', label: `S6 - ${t('category.S6')}`, riskLevel: 'medium_risk' },
+    { value: 'S7', label: `S7 - ${t('category.S7')}`, riskLevel: 'medium_risk' },
+    { value: 'S8', label: `S8 - ${t('category.S8')}`, riskLevel: 'low_risk' },
+    { value: 'S9', label: `S9 - ${t('category.S9')}`, riskLevel: 'high_risk' },
+    { value: 'S10', label: `S10 - ${t('category.S10')}`, riskLevel: 'low_risk' },
+    { value: 'S11', label: `S11 - ${t('category.S11')}`, riskLevel: 'low_risk' },
+    { value: 'S12', label: `S12 - ${t('category.S12')}`, riskLevel: 'low_risk' },
+    { value: 'default', label: t('template.defaultReject'), riskLevel: 'no_risk' },
   ];
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  // 监听用户切换事件，自动刷新数据
+  // Listen to user switch event, automatically refresh data
   useEffect(() => {
     const unsubscribe = onUserSwitch(() => {
       fetchData();
@@ -49,13 +61,14 @@ const ResponseTemplateManagement: React.FC = () => {
       setLoading(true);
       const result = await configApi.responses.list();
       
-      // 确保每个类别都有一条拒答记录，如果没有则创建默认的
+      // Ensure each category has one reject record, if not, create a default one
       const existingCategories = result.map((item: ResponseTemplate) => item.category);
       const missingCategories = categories.filter(cat => !existingCategories.includes(cat.value));
       
-      // 为缺失的类别创建默认拒答内容
+      // Create default reject content for missing categories
       for (const category of missingCategories) {
-        const defaultContent = `很抱歉，我不能回答关于${category.label.split(' - ')[1]}的问题。如有其他疑问，请联系客服。`;
+        // Use internationalized default reject content
+        const defaultContent = t(`template.defaultContents.${category.value}`);
         try {
           await configApi.responses.create({
             category: category.value,
@@ -69,7 +82,7 @@ const ResponseTemplateManagement: React.FC = () => {
         }
       }
       
-      // 重新获取数据
+      // Re-fetch data
       const updatedResult = await configApi.responses.list();
       setData(updatedResult);
     } catch (error) {
@@ -92,11 +105,11 @@ const ResponseTemplateManagement: React.FC = () => {
   const handleSubmit = async (values: any) => {
     try {
       if (!editingItem) {
-        message.error('无效的编辑操作');
+        message.error(t('template.invalidOperation'));
         return;
       }
 
-      // 更新拒答内容，保持原有的类别和风险等级
+      // Update reject content, keep the original category and risk level
       const submissionData = {
         category: editingItem.category,
         risk_level: editingItem.risk_level,
@@ -106,13 +119,13 @@ const ResponseTemplateManagement: React.FC = () => {
       };
 
       await configApi.responses.update(editingItem.id, submissionData);
-      message.success('拒答内容更新成功');
+      message.success(t('template.updateSuccess'));
 
       setModalVisible(false);
       fetchData();
     } catch (error) {
       console.error('Error updating reject response:', error);
-      message.error('更新失败，请重试');
+      message.error(t('common.saveFailed'));
     }
   };
 
@@ -123,7 +136,7 @@ const ResponseTemplateManagement: React.FC = () => {
 
   const columns = [
     {
-      title: '风险类别',
+      title: t('template.riskCategory'),
       dataIndex: 'category',
       key: 'category',
       render: (category: string) => (
@@ -133,33 +146,33 @@ const ResponseTemplateManagement: React.FC = () => {
       ),
     },
     {
-      title: '风险等级',
+      title: t('results.riskLevel'),
       dataIndex: 'risk_level',
       key: 'risk_level',
       render: (level: string) => {
-        const color = level === '高风险' ? 'red' : level === '中风险' ? 'orange' : level === '低风险' ? 'yellow' : 'green';
+        const color = level === 'high_risk' ? 'red' : level === 'medium_risk' ? 'orange' : level === 'low_risk' ? 'yellow' : 'green';
         return (
           <Tag color={color}>
-            {level}
+            {getRiskLevelLabel(level)}
           </Tag>
         );
       },
     },
     {
-      title: '拒答内容',
+      title: t('template.rejectContent'),
       dataIndex: 'template_content',
       key: 'template_content',
       ellipsis: true,
       width: 400,
     },
     {
-      title: '更新时间',
+      title: t('common.updatedAt'),
       dataIndex: 'updated_at',
       key: 'updated_at',
       render: (time: string) => new Date(time).toLocaleString(),
     },
     {
-      title: '操作',
+      title: t('common.operation'),
       key: 'action',
       render: (_: any, record: ResponseTemplate) => (
         <Button
@@ -167,7 +180,7 @@ const ResponseTemplateManagement: React.FC = () => {
           icon={<EditOutlined />}
           onClick={() => handleEdit(record)}
         >
-          编辑拒答内容
+          {t('template.editRejectContent')}
         </Button>
       ),
     },
@@ -176,9 +189,9 @@ const ResponseTemplateManagement: React.FC = () => {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <h3>拒答答案库</h3>
+        <h3>{t('template.rejectAnswerLibrary')}</h3>
         <p style={{ color: '#666', marginBottom: 16 }}>
-          当检测到风险内容时，如果知识库中没有找到合适的回答，系统将使用这里配置的拒答内容进行回复。
+          {t('template.rejectAnswerDescription')}
         </p>
       </div>
 
@@ -191,7 +204,7 @@ const ResponseTemplateManagement: React.FC = () => {
       />
 
       <Modal
-        title="编辑拒答内容"
+        title={t('template.editRejectContent')}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         onOk={() => form.submit()}
@@ -204,7 +217,7 @@ const ResponseTemplateManagement: React.FC = () => {
         >
           <Form.Item
             name="category"
-            label="风险类别"
+            label={t('template.riskCategory')}
           >
             <Select disabled>
               {categories.map(category => (
@@ -217,12 +230,12 @@ const ResponseTemplateManagement: React.FC = () => {
 
           <Form.Item
             name="template_content"
-            label="拒答内容"
-            rules={[{ required: true, message: '请输入拒答内容' }]}
+            label={t('template.rejectContent')}
+            rules={[{ required: true, message: t('template.inputTemplate') }]}
           >
             <TextArea
               rows={6}
-              placeholder="请输入当触发此风险类别时的拒答内容"
+              placeholder={t('template.rejectContentPlaceholder')}
               showCount
               maxLength={500}
             />

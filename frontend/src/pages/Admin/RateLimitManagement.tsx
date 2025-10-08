@@ -27,6 +27,7 @@ import {
   UserOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { adminApi } from '../../services/api';
 
 const { Title, Text } = Typography;
@@ -48,6 +49,7 @@ interface RateLimit {
 }
 
 const RateLimitManagement: React.FC = () => {
+  const { t } = useTranslation();
   const [rateLimits, setRateLimits] = useState<RateLimit[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,7 +64,7 @@ const RateLimitManagement: React.FC = () => {
       setRateLimits(response.data || []);
     } catch (error) {
       console.error('Failed to load rate limits:', error);
-      message.error('加载限速配置失败');
+      message.error(t('rateLimit.loadRateLimitsFailed'));
     } finally {
       setLoading(false);
     }
@@ -101,19 +103,19 @@ const RateLimitManagement: React.FC = () => {
   const handleSave = async (values: any) => {
     try {
       if (editingRateLimit) {
-        // 更新限速配置
+        // Update rate limit config
         await adminApi.setUserRateLimit({
           tenant_id: editingRateLimit.tenant_id,
           requests_per_second: values.requests_per_second
         });
-        message.success('限速配置更新成功');
+        message.success(t('rateLimit.rateLimitUpdated'));
       } else {
-        // 创建新限速配置
+        // Create new rate limit config
         await adminApi.setUserRateLimit({
           tenant_id: values.tenant_id,
           requests_per_second: values.requests_per_second
         });
-        message.success('限速配置创建成功');
+        message.success(t('rateLimit.rateLimitCreated'));
       }
       
       setModalVisible(false);
@@ -121,32 +123,32 @@ const RateLimitManagement: React.FC = () => {
       loadRateLimits();
     } catch (error: any) {
       console.error('Save rate limit failed:', error);
-      message.error(error.response?.data?.detail || '保存失败');
+      message.error(error.response?.data?.detail || t('common.saveFailed'));
     }
   };
 
   const handleDelete = async (tenantId: string) => {
     try {
       await adminApi.removeUserRateLimit(tenantId);
-      message.success('限速配置删除成功');
+      message.success(t('rateLimit.rateLimitDeleted'));
       loadRateLimits();
     } catch (error: any) {
       console.error('Delete rate limit failed:', error);
-      message.error(error.response?.data?.detail || '删除失败');
+      message.error(error.response?.data?.detail || t('common.deleteFailed'));
     }
   };
 
   const getAvailableUsers = () => {
-    // 过滤掉已有限速配置的租户
+    // Filter out tenants with existing rate limit config
     const configuredTenantIds = rateLimits.map(rl => rl.tenant_id);
     return users.filter(user => !configuredTenantIds.includes(user.id));
   };
 
   const getRpsDisplay = (rps: number) => {
     if (rps === 0) {
-      return <Tag color="green">无限制</Tag>;
+      return <Tag color="green">{t('rateLimit.unlimited')}</Tag>;
     }
-    return <Tag color={rps > 10 ? 'blue' : rps > 5 ? 'orange' : 'red'}>{rps} 请求/秒</Tag>;
+    return <Tag color={rps > 10 ? 'blue' : rps > 5 ? 'orange' : 'red'}>{rps} {t('rateLimit.requestsPerSecond')}</Tag>;
   };
 
   const getStatistics = () => {
@@ -165,7 +167,7 @@ const RateLimitManagement: React.FC = () => {
 
   const columns = [
     {
-      title: '租户',
+      title: t('rateLimit.tenant'),
       key: 'user',
       render: (_: any, record: RateLimit) => (
         <Space>
@@ -175,37 +177,37 @@ const RateLimitManagement: React.FC = () => {
       ),
     },
     {
-      title: '限速配置',
+      title: t('rateLimit.rateLimitConfig'),
       key: 'rps',
       render: (_: any, record: RateLimit) => getRpsDisplay(record.requests_per_second),
     },
     {
-      title: '状态',
+      title: t('common.status'),
       dataIndex: 'is_active',
       key: 'is_active',
       render: (isActive: boolean) => (
         <Tag color={isActive ? 'green' : 'red'}>
-          {isActive ? '启用' : '禁用'}
+          {isActive ? t('common.enabled') : t('common.disabled')}
         </Tag>
       ),
     },
     {
-      title: '说明',
+      title: t('common.description'),
       key: 'description',
       render: (_: any, record: RateLimit) => {
         if (record.requests_per_second === 0) {
-          return <Text type="secondary">允许无限制调用</Text>;
+          return <Text type="secondary">{t('rateLimit.allowUnlimitedCalls')}</Text>;
         }
         const dailyMax = record.requests_per_second * 86400;
-        return <Text type="secondary">每日最多 {dailyMax.toLocaleString()} 次调用</Text>;
+        return <Text type="secondary">{t('rateLimit.dailyMaxCalls', { count: dailyMax.toLocaleString() })}</Text>;
       },
     },
     {
-      title: '操作',
+      title: t('common.operation'),
       key: 'actions',
       render: (_: any, record: RateLimit) => (
         <Space>
-          <Tooltip title="编辑配置">
+          <Tooltip title={t('rateLimit.editConfig')}>
             <Button
               type="link"
               size="small"
@@ -214,13 +216,13 @@ const RateLimitManagement: React.FC = () => {
             />
           </Tooltip>
           <Popconfirm
-            title="确定要删除这个限速配置吗？"
-            description="删除后该租户将使用默认限速（1 请求/秒）"
+            title={t('rateLimit.confirmDeleteRateLimit')}
+            description={t('rateLimit.deleteRateLimitWarning')}
             onConfirm={() => handleDelete(record.tenant_id)}
-            okText="确定"
-            cancelText="取消"
+            okText={t('common.confirm')}
+            cancelText={t('common.cancel')}
           >
-            <Tooltip title="删除配置">
+            <Tooltip title={t('rateLimit.deleteConfig')}>
               <Button
                 type="link"
                 size="small"
@@ -240,7 +242,7 @@ const RateLimitManagement: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title="总配置数量"
+              title={t('rateLimit.totalConfigurations')}
               value={stats.totalUsers}
               prefix={<UserOutlined />}
             />
@@ -249,7 +251,7 @@ const RateLimitManagement: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title="无限制租户"
+              title={t('rateLimit.unlimitedTenants')}
               value={stats.unlimitedUsers}
               prefix={<ThunderboltOutlined />}
               valueStyle={{ color: '#52c41a' }}
@@ -259,7 +261,7 @@ const RateLimitManagement: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title="平均限速"
+              title={t('rateLimit.averageRateLimit')}
               value={stats.avgRps}
               precision={1}
               suffix="RPS"
@@ -270,7 +272,7 @@ const RateLimitManagement: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title="受限租户"
+              title={t('rateLimit.restrictedTenants')}
               value={stats.totalUsers - stats.unlimitedUsers}
               prefix={<ThunderboltOutlined />}
               valueStyle={{ color: '#ff4d4f' }}
@@ -284,11 +286,11 @@ const RateLimitManagement: React.FC = () => {
           <div>
             <Title level={4} style={{ margin: 0 }}>
               <ThunderboltOutlined style={{ marginRight: 8 }} />
-              租户限速配置
+              {t('rateLimit.tenantRateLimitConfig')}
             </Title>
             <Text type="secondary">
-              配置租户的API调用频率限制
-              <Tooltip title="限速配置说明：0表示无限制，其他数值表示每秒允许的最大请求数。未配置的租户默认为1请求/秒。">
+              {t('rateLimit.configureApiCallFrequency')}
+              <Tooltip title={t('rateLimit.rateLimitExplanation')}>
                 <InfoCircleOutlined style={{ marginLeft: 4 }} />
               </Tooltip>
             </Text>
@@ -299,7 +301,7 @@ const RateLimitManagement: React.FC = () => {
               onClick={loadRateLimits}
               loading={loading}
             >
-              刷新
+              {t('common.refresh')}
             </Button>
             <Button
               type="primary"
@@ -307,7 +309,7 @@ const RateLimitManagement: React.FC = () => {
               onClick={handleAdd}
               disabled={getAvailableUsers().length === 0}
             >
-              添加配置
+              {t('rateLimit.addConfig')}
             </Button>
           </Space>
         </div>
@@ -320,21 +322,21 @@ const RateLimitManagement: React.FC = () => {
           pagination={{
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 个配置`,
+            showTotal: (total) => t('rateLimit.totalConfigCount', { count: total }),
           }}
         />
       </Card>
 
       <Modal
-        title={editingRateLimit ? '编辑限速配置' : '添加限速配置'}
+        title={editingRateLimit ? t('rateLimit.editRateLimitConfig') : t('rateLimit.addRateLimitConfig')}
         open={modalVisible}
         onCancel={() => {
           setModalVisible(false);
           form.resetFields();
         }}
         onOk={() => form.submit()}
-        okText="保存"
-        cancelText="取消"
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
       >
         <Form
           form={form}
@@ -344,18 +346,18 @@ const RateLimitManagement: React.FC = () => {
           {!editingRateLimit && (
             <Form.Item
               name="tenant_id"
-              label="选择租户"
-              rules={[{ required: true, message: '请选择租户' }]}
+              label={t('rateLimit.selectTenant')}
+              rules={[{ required: true, message: t('rateLimit.selectTenant') }]}
             >
               <Select
-                placeholder="请选择要配置限速的租户"
+                placeholder={t('rateLimit.selectTenantPlaceholder')}
                 showSearch
                 optionFilterProp="children"
               >
                 {getAvailableUsers().map(user => (
                   <Option key={user.id} value={user.id}>
                     {user.email}
-                    {user.is_super_admin && <Tag color="red" size="small" style={{ marginLeft: 8 }}>管理员</Tag>}
+                    {user.is_super_admin && <Tag color="red" style={{ marginLeft: 8 }}>{t('admin.admin')}</Tag>}
                   </Option>
                 ))}
               </Select>
@@ -364,29 +366,29 @@ const RateLimitManagement: React.FC = () => {
 
           <Form.Item
             name="requests_per_second"
-            label="请求频率限制"
-            rules={[{ required: true, message: '请设置请求频率' }]}
-            extra="设置为 0 表示无限制；建议值：1-50 请求/秒"
+            label={t('rateLimit.requestFrequencyLimit')}
+            rules={[{ required: true, message: t('rateLimit.requestFrequencyRequired') }]}
+            extra={t('rateLimit.requestFrequencyExtra')}
             initialValue={1}
           >
             <InputNumber
               min={0}
               max={1000}
               style={{ width: '100%' }}
-              addonAfter="请求/秒"
-              placeholder="请求频率"
+              addonAfter={t('rateLimit.requestsPerSecond')}
+              placeholder={t('rateLimit.requestFrequencyPlaceholder')}
             />
           </Form.Item>
 
           <Form.Item
             name="is_active"
-            label="启用状态"
+            label={t('rateLimit.enableStatus')}
             valuePropName="checked"
             initialValue={true}
           >
             <Switch
-              checkedChildren="启用"
-              unCheckedChildren="禁用"
+              checkedChildren={t('common.enabled')}
+              unCheckedChildren={t('common.disabled')}
             />
           </Form.Item>
         </Form>

@@ -6,30 +6,30 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 class AuthCache:
-    """认证缓存 - 高性能内存缓存"""
+    """Authentication cache - high-performance memory cache"""
     
-    def __init__(self, ttl: int = 300):  # 5分钟缓存
+    def __init__(self, ttl: int = 300):  # 5 minutes cache
         self._cache: Dict[str, Dict[str, Any]] = {}
         self._ttl = ttl
     
     def _make_key(self, token: str) -> str:
-        """生成缓存键"""
+        """Generate cache key"""
         return hashlib.md5(token.encode()).hexdigest()
     
     def get(self, token: str) -> Optional[Dict[str, Any]]:
-        """获取缓存的认证信息"""
+        """Get cached authentication information"""
         key = self._make_key(token)
         if key in self._cache:
             entry = self._cache[key]
             if time.time() - entry['timestamp'] < self._ttl:
                 return entry['data']
             else:
-                # 过期，删除
+                # Expired, delete
                 del self._cache[key]
         return None
     
     def set(self, token: str, auth_data: Dict[str, Any]):
-        """设置缓存"""
+        """Set cache"""
         key = self._make_key(token)
         self._cache[key] = {
             'data': auth_data,
@@ -37,13 +37,13 @@ class AuthCache:
         }
     
     def invalidate(self, token: str):
-        """使缓存失效"""
+        """Invalidate cache"""
         key = self._make_key(token)
         if key in self._cache:
             del self._cache[key]
     
     def clear_expired(self):
-        """清理过期缓存"""
+        """Clear expired cache"""
         current_time = time.time()
         expired_keys = []
         
@@ -58,8 +58,8 @@ class AuthCache:
             logger.debug(f"Cleared {len(expired_keys)} expired auth cache entries")
     
     def size(self) -> int:
-        """获取缓存大小"""
+        """Get cache size"""
         return len(self._cache)
 
-# 全局认证缓存实例
-auth_cache = AuthCache(ttl=300)  # 5分钟缓存
+# Global authentication cache instance
+auth_cache = AuthCache(ttl=300)  # 5 minutes cache

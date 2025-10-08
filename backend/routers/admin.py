@@ -13,21 +13,21 @@ logger = setup_logger()
 router = APIRouter(tags=["Admin"])
 
 def get_current_user(request: Request) -> Tenant:
-    """从请求上下文获取当前租户"""
+    """Get current tenant from request context"""
     auth_context = getattr(request.state, 'auth_context', None)
     if not auth_context:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    # 管理员接口：如果存在切换会话，则使用原始管理员身份
+    # Admin interface: if switch session exists, use original admin identity
     data = auth_context['data']
     tenant_id = str(data.get('original_admin_id') or data.get('tenant_id') or data.get('tenant_id'))
     if not tenant_id:
         raise HTTPException(status_code=401, detail="Invalid tenant context")
 
-    # 从数据库获取租户信息
+    # Get tenant information from database
     db = next(get_db())
     try:
-        # 将字符串ID转换为UUID进行查询
+        # Convert string ID to UUID for query
         try:
             tenant_uuid = uuid.UUID(tenant_id)
         except ValueError:
@@ -46,7 +46,7 @@ async def get_admin_stats(
     db: Session = Depends(get_db)
 ):
     """
-    获取管理员统计信息（仅超级管理员可访问）
+    Get admin stats (only super admin can access)
     """
     try:
         current_tenant = get_current_user(request)
@@ -54,13 +54,13 @@ async def get_admin_stats(
         if not admin_service.is_super_admin(current_tenant):
             raise HTTPException(status_code=403, detail="Only super admin can access this endpoint")
 
-        # 获取租户总数
+        # Get total number of tenants
         total_users = db.query(Tenant).count()
 
-        # 获取所有租户的检测总次数
+        # Get total number of detections for all tenants
         total_detections = db.query(DetectionResult).count()
 
-        # 获取每个租户的检测次数
+        # Get detection count for each tenant
         user_detection_counts = db.query(
             Tenant.id.label('tenant_id'),
             Tenant.email.label('email'),
@@ -95,7 +95,7 @@ async def get_all_users(
     db: Session = Depends(get_db)
 ):
     """
-    获取所有租户列表（仅超级管理员可访问）
+    Get all tenants list (only super admin can access)
     """
     try:
         current_tenant = get_current_user(request)
@@ -112,7 +112,7 @@ async def get_all_users(
         }
         
     except HTTPException:
-        # 透传显式的HTTP错误（例如403）
+        # Pass explicit HTTP errors (e.g. 403)
         raise
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -127,7 +127,7 @@ async def switch_to_user(
     db: Session = Depends(get_db)
 ):
     """
-    超级管理员切换到指定租户视角
+    Super admin switch to specified tenant view
     """
     try:
         current_tenant = get_current_user(request)
@@ -137,7 +137,7 @@ async def switch_to_user(
 
         session_token = admin_service.switch_to_user(db, current_tenant, target_tenant_id)
 
-        # 获取目标租户信息
+        # Get target tenant information
         try:
             target_tenant_uuid = uuid.UUID(target_tenant_id)
         except ValueError:
@@ -170,7 +170,7 @@ async def exit_user_switch(
     db: Session = Depends(get_db)
 ):
     """
-    退出用户切换，回到管理员视角
+    Exit user switch, back to admin view
     """
     try:
         if not x_switch_session:
@@ -206,7 +206,7 @@ async def get_current_switch_info(
                 "target_user": None
             }
 
-        # 获取切换的租户
+        # Get switched tenant
         switched_tenant = admin_service.get_switched_user(db, x_switch_session)
         if not switched_tenant:
             return {
@@ -215,7 +215,7 @@ async def get_current_switch_info(
                 "target_user": None
             }
 
-        # 获取原始管理员租户
+        # Get original admin tenant
         admin_tenant = admin_service.get_current_admin_from_switch(db, x_switch_session)
 
         return {
@@ -235,13 +235,13 @@ async def get_current_switch_info(
         logger.error(f"Get current switch info error: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-# 添加限速管理API
+# Add rate limit management API
 from services.rate_limiter import RateLimitService
 from pydantic import BaseModel
 
 class SetRateLimitRequest(BaseModel):
     tenant_id: str
-    requests_per_second: int  # 0表示无限制
+    requests_per_second: int  # 0 means no limit
 
 class RateLimitResponse(BaseModel):
     tenant_id: str
@@ -257,7 +257,7 @@ async def get_all_rate_limits(
     db: Session = Depends(get_db)
 ):
     """
-    获取所有租户限速配置（仅超级管理员可访问）
+    Get all tenants rate limit configuration (only super admin can access)
     """
     try:
         current_tenant = get_current_user(request)
@@ -295,7 +295,7 @@ async def set_user_rate_limit(
     db: Session = Depends(get_db)
 ):
     """
-    设置租户限速（仅超级管理员可访问）
+    Set tenant rate limit (only super admin can access)
     """
     try:
         current_tenant = get_current_user(request)
@@ -315,7 +315,7 @@ async def set_user_rate_limit(
             "status": "success",
             "message": f"Rate limit set for user {request_data.tenant_id}: {request_data.requests_per_second} rps",
             "data": {
-                "tenant_id": str(rate_limit_config.tenant_id),  # API返回字段保持user_id以兼容
+                "tenant_id": str(rate_limit_config.tenant_id),  # API return field keep user_id to compatible
                 "requests_per_second": rate_limit_config.requests_per_second,
                 "is_active": rate_limit_config.is_active
             }
@@ -336,7 +336,7 @@ async def remove_user_rate_limit(
     db: Session = Depends(get_db)
 ):
     """
-    移除租户限速（仅超级管理员可访问）
+    Remove tenant rate limit (only super admin can access)
     """
     try:
         current_tenant = get_current_user(request)
@@ -357,7 +357,7 @@ async def remove_user_rate_limit(
         logger.error(f"Remove rate limit error: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-# 租户管理API
+# Tenant management API
 from pydantic import BaseModel, EmailStr
 
 class CreateUserRequest(BaseModel):
@@ -365,7 +365,7 @@ class CreateUserRequest(BaseModel):
     password: str
     is_active: bool = True
     is_verified: bool = False
-    # 兼容字段，后端忽略该值；唯一超级管理员由 .env 指定
+    # Compatible field, backend ignores this value; only super admin is specified by .env
     is_super_admin: bool = False
 
 class UpdateUserRequest(BaseModel):
@@ -381,19 +381,19 @@ async def create_user(
     db: Session = Depends(get_db)
 ):
     """
-    创建租户（仅超级管理员可访问）
+    Create tenant (only super admin can access)
     """
     try:
         current_tenant = get_current_user(request)
         if not admin_service.is_super_admin(current_tenant):
             raise HTTPException(status_code=403, detail="Access denied: Super admin required")
 
-        # 检查邮箱是否已存在
+        # Check if email already exists
         existing_tenant = db.query(Tenant).filter(Tenant.email == request_data.email).first()
         if existing_tenant:
             raise HTTPException(status_code=400, detail="Email already exists")
 
-        # 创建租户
+        # Create tenant
         from utils.auth import get_password_hash, generate_api_key
 
         new_tenant = Tenant(
@@ -401,7 +401,7 @@ async def create_user(
             password_hash=get_password_hash(request_data.password),
             is_active=request_data.is_active,
             is_verified=request_data.is_verified,
-            # 强制普通租户；仅 .env 租户是超级管理员
+            # Force regular tenant; only .env tenant is super admin
             is_super_admin=False,
             api_key=generate_api_key()
         )
@@ -435,14 +435,14 @@ async def update_user(
     db: Session = Depends(get_db)
 ):
     """
-    更新租户信息（仅超级管理员可访问）
+    Update tenant information (only super admin can access)
     """
     try:
         current_tenant = get_current_user(request)
         if not admin_service.is_super_admin(current_tenant):
             raise HTTPException(status_code=403, detail="Access denied: Super admin required")
 
-        # 获取要更新的租户
+        # Get tenant to update
         try:
             tenant_uuid = uuid.UUID(tenant_id)
         except ValueError:
@@ -452,12 +452,12 @@ async def update_user(
         if not tenant:
             raise HTTPException(status_code=404, detail="Tenant not found")
 
-        # 禁止修改任何租户的超级管理员属性（由 .env 控制），忽略该字段
+        # Prevent modifying any tenant's super admin property (controlled by .env), ignore this field
         if request_data.is_super_admin is not None:
             logger.warning("Attempt to change is_super_admin ignored; controlled by .env only.")
             request_data.is_super_admin = None
 
-        # 更新租户信息
+        # Update tenant information
         update_data = request_data.dict(exclude_unset=True)
         update_data.pop('is_super_admin', None)
         for field, value in update_data.items():
@@ -485,14 +485,14 @@ async def delete_user(
     db: Session = Depends(get_db)
 ):
     """
-    删除租户（仅超级管理员可访问）
+    Delete tenant (only super admin can access)
     """
     try:
         current_tenant = get_current_user(request)
         if not admin_service.is_super_admin(current_tenant):
             raise HTTPException(status_code=403, detail="Access denied: Super admin required")
 
-        # 获取要删除的租户
+        # Get tenant to delete
         try:
             tenant_uuid = uuid.UUID(tenant_id)
         except ValueError:
@@ -502,11 +502,11 @@ async def delete_user(
         if not tenant:
             raise HTTPException(status_code=404, detail="Tenant not found")
 
-        # 不允许删除自己
+        # Not allowed to delete yourself
         if tenant.id == current_tenant.id:
             raise HTTPException(status_code=400, detail="Cannot delete your own account")
 
-        # 删除租户
+        # Delete tenant
         db.delete(tenant)
         db.commit()
 
@@ -530,14 +530,14 @@ async def reset_user_api_key(
     db: Session = Depends(get_db)
 ):
     """
-    重置租户API Key（仅超级管理员可访问）
+    Reset tenant API Key (only super admin can access)
     """
     try:
         current_tenant = get_current_user(request)
         if not admin_service.is_super_admin(current_tenant):
             raise HTTPException(status_code=403, detail="Access denied: Super admin required")
 
-        # 获取租户
+        # Get tenant
         try:
             tenant_uuid = uuid.UUID(tenant_id)
         except ValueError:
@@ -547,7 +547,7 @@ async def reset_user_api_key(
         if not tenant:
             raise HTTPException(status_code=404, detail="Tenant not found")
 
-        # 重置API Key
+        # Reset API Key
         from utils.auth import generate_api_key
         tenant.api_key = generate_api_key()
         db.commit()

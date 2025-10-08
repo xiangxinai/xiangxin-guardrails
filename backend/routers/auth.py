@@ -25,7 +25,7 @@ class UserInfo(BaseModel):
 
 @router.post("/login", response_model=LoginResponse)
 async def login(login_data: LoginRequest):
-    """管理员登录"""
+    """Admin login"""
     if not authenticate_admin(login_data.username, login_data.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -47,18 +47,18 @@ async def login(login_data: LoginRequest):
 
 @router.get("/me", response_model=UserInfo)
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """获取当前用户信息"""
+    """Get current user information"""
     user_data = verify_token(credentials.credentials)
-    # 兼容不同的token结构：username字段或者sub字段
+    # Compatible with different token structures: username field or sub field
     username = user_data.get("username") or user_data.get("sub")
     role = user_data.get("role", "admin")
     return UserInfo(username=username, role=role)
 
 @router.post("/logout")
 async def logout():
-    """用户登出（前端处理token清除）"""
+    """User logout (frontend handles token clearance)"""
     return {"message": "Successfully logged out"}
 
 async def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
-    """获取当前管理员用户（用于依赖注入）"""
+    """Get current admin user (for dependency injection)"""
     return verify_token(credentials.credentials)

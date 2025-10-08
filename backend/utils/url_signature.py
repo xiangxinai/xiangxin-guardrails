@@ -1,7 +1,7 @@
 """
-URL签名工具
+URL signature tool
 
-用于生成和验证带时效性的URL签名，保护媒体资源访问安全
+Used to generate and verify URL signatures with expiration time, protect media resource access security.
 """
 import hmac
 import hashlib
@@ -16,22 +16,22 @@ def generate_media_url_signature(
     expires_in_seconds: int = 3600
 ) -> tuple[str, int]:
     """
-    生成媒体文件访问的签名和过期时间
+    Generate signature and expiration time for media file access
 
     Args:
-        tenant_id: 用户ID
-        filename: 文件名
-        expires_in_seconds: 签名有效期（秒），默认1小时
+        tenant_id: User ID
+        filename: File name
+        expires_in_seconds: Signature expiration time (seconds), default 1 hour
 
     Returns:
-        (signature, expires_timestamp) 元组
+        (signature, expires_timestamp) Tuple
     """
     expires = int(time.time()) + expires_in_seconds
 
-    # 构建签名字符串: tenant_id|filename|expires
+    # Build signature string: tenant_id|filename|expires
     message = f"{tenant_id}|{filename}|{expires}"
 
-    # 使用HMAC-SHA256生成签名
+    # Generate signature using HMAC-SHA256
     signature = hmac.new(
         settings.jwt_secret_key.encode(),
         message.encode(),
@@ -48,22 +48,22 @@ def verify_media_url_signature(
     expires: int
 ) -> bool:
     """
-    验证媒体文件访问签名
+    Verify media file access signature
 
     Args:
-        tenant_id: 用户ID
-        filename: 文件名
-        signature: 签名
-        expires: 过期时间戳
+        tenant_id: User ID
+        filename: File name
+        signature: Signature
+        expires: Expiration time stamp
 
     Returns:
-        验证是否通过
+        Whether verification passes
     """
-    # 检查是否过期
+    # Check if expired
     if int(time.time()) > expires:
         return False
 
-    # 重新计算签名
+    # Recalculate signature
     message = f"{tenant_id}|{filename}|{expires}"
     expected_signature = hmac.new(
         settings.jwt_secret_key.encode(),
@@ -71,7 +71,7 @@ def verify_media_url_signature(
         hashlib.sha256
     ).hexdigest()
 
-    # 使用恒定时间比较防止时序攻击
+    # Use constant time comparison to prevent timing attacks
     return hmac.compare_digest(signature, expected_signature)
 
 
@@ -82,16 +82,16 @@ def generate_signed_media_url(
     expires_in_seconds: int = 3600
 ) -> str:
     """
-    生成带签名的完整媒体URL
+    Generate complete media URL with signature
 
     Args:
-        tenant_id: 用户ID
-        filename: 文件名
-        base_url: 基础URL路径
-        expires_in_seconds: 签名有效期（秒）
+        tenant_id: User ID
+        filename: File name
+        base_url: Base URL path
+        expires_in_seconds: Signature expiration time (seconds)
 
     Returns:
-        带签名的完整URL
+        Complete URL with signature
     """
     signature, expires = generate_media_url_signature(
         tenant_id, filename, expires_in_seconds

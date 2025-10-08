@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Upload, Button, Image, Space, message, Card } from 'antd';
-import { PlusOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { Upload, Image, message } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import type { UploadFile } from 'antd/es/upload/interface';
 
 interface ImageUploadProps {
@@ -14,11 +15,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   maxCount = 5,
   maxSize = 10
 }) => {
+  const { t } = useTranslation();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [previewImage, setPreviewImage] = useState('');
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // 将文件转换为base64
+  // Convert file to base64
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -34,33 +36,19 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     });
   };
 
-  // 获取图片格式
-  const getImageFormat = (mimeType: string): string => {
-    const formats: Record<string, string> = {
-      'image/jpeg': 'jpeg',
-      'image/jpg': 'jpeg',
-      'image/png': 'png',
-      'image/gif': 'gif',
-      'image/bmp': 'bmp',
-      'image/webp': 'webp',
-      'image/tiff': 'tiff'
-    };
-    return formats[mimeType] || 'jpeg';
-  };
-
-  // 处理文件选择
+  // Handle file selection
   const handleChange = async (info: any) => {
     let newFileList = [...info.fileList];
 
-    // 限制数量
+    // Limit quantity
     if (newFileList.length > maxCount) {
-      message.warning(`最多只能上传${maxCount}张图片`);
+      message.warning(t('imageUpload.maxCountWarning', { count: maxCount }));
       newFileList = newFileList.slice(0, maxCount);
     }
 
     setFileList(newFileList);
 
-    // 转换所有文件为base64
+    // Convert all files to base64
     try {
       const base64List: string[] = [];
       for (const file of newFileList) {
@@ -72,30 +60,30 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       onChange?.(base64List);
     } catch (error) {
       console.error('Failed to convert images to base64:', error);
-      message.error('图片处理失败');
+      message.error(t('imageUpload.processingFailed'));
     }
   };
 
-  // 上传前的验证
+  // Validation before upload
   const beforeUpload = (file: File) => {
-    // 验证文件类型
+    // Validate file type
     const isImage = file.type.startsWith('image/');
     if (!isImage) {
-      message.error('只能上传图片文件！');
+      message.error(t('imageUpload.onlyImageFiles'));
       return Upload.LIST_IGNORE;
     }
 
-    // 验证文件大小
+    // Validate file size
     const isLtMaxSize = file.size / 1024 / 1024 < maxSize;
     if (!isLtMaxSize) {
-      message.error(`图片大小不能超过${maxSize}MB！`);
+      message.error(t('imageUpload.fileSizeExceeded', { size: maxSize }));
       return Upload.LIST_IGNORE;
     }
 
-    return false; // 阻止自动上传
+    return false; // Prevent automatic upload
   };
 
-  // 预览图片
+  // Preview image
   const handlePreview = async (file: UploadFile) => {
     if (!file.url && !file.preview && file.originFileObj) {
       file.preview = await fileToBase64(file.originFileObj as File);
@@ -104,12 +92,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     setPreviewOpen(true);
   };
 
-  // 移除图片
+  // Remove image
   const handleRemove = (file: UploadFile) => {
     const newFileList = fileList.filter(item => item.uid !== file.uid);
     setFileList(newFileList);
 
-    // 更新base64列表
+    // Update base64 list
     const updateBase64List = async () => {
       const base64List: string[] = [];
       for (const f of newFileList) {
@@ -126,7 +114,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   const uploadButton = (
     <div>
       <PlusOutlined />
-      <div style={{ marginTop: 8 }}>上传图片</div>
+      <div style={{ marginTop: 8 }}>{t('imageUpload.uploadImage')}</div>
     </div>
   );
 
@@ -155,7 +143,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         />
       )}
       <div style={{ marginTop: 8, color: '#666', fontSize: 12 }}>
-        支持格式：JPEG, PNG, GIF, BMP, WEBP, TIFF | 单张最大{maxSize}MB | 最多{maxCount}张
+        {t('imageUpload.supportedFormats')} | {t('imageUpload.maxSizePerImage', { size: maxSize })} | {t('imageUpload.maxImageCount', { count: maxCount })}
       </div>
     </>
   );

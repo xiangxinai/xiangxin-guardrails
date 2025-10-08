@@ -7,19 +7,19 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 class KeywordService:
-    """关键词匹配服务"""
+    """Keyword matching service"""
     
     def __init__(self, db: Session):
         self.db = db
     
     def check_blacklist(self, content: str) -> Tuple[bool, Optional[str], List[str]]:
-        """检查黑名单
+        """Check blacklist
         
         Returns:
             (is_hit, list_name, matched_keywords)
         """
         try:
-            # 获取启用的黑名单
+            # Get enabled blacklist
             blacklists = self.db.query(Blacklist).filter_by(is_active=True).all()
             
             content_lower = content.lower()
@@ -43,13 +43,13 @@ class KeywordService:
             return False, None, []
     
     def check_whitelist(self, content: str) -> Tuple[bool, Optional[str], List[str]]:
-        """检查白名单
+        """Check whitelist
         
         Returns:
             (is_hit, list_name, matched_keywords)
         """
         try:
-            # 获取启用的白名单
+            # Get enabled whitelist
             whitelists = self.db.query(Whitelist).filter_by(is_active=True).all()
             
             content_lower = content.lower()
@@ -73,18 +73,18 @@ class KeywordService:
             return False, None, []
     
     def extract_sensitive_info(self, content: str) -> List[str]:
-        """提取敏感信息（通过正则表达式）"""
+        """Extract sensitive information (through regular expressions)"""
         sensitive_patterns = [
-            # 手机号
-            (r'1[3-9]\d{9}', '手机号'),
-            # 身份证号
-            (r'\d{17}[\dX]|\d{15}', '身份证号'),
-            # 邮箱
-            (r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '邮箱地址'),
-            # IP地址
-            (r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b', 'IP地址'),
-            # 银行卡号（简单匹配）
-            (r'\b\d{16,19}\b', '银行卡号'),
+            # Phone number
+            (r'1[3-9]\d{9}', 'Phone number'),
+            # ID number
+            (r'\d{17}[\dX]|\d{15}', 'ID number'),
+            # Email
+            (r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', 'Email address'),
+            # IP address
+            (r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b', 'IP address'),
+            # Bank card number (simple matching)
+            (r'\b\d{16,19}\b', 'Bank card number'),
         ]
         
         found_info = []

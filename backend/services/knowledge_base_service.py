@@ -1,7 +1,7 @@
 """
-代答知识库服务
-使用FAISS进行向量搜索，支持问答对的向量化存储和检索
-现在使用OpenAI API进行向量化而不是本地模型
+Replace Knowledge Base Service
+Use FAISS for vector search, support vectorized storage and retrieval of Q&A pairs
+Use OpenAI API for vectorization instead of local model
 """
 import os
 import json
@@ -24,16 +24,16 @@ logger = logging.getLogger(__name__)
 class KnowledgeBaseService:
     def __init__(self):
         self.client = None
-        self.vector_dimension = settings.embedding_model_dimension  # 嵌入向量维度
-        self.similarity_threshold = settings.embedding_similarity_threshold  # 相似度阈值
-        self.max_results = settings.embedding_max_results  # 最大返回结果数
+        self.vector_dimension = settings.embedding_model_dimension  # Embedding vector dimension
+        self.similarity_threshold = settings.embedding_similarity_threshold  # Similarity threshold
+        self.max_results = settings.embedding_max_results  # Maximum return results
 
-        # 设置存储路径
+        # Set storage path
         self.storage_path = Path(settings.data_dir) / "knowledge_bases"
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
     def _get_client(self) -> OpenAI:
-        """懒加载OpenAI客户端"""
+        """Lazy load OpenAI client"""
         if self.client is None:
             try:
                 self.client = OpenAI(
@@ -47,7 +47,7 @@ class KnowledgeBaseService:
         return self.client
 
     def _get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """获取文本的嵌入向量（逐个处理，避免服务端OOM）"""
+        """Get text embeddings (process one by one to avoid server OOM)"""
         if not texts:
             return []
             
@@ -61,14 +61,14 @@ class KnowledgeBaseService:
                 logger.info(f"Processing text {i+1}/{len(texts)}")
                 
                 response = client.embeddings.create(
-                    input=[text],  # 每次只传入一个文本
+                    input=[text],  # Process one by one
                     model=settings.embedding_model_name
                 )
                 
                 embedding = response.data[0].embedding
                 all_embeddings.append(embedding)
                 
-                if (i + 1) % 10 == 0:  # 每10个记录一次进度
+                if (i + 1) % 10 == 0:  # Record progress every 10
                     logger.info(f"Completed {i+1}/{len(texts)} texts")
             
             logger.info(f"Generated embeddings for all {len(texts)} texts")
@@ -80,11 +80,11 @@ class KnowledgeBaseService:
 
     def parse_jsonl_file(self, file_content: bytes) -> List[Dict[str, str]]:
         """
-        解析JSONL文件内容
+        Parse JSONL file content
         Args:
-            file_content: 文件字节内容
+            file_content: File content
         Returns:
-            问答对列表
+            Q&A pairs list
         """
         qa_pairs = []
         try:
@@ -98,17 +98,17 @@ class KnowledgeBaseService:
                 try:
                     qa_data = json.loads(line)
 
-                    # 验证必需字段
+                    # Validate required fields
                     if not all(key in qa_data for key in ['questionid', 'question', 'answer']):
                         logger.warning(f"Line {line_num}: Missing required fields (questionid, question, answer)")
                         continue
 
-                    # 验证字段类型
+                    # Validate field types
                     if not all(isinstance(qa_data[key], str) for key in ['questionid', 'question', 'answer']):
                         logger.warning(f"Line {line_num}: All fields must be strings")
                         continue
 
-                    # 验证内容不为空
+                    # Validate content is not empty
                     if not qa_data['question'].strip() or not qa_data['answer'].strip():
                         logger.warning(f"Line {line_num}: Question and answer cannot be empty")
                         continue
@@ -134,32 +134,32 @@ class KnowledgeBaseService:
 
     def create_vector_index(self, qa_pairs: List[Dict[str, str]], knowledge_base_id: int) -> str:
         """
-        创建FAISS向量索引
+        Create FAISS vector index
         Args:
-            qa_pairs: 问答对列表
-            knowledge_base_id: 知识库ID
+            qa_pairs: Q&A pairs list
+            knowledge_base_id: Knowledge base ID
         Returns:
-            向量文件路径
+            Vector file path
         """
         try:
-            # 提取问题文本
+            # Extract questions
             questions = [qa['question'] for qa in qa_pairs]
 
-            # 生成向量
+            # Generate embeddings
             logger.info(f"Generating embeddings for {len(questions)} questions...")
             embeddings = self._get_embeddings(questions)
             vectors = np.array(embeddings, dtype=np.float32)
 
-            # 创建FAISS索引
+            # Create FAISS index
             index = faiss.IndexFlatIP(self.vector_dimension)  # 使用内积相似度
 
-            # 归一化向量（用于余弦相似度）
+            # Normalize vectors (for cosine similarity)
             faiss.normalize_L2(vectors)
 
-            # 添加向量到索引
+            # Add vectors to index
             index.add(vectors)
 
-            # 保存索引和元数据
+            # Save index and metadata
             vector_file_path = self.storage_path / f"kb_{knowledge_base_id}_vectors.pkl"
 
             vector_data = {
@@ -181,13 +181,13 @@ class KnowledgeBaseService:
 
     def search_similar_questions(self, query: str, knowledge_base_id: int, top_k: Optional[int] = None) -> List[Dict[str, Any]]:
         """
-        搜索相似问题
+        Search similar questions
         Args:
-            query: 查询问题
-            knowledge_base_id: 知识库ID
-            top_k: 返回结果数量
+            query: Query question
+            knowledge_base_id: Knowledge base ID
+            top_k: Return results number
         Returns:
-            相似问题列表，包含问题、答案和相似度分数
+            Similar questions list, containing question, answer and similarity score
         """
         if top_k is None:
             top_k = self.max_results
@@ -199,20 +199,20 @@ class KnowledgeBaseService:
                 logger.warning(f"Vector file not found: {vector_file_path}")
                 return []
 
-            # 加载向量数据
+            # Load vector data
             with open(vector_file_path, 'rb') as f:
                 vector_data = pickle.load(f)
 
-            # 反序列化FAISS索引
+            # Deserialize FAISS index
             index = faiss.deserialize_index(vector_data['index'])
             qa_pairs = vector_data['qa_pairs']
 
-            # 对查询向量化
+            # Vectorize query
             query_embeddings = self._get_embeddings([query])
             query_vector = np.array(query_embeddings, dtype=np.float32)
             faiss.normalize_L2(query_vector)
 
-            # 搜索相似向量
+            # Search similar vectors
             scores, indices = index.search(query_vector, min(top_k, len(qa_pairs)))
 
             results = []
@@ -236,15 +236,15 @@ class KnowledgeBaseService:
 
     def save_original_file(self, file_content: bytes, knowledge_base_id: int, original_filename: str = None) -> str:
         """
-        保存原始JSONL文件
+        Save original JSONL file
         Args:
-            file_content: 文件内容
-            knowledge_base_id: 知识库ID
-            original_filename: 原始文件名（可选）
+            file_content: File content
+            knowledge_base_id: Knowledge base ID
+            original_filename: Original file name (optional)
         Returns:
-            文件路径
+            File path
         """
-        # 如果提供了原始文件名，使用它；否则使用默认命名
+        # If original file name is provided, use it; otherwise use default naming
         if original_filename:
             file_path = self.storage_path / f"kb_{knowledge_base_id}_{original_filename}"
         else:
@@ -258,12 +258,12 @@ class KnowledgeBaseService:
 
     def delete_knowledge_base_files(self, knowledge_base_id: int) -> None:
         """
-        删除知识库相关文件
+        Delete knowledge base related files
         Args:
-            knowledge_base_id: 知识库ID
+            knowledge_base_id: Knowledge base ID
         """
         try:
-            # 删除所有匹配的原始文件（支持新旧命名格式）
+            # Delete all matching original files (support new and old naming formats)
             import glob
             pattern = str(self.storage_path / f"kb_{knowledge_base_id}_*.jsonl")
             original_files = glob.glob(pattern)
@@ -271,14 +271,14 @@ class KnowledgeBaseService:
                 os.unlink(file_path)
                 logger.info(f"Deleted original file: {file_path}")
             
-            # 如果没有找到新格式的文件，尝试删除旧格式的文件
+            # If no new format file is found, try to delete old format file
             if not original_files:
                 original_file = self.storage_path / f"kb_{knowledge_base_id}_original.jsonl"
                 if original_file.exists():
                     original_file.unlink()
                     logger.info(f"Deleted original file: {original_file}")
 
-            # 删除向量文件
+            # Delete vector file
             vector_file = self.storage_path / f"kb_{knowledge_base_id}_vectors.pkl"
             if vector_file.exists():
                 vector_file.unlink()
@@ -290,11 +290,11 @@ class KnowledgeBaseService:
 
     def get_file_info(self, knowledge_base_id: int) -> Dict[str, Any]:
         """
-        获取知识库文件信息
+        Get knowledge base file information
         Args:
-            knowledge_base_id: 知识库ID
+            knowledge_base_id: Knowledge base ID
         Returns:
-            文件信息字典
+            File information dictionary
         """
         info = {
             'original_file_exists': False,
@@ -305,30 +305,30 @@ class KnowledgeBaseService:
         }
 
         try:
-            # 检查原始文件（支持新旧命名格式）
+            # Check original file (support new and old naming formats)
             import glob
             pattern = str(self.storage_path / f"kb_{knowledge_base_id}_*.jsonl")
             original_files = glob.glob(pattern)
             
             if original_files:
-                # 使用第一个找到的文件
+                # Use the first found file
                 original_file = Path(original_files[0])
                 info['original_file_exists'] = True
                 info['original_file_size'] = original_file.stat().st_size
             else:
-                # 尝试旧格式
+                # Try old format
                 original_file = self.storage_path / f"kb_{knowledge_base_id}_original.jsonl"
                 if original_file.exists():
                     info['original_file_exists'] = True
                     info['original_file_size'] = original_file.stat().st_size
 
-            # 检查向量文件
+            # Check vector file
             vector_file = self.storage_path / f"kb_{knowledge_base_id}_vectors.pkl"
             if vector_file.exists():
                 info['vector_file_exists'] = True
                 info['vector_file_size'] = vector_file.stat().st_size
 
-                # 获取问答对数量
+                # Get Q&A pairs number
                 with open(vector_file, 'rb') as f:
                     vector_data = pickle.load(f)
                     info['total_qa_pairs'] = vector_data.get('total_pairs', 0)
@@ -338,5 +338,5 @@ class KnowledgeBaseService:
 
         return info
 
-# 全局实例
+# Global instance
 knowledge_base_service = KnowledgeBaseService()

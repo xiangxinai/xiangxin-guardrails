@@ -14,22 +14,22 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 class DataSyncService:
-    """数据同步服务 - 从日志文件同步到PostgreSQL数据库"""
+    """Data sync service - sync data from log files to PostgreSQL database"""
     
     def __init__(self, sync_interval: int = 60):
         """
-        初始化数据同步服务
+        Initialize data sync service
         
         Args:
-            sync_interval: 同步间隔（秒），默认60秒
+            sync_interval: sync interval (seconds), default 60 seconds
         """
         self.sync_interval = sync_interval
         self._running = False
         self._sync_task: Optional[asyncio.Task] = None
-        self._processed_files = set()  # 记录已处理的文件，避免重复处理
+        self._processed_files = set()  # Record processed files to avoid duplicate processing
     
     async def start(self):
-        """启动数据同步服务"""
+        """Start data sync service"""
         if not self._running:
             self._running = True
             self._sync_task = asyncio.create_task(self._sync_loop())
@@ -38,7 +38,7 @@ class DataSyncService:
             logger.debug("DataSyncService already running, skipping start")
     
     async def stop(self):
-        """停止数据同步服务"""
+        """Stop data sync service"""
         if self._running:
             self._running = False
             if self._sync_task:
@@ -50,7 +50,7 @@ class DataSyncService:
             logger.info("DataSyncService stopped")
     
     async def _sync_loop(self):
-        """同步循环"""
+        """Sync loop"""
         while self._running:
             try:
                 await self.sync_data()
@@ -59,13 +59,13 @@ class DataSyncService:
                 break
             except Exception as e:
                 logger.error(f"Error in data sync loop: {e}")
-                # 发生错误时等待更长时间再重试
+                # Wait longer before retrying when an error occurs
                 await asyncio.sleep(self.sync_interval * 3)
     
     async def sync_data(self):
-        """同步数据到数据库"""
+        """Sync data to database"""
         try:
-            # 获取需要处理的日志文件
+            # Get log files to process
             log_files = await self._get_pending_log_files()
             
             if not log_files:
@@ -74,7 +74,7 @@ class DataSyncService:
             
             logger.info(f"Found {len(log_files)} log files to process")
             
-            # 逐个处理日志文件
+            # Process log files one by one
             for log_file in log_files:
                 await self._process_log_file(log_file)
                 
@@ -82,8 +82,8 @@ class DataSyncService:
             logger.error(f"Error in sync_data: {e}")
     
     async def _get_pending_log_files(self) -> List[Path]:
-        """获取待处理的日志文件"""
-        # 获取最近3天的日志文件（避免处理过老的文件）
+        """Get pending log files"""
+        # Get log files from the last 3 days (to avoid processing old files)
         end_date = datetime.now().date()
         start_date = end_date - timedelta(days=2)
         
@@ -94,37 +94,37 @@ class DataSyncService:
         
         all_files = async_detection_logger.get_log_files(date_range)
         
-        # 过滤出未处理的文件
+        # Filter out unprocessed files
         pending_files = []
         for file_path in all_files:
-            # 检查文件是否已被完全处理
+            # Check if the file has been fully processed
             if not await self._is_file_fully_processed(file_path):
                 pending_files.append(file_path)
         
-        # 按文件名排序，确保按时间顺序处理
+        # Sort by file name to ensure processing in chronological order
         pending_files.sort(key=lambda x: x.name)
         
         return pending_files
     
     async def _is_file_fully_processed(self, file_path: Path) -> bool:
-        """检查文件是否已被完全处理"""
+        """Check if the file has been fully processed"""
         try:
-            # 检查文件修改时间，如果是今天的文件且最近修改，可能还在写入
+            # Check file modification time, if it's a recent file from today, it might still be being written
             stat = file_path.stat()
             last_modified = datetime.fromtimestamp(stat.st_mtime)
             
-            # 如果文件在5分钟内被修改，认为可能还在写入
+            # If the file was modified in the last 5 minutes, it might still be being written
             if datetime.now() - last_modified < timedelta(minutes=5):
                 return False
                 
-            # 检查是否在已处理列表中
+            # Check if the file is in the processed list
             return str(file_path) in self._processed_files
             
         except FileNotFoundError:
-            return True  # 文件不存在，认为已处理
+            return True  # File not found, considered processed
     
     async def _process_log_file(self, file_path: Path):
-        """处理单个日志文件"""
+        """Process a single log file"""
         logger.info(f"Processing log file: {file_path}")
         
         try:
@@ -138,18 +138,18 @@ class DataSyncService:
                         continue
                     
                     try:
-                        # 解析JSON行
+                        # Parse JSON line
                         detection_data = json.loads(line)
                         
-                        # 清理数据中的NUL字符
+                        # Clean NUL characters in data
                         from utils.validators import clean_detection_data
                         cleaned_data = clean_detection_data(detection_data)
                         
-                        # 同步到数据库
+                        # Sync to database
                         await self._sync_detection_to_db(cleaned_data)
                         processed_count += 1
                         
-                        # 批量提交，提高性能
+                        # Batch commit, improve performance
                         if processed_count % 100 == 0:
                             logger.debug(f"Processed {processed_count} records from {file_path.name}")
                             
@@ -160,7 +160,7 @@ class DataSyncService:
                         logger.error(f"Error processing record in {file_path}: {e}")
                         error_count += 1
             
-            # 标记文件为已处理
+            # Mark file as processed
             self._processed_files.add(str(file_path))
             
             logger.info(f"Completed processing {file_path.name}: {processed_count} processed, {error_count} errors")
@@ -169,49 +169,49 @@ class DataSyncService:
             logger.error(f"Error processing log file {file_path}: {e}")
     
     async def _sync_detection_to_db(self, detection_data: Dict[str, Any]):
-        """同步单条检测记录到数据库"""
+        """Sync single detection record to database"""
         db: Session = get_db_session()
         
         try:
-            # 检查记录是否已存在
+            # Check if the record already exists
             existing = db.query(DetectionResult).filter_by(
                 request_id=detection_data.get('request_id')
             ).first()
             
             if existing:
-                # 记录已存在，跳过
+                # Record already exists, skip
                 return
             
-            # 解析时间
+            # Parse time
             created_at = None
             if detection_data.get('created_at'):
                 try:
-                    # 处理多种时间格式
+                    # Process multiple time formats
                     time_str = detection_data['created_at']
                     if time_str.endswith('Z'):
                         time_str = time_str.replace('Z', '+00:00')
                     elif not time_str.endswith(('+00:00', '+08:00')) and 'T' in time_str:
-                        # 如果没有时区信息，假设是中国本地时间（UTC+8）
+                        # If there is no timezone information, assume local time in China (UTC+8)
                         time_str = time_str + '+08:00'
                     created_at = datetime.fromisoformat(time_str)
                 except ValueError:
                     created_at = datetime.now(timezone.utc)
             
-            # 创建检测结果记录
+            # Create detection result record
             tenant_id = detection_data.get('tenant_id')
             if tenant_id is not None:
                 import uuid
                 try:
-                    # 如果是字符串数字，则转换为UUID
+                    # If it's a string number, convert to UUID
                     if isinstance(tenant_id, str) and tenant_id.isdigit():
-                        # 简单的数字ID不能直接转换为UUID，需要查找对应的实际UUID
-                        # 这里先设置为None，避免错误
+                        # Simple numeric ID cannot be directly converted to UUID, need to find the corresponding actual UUID
+                        # Here set to None to avoid error
                         tenant_id = None
                     elif isinstance(tenant_id, str):
-                        # 尝试解析为UUID
+                        # Try to parse as UUID
                         tenant_id = uuid.UUID(tenant_id)
                     elif isinstance(tenant_id, int):
-                        # 数字ID不能直接转换为UUID
+                        # Numeric ID cannot be directly converted to UUID
                         tenant_id = None
                 except (ValueError, TypeError):
                     tenant_id = None
@@ -226,9 +226,9 @@ class DataSyncService:
                     model_response=detection_data.get('model_response'),
                     ip_address=detection_data.get('ip_address'),
                     user_agent=detection_data.get('user_agent'),
-                    security_risk_level=detection_data.get('security_risk_level', '无风险'),
+                    security_risk_level=detection_data.get('security_risk_level', 'no_risk'),
                     security_categories=detection_data.get('security_categories', []),
-                    compliance_risk_level=detection_data.get('compliance_risk_level', '无风险'),
+                    compliance_risk_level=detection_data.get('compliance_risk_level', 'no_risk'),
                     compliance_categories=detection_data.get('compliance_categories', []),
                     has_image=detection_data.get('has_image', False),
                     image_count=detection_data.get('image_count', 0),
@@ -240,7 +240,7 @@ class DataSyncService:
             db.commit()
             
         except IntegrityError as e:
-            # 重复记录，回滚并跳过
+            # Duplicate record, rollback and skip
             db.rollback()
             logger.debug(f"Duplicate record skipped: {detection_data.get('request_id')}")
         except Exception as e:
@@ -251,21 +251,21 @@ class DataSyncService:
             db.close()
     
     async def force_sync(self, date_range: Optional[tuple] = None):
-        """强制同步指定日期范围的数据"""
+        """Force sync data for specified date range"""
         logger.info("Starting force sync...")
         
         try:
-            # 清空已处理文件记录，强制重新处理
+            # Clear processed file records, force re-processing
             if date_range:
-                # 只清空指定日期范围的记录
+                # Only clear records for the specified date range
                 for file_key in list(self._processed_files):
                     if any(date in file_key for date in [date_range[0], date_range[1]]):
                         self._processed_files.discard(file_key)
             else:
-                # 清空所有记录
+                # Clear all records
                 self._processed_files.clear()
             
-            # 获取文件并处理
+            # Get files and process
             if date_range:
                 log_files = async_detection_logger.get_log_files(date_range)
             else:
@@ -280,5 +280,5 @@ class DataSyncService:
             logger.error(f"Error in force sync: {e}")
             raise
 
-# 全局实例
+# Global instance
 data_sync_service = DataSyncService()

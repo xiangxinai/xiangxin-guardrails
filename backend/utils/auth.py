@@ -7,20 +7,20 @@ from config import settings
 import secrets
 import string
 
-# 密码加密上下文
+# Password encryption context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """验证密码"""
+    """Verify password"""
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    """获取密码哈希"""
+    """Get password hash"""
     return pwd_context.hash(password)
 
 def generate_api_key() -> str:
-    """生成API密钥"""
-    # 生成 64 位字符的 API key，格式为 sk-xxai-[52位随机字符]
+    """Generate API key"""
+    # Generate 64-bit character API key, format: sk-xxai-[52 random characters]
     prefix = "sk-xxai-"
     key_length = 52
     characters = string.ascii_letters + string.digits
@@ -28,7 +28,7 @@ def generate_api_key() -> str:
     return prefix + random_part
 
 def authenticate_admin(username: str, password: str) -> bool:
-    """验证管理员账号"""
+    """Verify admin account"""
     if username != settings.super_admin_username:
         return False
     if password != settings.super_admin_password:
@@ -36,7 +36,7 @@ def authenticate_admin(username: str, password: str) -> bool:
     return True
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """创建访问令牌"""
+    """Create access token"""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -48,7 +48,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 def verify_token(token: str) -> dict:
-    """验证令牌"""
+    """Verify token"""
     try:
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
         subject: str = payload.get("sub")
@@ -61,19 +61,19 @@ def verify_token(token: str) -> dict:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # 管理员token保留原有结构
+        # Admin token retains original structure
         if role == "admin":
             return {"username": subject, "role": role}
 
-        # 普通租户：确保返回包含tenant_id（UUID字符串），兼容旧token仅有sub的情况
+        # Ordinary tenant: ensure return contains tenant_id (UUID string), compatible with old token with only sub
         tenant_id = payload.get("tenant_id") or payload.get("user_id")  # 兼容旧字段名user_id
         if tenant_id is None:
-            # 兼容旧token：将sub作为tenant_id（字符串）
+            # Compatible with old token: use sub as tenant_id (string)
             tenant_id = subject
 
         return {
             "tenant_id": tenant_id,
-            "user_id": tenant_id,  # 保留向后兼容性
+            "user_id": tenant_id,  # Preserve backward compatibility
             "sub": subject,
             "email": payload.get("email"),
             "role": role,

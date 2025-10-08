@@ -17,11 +17,11 @@ class EnhancedTemplateService:
     """增强的代答模板服务，支持知识库搜索"""
 
     def __init__(self, cache_ttl: int = 600):
-        # 模板缓存
+        # Template cache
         self._template_cache: Dict[str, Dict[str, Dict[bool, str]]] = {}
-        # 知识库缓存: {tenant_id: {category: [knowledge_base_ids]}}
+        # Knowledge base cache: {tenant_id: {category: [knowledge_base_ids]}}
         self._knowledge_base_cache: Dict[str, Dict[str, List[int]]] = {}
-        # 全局知识库缓存: {category: [knowledge_base_ids]}
+        # Global knowledge base cache: {category: [knowledge_base_ids]}
         self._global_knowledge_base_cache: Dict[str, List[int]] = {}
         self._cache_timestamp = 0
         self._cache_ttl = cache_ttl
@@ -29,13 +29,13 @@ class EnhancedTemplateService:
 
     async def get_suggest_answer(self, categories: List[str], tenant_id: Optional[str] = None, user_query: Optional[str] = None) -> str:
         """
-        获取建议回答，优先从知识库搜索，找不到则使用默认模板
+        Get suggested answer, first search from knowledge base, if not found, use default template
         Args:
-            categories: 风险类别列表
-            tenant_id: 用户ID
-            user_query: 用户原始问题（用于知识库搜索）
+            categories: Risk categories list
+            tenant_id: User ID
+            user_query: User original question (for knowledge base search)
         Returns:
-            建议回答内容
+            Suggested answer content
         """
         await self._ensure_cache_fresh()
 
@@ -43,14 +43,14 @@ class EnhancedTemplateService:
             return self._get_default_answer(tenant_id)
 
         try:
-            # 1. 尝试从知识库获取答案
+            # 1. Try to get answer from knowledge base
             if user_query and user_query.strip():
                 kb_answer = await self._search_knowledge_base_answer(categories, tenant_id, user_query.strip())
                 if kb_answer:
                     logger.info(f"Found answer from knowledge base for user {tenant_id}, category: {categories}")
                     return kb_answer
 
-            # 2. 知识库没有找到答案，使用传统模板逻辑
+            # 2. Knowledge base didn't find answer, use traditional template logic
             return await self._get_template_answer(categories, tenant_id)
 
         except Exception as e:
@@ -58,35 +58,35 @@ class EnhancedTemplateService:
             return self._get_default_answer(tenant_id)
 
     async def _search_knowledge_base_answer(self, categories: List[str], tenant_id: Optional[str], user_query: str) -> Optional[str]:
-        """从知识库搜索答案"""
+        """Search answer from knowledge base"""
         if not tenant_id:
             return None
 
         try:
-            # 定义风险等级优先级
+            # Define risk level priority
             risk_priority = {
-                "高风险": 3,
-                "中风险": 2,
-                "低风险": 1,
-                "无风险": 0
+                "high_risk": 3,
+                "medium_risk": 2,
+                "low_risk": 1,
+                "no_risk": 0
             }
 
-            # 风险等级映射
+            # Risk level mapping
             risk_level_mapping = {
-                'S2': '高风险', 'S3': '高风险', 'S5': '高风险', 'S9': '高风险',
-                'S1': '中风险', 'S4': '中风险', 'S6': '中风险', 'S7': '中风险',
-                'S8': '低风险', 'S10': '低风险', 'S11': '低风险', 'S12': '低风险',
+                'S2': 'high_risk', 'S3': 'high_risk', 'S5': 'high_risk', 'S9': 'high_risk',
+                'S1': 'medium_risk', 'S4': 'medium_risk', 'S6': 'medium_risk', 'S7': 'medium_risk',
+                'S8': 'low_risk', 'S10': 'low_risk', 'S11': 'low_risk', 'S12': 'low_risk',
             }
 
-            # 类别名称映射
+            # Category name mapping
             category_names = {
-                'S1': '一般政治话题', 'S2': '敏感政治话题', 'S3': '损害国家形象',
-                'S4': '伤害未成年人', 'S5': '暴力犯罪', 'S6': '违法犯罪',
-                'S7': '色情', 'S8': '歧视内容', 'S9': '提示词攻击',
-                'S10': '辱骂', 'S11': '侵犯个人隐私', 'S12': '商业违法违规',
+                'S1': 'General Political Topics', 'S2': 'Sensitive Political Topics', 'S3': 'Damage to National Image',
+                'S4': 'Harm to Minors', 'S5': 'Violent Crime', 'S6': 'Illegal Activities',
+                'S7': 'Pornography', 'S8': 'Discriminatory Content', 'S9': 'Prompt Injection',
+                'S10': 'Insults', 'S11': 'Privacy Violation', 'S12': 'Business Violations',
             }
 
-            # 将类别名称转换为类别代码，并计算风险等级
+            # Convert category name to category code, and calculate risk level
             category_risk_mapping = []
             for category in categories:
                 category_key = None
@@ -96,28 +96,28 @@ class EnhancedTemplateService:
                         break
 
                 if category_key:
-                    risk_level = risk_level_mapping.get(category_key, "低风险")
+                    risk_level = risk_level_mapping.get(category_key, "low_risk")
                     priority = risk_priority.get(risk_level, 0)
                     category_risk_mapping.append((category_key, risk_level, priority))
 
-            # 按风险等级排序，优先级高的在前
+            # Sort by risk level, higher priority first
             category_risk_mapping.sort(key=lambda x: x[2], reverse=True)
 
-            # 按最高风险等级搜索知识库
+            # Search knowledge base by highest risk level
             user_cache = self._knowledge_base_cache.get(str(tenant_id), {})
 
             for category_key, risk_level, priority in category_risk_mapping:
-                # 收集要搜索的知识库ID: 用户自己的 + 全局的
+                # Collect knowledge base IDs to search: user's own + global
                 knowledge_base_ids = user_cache.get(category_key, []).copy()
                 global_kb_ids = self._global_knowledge_base_cache.get(category_key, [])
                 knowledge_base_ids.extend(global_kb_ids)
 
-                # 去重
+                # Remove duplicates
                 knowledge_base_ids = list(set(knowledge_base_ids))
 
                 for kb_id in knowledge_base_ids:
                     try:
-                        # 搜索相似问题
+                        # Search similar questions
                         results = knowledge_base_service.search_similar_questions(user_query, kb_id, top_k=1)
 
                         if results:
@@ -137,32 +137,32 @@ class EnhancedTemplateService:
             return None
 
     async def _get_template_answer(self, categories: List[str], tenant_id: Optional[str]) -> str:
-        """使用传统模板获取答案"""
+        """Use traditional template to get answer"""
         try:
-            # 定义风险等级优先级
+            # Define risk level priority
             risk_priority = {
-                "高风险": 3,
-                "中风险": 2,
-                "低风险": 1,
-                "无风险": 0
+                "high_risk": 3,
+                "medium_risk": 2,
+                "low_risk": 1,
+                "no_risk": 0
             }
 
-            # 风险等级映射
+            # Risk level mapping
             risk_level_mapping = {
-                'S2': '高风险', 'S3': '高风险', 'S5': '高风险', 'S9': '高风险',
-                'S1': '中风险', 'S4': '中风险', 'S6': '中风险', 'S7': '中风险',
-                'S8': '低风险', 'S10': '低风险', 'S11': '低风险', 'S12': '低风险',
+                'S2': 'high_risk', 'S3': 'high_risk', 'S5': 'high_risk', 'S9': 'high_risk',
+                'S1': 'medium_risk', 'S4': 'medium_risk', 'S6': 'medium_risk', 'S7': 'medium_risk',
+                'S8': 'low_risk', 'S10': 'low_risk', 'S11': 'low_risk', 'S12': 'low_risk',
             }
 
-            # 类别名称映射
+            # Category name mapping
             category_names = {
-                'S1': '一般政治话题', 'S2': '敏感政治话题', 'S3': '损害国家形象',
-                'S4': '伤害未成年人', 'S5': '暴力犯罪', 'S6': '违法犯罪',
-                'S7': '色情', 'S8': '歧视内容', 'S9': '提示词攻击',
-                'S10': '辱骂', 'S11': '侵犯个人隐私', 'S12': '商业违法违规',
+                'S1': 'General Political Topics', 'S2': 'Sensitive Political Topics', 'S3': 'Damage to National Image',
+                'S4': 'Harm to Minors', 'S5': 'Violent Crime', 'S6': 'Illegal Activities',
+                'S7': 'Pornography', 'S8': 'Discriminatory Content', 'S9': 'Prompt Injection',
+                'S10': 'Insults', 'S11': 'Privacy Violation', 'S12': 'Business Violations',
             }
 
-            # 将类别名称转换为类别代码，并计算风险等级
+            # Convert category name to category code, and calculate risk level
             category_risk_mapping = []
             for category in categories:
                 category_key = None
@@ -172,25 +172,25 @@ class EnhancedTemplateService:
                         break
 
                 if category_key:
-                    risk_level = risk_level_mapping.get(category_key, "低风险")
+                    risk_level = risk_level_mapping.get(category_key, "low_risk")
                     priority = risk_priority.get(risk_level, 0)
                     category_risk_mapping.append((category_key, risk_level, priority))
 
-            # 按风险等级排序，优先级高的在前
+            # Sort by risk level, higher priority first
             category_risk_mapping.sort(key=lambda x: x[2], reverse=True)
 
-            # 按最高风险等级查找模板
+            # Find template by highest risk level
             for category_key, risk_level, priority in category_risk_mapping:
-                # 优先查找"当前用户"的模板（非默认优先），找不到再回退到全局默认
+                # First find template for "current user" (non-default priority), if not found, fallback to global default
                 user_cache = self._template_cache.get(str(tenant_id or "__none__"), {})
                 if category_key in user_cache:
                     templates = user_cache[category_key]
-                    if False in templates:  # 非默认模板
+                    if False in templates:  # Non-default template
                         return templates[False]
-                    if True in templates:  # 默认模板
+                    if True in templates:  # Default template
                         return templates[True]
 
-                # 回退到"全局默认用户"None的模板（用于系统级默认模板）
+                # Fallback to "global default user" None template (for system-level default template)
                 global_cache = self._template_cache.get("__global__", {})
                 if category_key in global_cache:
                     templates = global_cache[category_key]
@@ -204,33 +204,33 @@ class EnhancedTemplateService:
             return self._get_default_answer(tenant_id)
 
     def _get_default_answer(self, tenant_id: Optional[str] = None) -> str:
-        """获取默认回答"""
-        # 先找用户自定义的 default
+        """Get default answer"""
+        # First find user-defined default
         user_cache = self._template_cache.get(str(tenant_id or "__none__"), {})
         if "default" in user_cache and True in user_cache["default"]:
             return user_cache["default"][True]
-        # 再回退到全局 default
+        # Then fallback to global default
         global_cache = self._template_cache.get("__global__", {})
         if "default" in global_cache and True in global_cache["default"]:
             return global_cache["default"][True]
-        return "很抱歉，我不能回答这个问题。如有疑问请联系客服。"
+        return "Sorry, I can't answer this question. If you have any questions, please contact customer service."
 
     async def _ensure_cache_fresh(self):
-        """确保缓存是最新的"""
+        """Ensure cache is fresh"""
         current_time = time.time()
 
         if current_time - self._cache_timestamp > self._cache_ttl:
             async with self._lock:
-                # 双重检查锁定
+                # Double check lock
                 if current_time - self._cache_timestamp > self._cache_ttl:
                     await self._refresh_cache()
 
     async def _refresh_cache(self):
-        """刷新缓存"""
+        """Refresh cache"""
         try:
             db = get_db_session()
             try:
-                # 1. 加载所有启用的响应模板
+                # 1. Load all enabled response templates
                 templates = db.query(ResponseTemplate).filter_by(is_active=True).all()
                 new_template_cache: Dict[str, Dict[str, Dict[bool, str]]] = {}
 
@@ -246,33 +246,33 @@ class EnhancedTemplateService:
                         new_template_cache[user_key][category] = {}
                     new_template_cache[user_key][category][is_default] = content
 
-                # 2. 加载所有启用的知识库
+                # 2. Load all enabled knowledge bases
                 knowledge_bases = db.query(KnowledgeBase).filter_by(is_active=True).all()
                 new_kb_cache: Dict[str, Dict[str, List[int]]] = {}
-                # 全局知识库缓存: {category: [knowledge_base_ids]}
+                # Global knowledge base cache: {category: [knowledge_base_ids]}
                 global_kb_cache: Dict[str, List[int]] = {}
 
                 for kb in knowledge_bases:
                     user_key = str(kb.tenant_id)
                     category = kb.category
 
-                    # 用户自己的知识库
+                    # User's own knowledge base
                     if user_key not in new_kb_cache:
                         new_kb_cache[user_key] = {}
                     if category not in new_kb_cache[user_key]:
                         new_kb_cache[user_key][category] = []
                     new_kb_cache[user_key][category].append(kb.id)
 
-                    # 全局知识库
+                    # Global knowledge base
                     if kb.is_global:
                         if category not in global_kb_cache:
                             global_kb_cache[category] = []
                         global_kb_cache[category].append(kb.id)
 
-                # 保存全局知识库缓存
+                # Save global knowledge base cache
                 self._global_knowledge_base_cache = global_kb_cache
 
-                # 3. 原子性更新缓存
+                # 3. Atomic update cache
                 self._template_cache = new_template_cache
                 self._knowledge_base_cache = new_kb_cache
                 self._cache_timestamp = time.time()
@@ -298,13 +298,13 @@ class EnhancedTemplateService:
             logger.error(f"Failed to refresh enhanced template cache: {e}")
 
     async def invalidate_cache(self):
-        """立即失效缓存"""
+        """Immediately invalidate cache"""
         async with self._lock:
             self._cache_timestamp = 0
             logger.info("Enhanced template cache invalidated")
 
     def get_cache_info(self) -> dict:
-        """获取缓存统计信息"""
+        """Get cache statistics"""
         template_count = sum(
             sum(len(templates) for templates in user_categories.values())
             for user_categories in self._template_cache.values()
@@ -326,5 +326,5 @@ class EnhancedTemplateService:
             "cache_age_seconds": time.time() - self._cache_timestamp if self._cache_timestamp > 0 else 0
         }
 
-# 全局增强模板服务实例
-enhanced_template_service = EnhancedTemplateService(cache_ttl=600)  # 10分钟缓存
+# Global enhanced template service instance
+enhanced_template_service = EnhancedTemplateService(cache_ttl=600)  # 10 minutes cache

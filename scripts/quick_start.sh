@@ -1,33 +1,33 @@
 #!/bin/bash
 
-# 象信AI安全护栏平台快速启动脚本
+# Xiangxin AI Guardrails Platform Quick Start Script
 
-echo "🛡️  象信AI安全护栏平台快速启动"
+echo "🛡️  Xiangxin AI Guardrails Platform Quick Start"
 echo "========================================"
 
 # 检查Docker
 if ! command -v docker &> /dev/null; then
-    echo "❌ Docker未安装，请先安装Docker"
+    echo "❌ Docker not installed, please install Docker first"
     exit 1
 fi
 
-# 创建必要的目录
-echo "📁 创建必要的目录..."
+# Create necessary directories
+echo "📁 Create necessary directories..."
 mkdir -p data logs
 
-# 设置权限
+# Set permissions
 chmod 755 data logs
 
-# 启动前端（开发模式）
-echo "🚀 启动前端服务..."
+# Start frontend (development mode)
+echo "🚀 Start frontend service..."
 cd frontend
 npm install
 npm run dev &
 FRONTEND_PID=$!
 cd ..
 
-# 启动后端（开发模式）
-echo "🚀 启动后端服务..."
+# Start backend (development mode)
+echo "🚀 Start backend service..."
 cd backend
 pip install -r requirements.txt
 python main.py &
@@ -35,17 +35,17 @@ BACKEND_PID=$!
 cd ..
 
 echo ""
-echo "✅ 服务启动中..."
+echo "✅ Service starting..."
 echo ""
-echo "📊 访问地址："
-echo "   前端管理界面: http://localhost:3000"
-echo "   后端API文档: http://localhost:5000/docs"
-echo "   护栏API: http://localhost:5001/v1/guardrails"
+echo "📊 Access Address:"
+echo "   Frontend Management Interface: http://localhost:3000"
+echo "   Backend API Documentation: http://localhost:5000/docs"
+echo "   Guardrails API: http://localhost:5001/v1/guardrails"
 echo ""
-echo "🔧 停止服务："
-echo "   Ctrl+C 或运行: kill $FRONTEND_PID $BACKEND_PID"
+echo "🔧 Stop Service:"
+echo "   Ctrl+C or run: kill $FRONTEND_PID $BACKEND_PID"
 echo ""
-echo "📧 技术支持: wanglei@xiangxinai.cn"
+echo "📧 Technical Support: wanglei@xiangxinai.cn"
 
-# 等待用户中断
+# Wait for user interrupt
 wait

@@ -9,47 +9,47 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 class TemplateCache:
-    """响应模板缓存服务"""
+    """Response template cache service"""
     
-    def __init__(self, cache_ttl: int = 600):  # 10分钟缓存，模板变化不频繁
-        # 多租户模板缓存结构：{tenant_id: {category: {is_default: template_content}}}
+    def __init__(self, cache_ttl: int = 600):  # 10 minutes cache, template changes rarely
+        # Multi-tenant template cache structure: {tenant_id: {category: {is_default: template_content}}}
         self._template_cache: Dict[str, Dict[str, Dict[bool, str]]] = {}
         self._cache_timestamp = 0
         self._cache_ttl = cache_ttl
         self._lock = asyncio.Lock()
         
     async def get_suggest_answer(self, categories: List[str], tenant_id: Optional[str] = None) -> str:
-        """获取建议回答（内存缓存版）"""
+        """Get suggested answer (memory cache version)"""
         await self._ensure_cache_fresh()
         
         if not categories:
             return self._get_default_answer(tenant_id)
         
         try:
-            # 定义风险等级优先级
+            # Define risk level priority
             risk_priority = {
-                "高风险": 3,
-                "中风险": 2, 
-                "低风险": 1,
-                "无风险": 0
+                "high_risk": 3,
+                "medium_risk": 2, 
+                "low_risk": 1,
+                "no_risk": 0
             }
             
-            # 风险等级映射
+            # Risk level mapping
             risk_level_mapping = {
-                'S2': '高风险', 'S3': '高风险', 'S5': '高风险', 'S9': '高风险',
-                'S1': '中风险', 'S4': '中风险', 'S6': '中风险', 'S7': '中风险',
-                'S8': '低风险', 'S10': '低风险', 'S11': '低风险', 'S12': '低风险',
+                'S2': 'high_risk', 'S3': 'high_risk', 'S5': 'high_risk', 'S9': 'high_risk',
+                'S1': 'medium_risk', 'S4': 'medium_risk', 'S6': 'medium_risk', 'S7': 'medium_risk',
+                'S8': 'low_risk', 'S10': 'low_risk', 'S11': 'low_risk', 'S12': 'low_risk',
             }
             
-            # 类别名称映射
+            # Category name mapping
             category_names = {
-                'S1': '一般政治话题', 'S2': '敏感政治话题', 'S3': '损害国家形象',
-                'S4': '伤害未成年人', 'S5': '暴力犯罪', 'S6': '违法犯罪',
-                'S7': '色情', 'S8': '歧视内容', 'S9': '提示词攻击',
-                'S10': '辱骂', 'S11': '侵犯个人隐私', 'S12': '商业违法违规',
+                'S1': 'General Political Topics', 'S2': 'Sensitive Political Topics', 'S3': 'Damage to National Image',
+                'S4': 'Harm to Minors', 'S5': 'Violent Crime', 'S6': 'Illegal Activities',
+                'S7': 'Pornography', 'S8': 'Discriminatory Content', 'S9': 'Prompt Injection',
+                'S10': 'Insults', 'S11': 'Privacy Violation', 'S12': 'Business Violations',
             }
             
-            # 将类别名称转换为类别代码，并计算风险等级
+            # Convert category name to category code, and calculate risk level
             category_risk_mapping = []
             for category in categories:
                 category_key = None
@@ -59,25 +59,25 @@ class TemplateCache:
                         break
                 
                 if category_key:
-                    risk_level = risk_level_mapping.get(category_key, "低风险")
+                    risk_level = risk_level_mapping.get(category_key, "low_risk")
                     priority = risk_priority.get(risk_level, 0)
                     category_risk_mapping.append((category_key, risk_level, priority))
             
-            # 按风险等级排序，优先级高的在前
+            # Sort by risk level, higher priority first
             category_risk_mapping.sort(key=lambda x: x[2], reverse=True)
             
-            # 按最高风险等级查找模板
+            # Find template by highest risk level
             for category_key, risk_level, priority in category_risk_mapping:
-                # 优先查找“当前用户”的模板（非默认优先），找不到再回退到全局默认
+                # First find template for "current user" (non-default priority), if not found, fallback to global default
                 user_cache = self._template_cache.get(str(tenant_id or "__none__"), {})
                 if category_key in user_cache:
                     templates = user_cache[category_key]
-                    if False in templates:  # 非默认模板
+                    if False in templates:  # Non-default template
                         return templates[False]
-                    if True in templates:  # 默认模板
+                    if True in templates:  # Default template
                         return templates[True]
 
-                # 回退到“全局默认用户”None的模板（用于系统级默认模板）
+                # Fallback to "global default user" None template (for system-level default template)
                 global_cache = self._template_cache.get("__global__", {})
                 if category_key in global_cache:
                     templates = global_cache[category_key]
@@ -91,33 +91,33 @@ class TemplateCache:
             return self._get_default_answer()
     
     def _get_default_answer(self, tenant_id: Optional[str]) -> str:
-        """获取默认回答"""
-        # 先找用户自定义的 default
+        """Get default answer"""
+        # First find user-defined default
         user_cache = self._template_cache.get(str(tenant_id or "__none__"), {})
         if "default" in user_cache and True in user_cache["default"]:
             return user_cache["default"][True]
-        # 再回退到全局 default
+        # Fallback to global default
         global_cache = self._template_cache.get("__global__", {})
         if "default" in global_cache and True in global_cache["default"]:
             return global_cache["default"][True]
-        return "很抱歉，我不能回答这个问题。如有疑问请联系客服。"
+        return "Sorry, I can't answer this question. Please contact customer service if you have any questions."
     
     async def _ensure_cache_fresh(self):
-        """确保缓存是最新的"""
+        """Ensure cache is fresh"""
         current_time = time.time()
         
         if current_time - self._cache_timestamp > self._cache_ttl:
             async with self._lock:
-                # 双重检查锁定
+                # Double-check lock
                 if current_time - self._cache_timestamp > self._cache_ttl:
                     await self._refresh_cache()
     
     async def _refresh_cache(self):
-        """刷新缓存"""
+        """Refresh cache"""
         try:
             db = get_db_session()
             try:
-                # 加载所有启用的响应模板（按用户分组，None 代表全局默认模板）
+                # Load all enabled response templates (grouped by user, None represents global default template)
                 templates = db.query(ResponseTemplate).filter_by(is_active=True).all()
                 new_cache: Dict[str, Dict[str, Dict[bool, str]]] = {}
                 for template in templates:
@@ -132,7 +132,7 @@ class TemplateCache:
                         new_cache[user_key][category] = {}
                     new_cache[user_key][category][is_default] = content
                 
-                # 原子性更新缓存
+                # Atomic update cache
                 self._template_cache = new_cache
                 self._cache_timestamp = time.time()
                 
@@ -151,13 +151,13 @@ class TemplateCache:
             logger.error(f"Failed to refresh template cache: {e}")
     
     async def invalidate_cache(self):
-        """立即失效缓存"""
+        """Immediately invalidate cache"""
         async with self._lock:
             self._cache_timestamp = 0
             logger.info("Template cache invalidated")
     
     def get_cache_info(self) -> dict:
-        """获取缓存统计信息"""
+        """Get cache statistics"""
         template_count = sum(
             sum(len(templates) for templates in user_categories.values())
             for user_categories in self._template_cache.values()
@@ -170,5 +170,5 @@ class TemplateCache:
             "cache_age_seconds": time.time() - self._cache_timestamp if self._cache_timestamp > 0 else 0
         }
 
-# 全局模板缓存实例
-template_cache = TemplateCache(cache_ttl=600)  # 10分钟缓存
+# Global template cache instance
+template_cache = TemplateCache(cache_ttl=600)  # 10 minutes cache

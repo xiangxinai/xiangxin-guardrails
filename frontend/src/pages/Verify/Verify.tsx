@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Card, Typography, message, Space } from 'antd';
 import { MailOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import '../Register/Register.css'; // 使用相同的样式
+import { useTranslation } from 'react-i18next';
+import '../Register/Register.css';
 
 const { Title, Text } = Typography;
 
@@ -11,20 +12,17 @@ interface VerifyFormData {
   verificationCode: string;
 }
 
-interface ResendFormData {
-  email: string;
-}
-
 const Verify: React.FC = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
+
   const initialEmail = searchParams.get('email') || '';
 
-  // 倒计时处理
+  // Countdown processing
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (countdown > 0) {
@@ -40,7 +38,7 @@ const Verify: React.FC = () => {
   const handleVerify = async (values: VerifyFormData) => {
     try {
       setLoading(true);
-      
+
       const response = await fetch('/api/v1/users/verify-email', {
         method: 'POST',
         headers: {
@@ -54,10 +52,10 @@ const Verify: React.FC = () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.detail || '验证失败');
+        throw new Error(error.detail || t('verify.verifyFailed'));
       }
 
-      message.success('邮箱验证成功！即将跳转到登录页面。');
+      message.success(t('verify.verifySuccess'));
       setTimeout(() => {
         navigate('/login');
       }, 1500);
@@ -71,7 +69,7 @@ const Verify: React.FC = () => {
   const handleResendCode = async (email: string) => {
     try {
       setResendLoading(true);
-      
+
       const response = await fetch('/api/v1/users/resend-verification-code', {
         method: 'POST',
         headers: {
@@ -84,11 +82,11 @@ const Verify: React.FC = () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.detail || '重发失败');
+        throw new Error(error.detail || t('verify.resendFailed'));
       }
 
-      setCountdown(60); // 设置60秒倒计时
-      message.success('验证码已重新发送！请检查您的邮箱。');
+      setCountdown(60); // Set 60 seconds countdown
+      message.success(t('verify.resendSuccess'));
     } catch (error: any) {
       message.error(error.message);
     } finally {
@@ -102,10 +100,10 @@ const Verify: React.FC = () => {
         <Card className="register-card">
           <div className="register-header">
             <Title level={2} className="register-title">
-              象信AI安全护栏
+              {t('login.title')}
             </Title>
             <Text type="secondary" className="register-subtitle">
-              邮箱验证 / 重发验证码
+              {t('verify.title')}
             </Text>
           </div>
 
@@ -120,30 +118,30 @@ const Verify: React.FC = () => {
             >
               <Form.Item
                 name="email"
-                label="邮箱地址"
+                label={t('register.email')}
                 rules={[
-                  { required: true, message: '请输入邮箱地址' },
-                  { type: 'email', message: '请输入有效的邮箱地址' },
+                  { required: true, message: t('verify.emailRequired') },
+                  { type: 'email', message: t('verify.emailInvalid') },
                 ]}
               >
                 <Input
                   prefix={<MailOutlined />}
-                  placeholder="请输入注册时使用的邮箱地址"
+                  placeholder={t('verify.emailPlaceholder')}
                   autoComplete="email"
                 />
               </Form.Item>
 
               <Form.Item
                 name="verificationCode"
-                label="验证码"
+                label={t('register.verificationCode')}
                 rules={[
-                  { required: true, message: '请输入验证码' },
-                  { len: 6, message: '验证码为6位数字' },
+                  { required: true, message: t('verify.verificationCodeRequired') },
+                  { len: 6, message: t('verify.verificationCodeLength') },
                 ]}
               >
                 <Input
                   prefix={<SafetyOutlined />}
-                  placeholder="6位验证码"
+                  placeholder={t('verify.verificationCodePlaceholder')}
                   maxLength={6}
                   style={{ textAlign: 'center', fontSize: '18px', letterSpacing: '4px' }}
                 />
@@ -157,14 +155,14 @@ const Verify: React.FC = () => {
                   block
                   className="verify-button"
                 >
-                  验证邮箱
+                  {t('verify.verifyButton')}
                 </Button>
               </Form.Item>
 
               <Form.Item>
                 <Space direction="vertical" style={{ width: '100%' }} align="center">
                   <div style={{ textAlign: 'center' }}>
-                    <Text type="secondary">没有收到验证码？</Text>
+                    <Text type="secondary">{t('register.resendCodeQuestion')}</Text>
                     <Form.Item
                       noStyle
                       shouldUpdate={(prevValues, currentValues) => prevValues.email !== currentValues.email}
@@ -177,16 +175,16 @@ const Verify: React.FC = () => {
                           disabled={countdown > 0 || !getFieldValue('email')}
                           style={{ padding: '0 4px' }}
                         >
-                          {countdown > 0 ? `重新发送 (${countdown}s)` : '重新发送验证码'}
+                          {countdown > 0 ? t('verify.resendCodeCountdown', { count: countdown }) : t('verify.resendCode')}
                         </Button>
                       )}
                     </Form.Item>
                   </div>
-                  
+
                   <Space>
-                    <Link to="/register">重新注册</Link>
+                    <Link to="/register">{t('register.backToRegister')}</Link>
                     <Text type="secondary">|</Text>
-                    <Link to="/login">已有账户，直接登录</Link>
+                    <Link to="/login">{t('register.alreadyHaveAccount')} {t('register.loginNow')}</Link>
                   </Space>
                 </Space>
               </Form.Item>
@@ -196,7 +194,7 @@ const Verify: React.FC = () => {
           <div className="register-footer">
             <Space direction="vertical" align="center">
               <Text type="secondary" style={{ fontSize: '12px' }}>
-                © 2025 象信AI. All rights reserved.
+                {t('login.copyright')}
               </Text>
             </Space>
           </div>

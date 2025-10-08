@@ -17,17 +17,17 @@ from services.data_sync_service import data_sync_service
 from utils.logger import setup_logger
 from services.admin_service import admin_service
 
-# 设置安全验证
+# Set security verification
 security = HTTPBearer()
 
 class AuthContextMiddleware(BaseHTTPMiddleware):
-    """认证上下文中间件"""
+    """Authentication context middleware"""
     
     async def dispatch(self, request: Request, call_next):
-        # 对需要认证的路由添加用户上下文
+        # Add user context to routes that need authentication
         if request.url.path.startswith('/v1/guardrails') or request.url.path.startswith('/api/v1/'):
             auth_header = request.headers.get('authorization')
-            switch_session = request.headers.get('x-switch-session')  # 用户切换会话
+            switch_session = request.headers.get('x-switch-session')  # User switch session
             
             if auth_header and auth_header.startswith('Bearer '):
                 token = auth_header.split(' ')[1]
@@ -43,18 +43,18 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         return response
     
     async def _get_auth_context(self, token: str, switch_session: str = None):
-        """获取认证上下文（带缓存优化）"""
+        """Get authentication context (with cache optimization)"""
         from utils.auth_cache import auth_cache
         
-        # 生成缓存键（包含switch_session信息）
+        # Generate cache key (contains switch_session information)
         cache_key = f"{token}:{switch_session or ''}"
         
-        # 尝试从缓存获取
+        # Try to get from cache
         cached_auth = auth_cache.get(cache_key)
         if cached_auth:
             return cached_auth
         
-        # 缓存未命中，执行原有逻辑
+        # Cache miss, execute original logic
         from database.connection import get_db_session
         from database.models import Tenant
         from utils.user import get_user_by_api_key
@@ -65,11 +65,11 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         try:
             auth_context = None
             
-            # 首先尝试JWT验证
+            # First try JWT verification
             try:
                 user_data = verify_token(token)
                 role = user_data.get('role')
-                # 管理员token：通过邮箱查找管理员用户
+                # Admin token: find admin user by email
                 if role == 'admin':
                     subject_email = user_data.get('username') or user_data.get('sub')
                     admin_user = db.query(Tenant).filter(Tenant.email == subject_email).first()
@@ -83,7 +83,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                             }
                         }
                     else:
-                        # 未在DB找到时，仍然标记为admin上下文但无user_id（后续依赖可再校验）
+                        # Still mark as admin context but no user_id (can be verified later)
                         auth_context = {
                             "type": "jwt_admin",
                             "data": {
@@ -93,7 +93,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                             }
                         }
                 else:
-                    # 普通用户：从token解析 tenant_id
+                    # Normal user: parse tenant_id from token
                     raw_tenant_id = user_data.get('tenant_id') or user_data.get('sub')
                     tenant_uuid = None
                     if isinstance(raw_tenant_id, uuid.UUID):
@@ -105,7 +105,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                             tenant_uuid = None
                     user = db.query(Tenant).filter(Tenant.id == tenant_uuid).first() if tenant_uuid else None
                     if user:
-                        # 检查是否有用户切换会话
+                        # Check if there is a user switch session
                         if switch_session and admin_service.is_super_admin(user):
                             switched_user = admin_service.get_switched_user(db, switch_session)
                             if switched_user:
@@ -126,12 +126,12 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                                 "data": {
                                     "tenant_id": str(user.id),
                                     "email": user.email,
-                                    # 仅依据 .env 判断超级管理员
+                                    # Only judge super admin based on .env
                                     "is_super_admin": admin_service.is_super_admin(user)
                                 }
                             }
                     else:
-                        # 数据库未找到用户时，退化为基于token声明的上下文
+                        # When the user is not found in the database, fallback to the context based on token declaration
                         auth_context = {
                             "type": "jwt",
                             "data": {
@@ -141,10 +141,10 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                             }
                         }
             except:
-                # JWT验证失败，尝试API key验证
+                # JWT verification failed, try API key verification
                 user = get_user_by_api_key(db, token)
                 if user:
-                    # 检查是否有用户切换会话
+                    # Check if there is a user switch session
                     if switch_session and admin_service.is_super_admin(user):
                         switched_user = admin_service.get_switched_user(db, switch_session)
                         if switched_user:
@@ -167,12 +167,12 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                                 "tenant_id": str(user.id),
                                 "email": user.email,
                                 "api_key": user.api_key,
-                                # 仅依据 .env 判断超级管理员
+                                # Only judge super admin based on .env
                                 "is_super_admin": admin_service.is_super_admin(user)
                             }
                         }
             
-            # 如果认证成功，缓存结果
+            # If authentication is successful, cache the result
             if auth_context:
                 auth_cache.set(cache_key, auth_context)
             
@@ -182,18 +182,18 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
             db.close()
 
 
-# 创建FastAPI应用
+# Create FastAPI application
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动阶段
+    # Startup phase
     os.makedirs(settings.data_dir, exist_ok=True)
     os.makedirs(settings.log_dir, exist_ok=True)
     os.makedirs(settings.detection_log_dir, exist_ok=True)
 
-    # 初始化数据库
+    # Initialize database
     await init_db()
 
-    # 启动异步日志服务与后台任务
+    # Start asynchronous logging service and background tasks
     await async_detection_logger.start()
     await data_sync_service.start()
     from services.cache_cleaner import cache_cleaner
@@ -206,7 +206,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        # 关闭阶段
+        # Shutdown phase
         await async_detection_logger.stop()
         await data_sync_service.stop()
         from services.cache_cleaner import cache_cleaner
@@ -219,37 +219,37 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="象信AI安全护栏平台 - 为LLM应用提供全面的安全防护",
+    description="Xiangxin AI security guardrails platform - provides comprehensive security protection for LLM applications",
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
     lifespan=lifespan,
 )
 
-# 添加限速中间件 - 必须先添加（会后执行）
+# Add rate limit middleware - must be added first (will be executed later)
 from middleware.rate_limit_middleware import RateLimitMiddleware
 app.add_middleware(RateLimitMiddleware)
 
-# 添加认证上下文中间件 - 后添加（会先执行）
+# Add authentication context middleware - added later (will be executed first)
 app.add_middleware(AuthContextMiddleware)
 
-# 配置CORS - 支持SSH端口映射
+# Configure CORS - supports SSH port mapping
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 允许所有域名
+    allow_origins=["*"],  # Allow all domains
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
 
-# 设置日志
+# Set log
 logger = setup_logger()
 
-# 生命周期已通过 lifespan 管理
+# Lifecycle is managed through lifespan
 
 @app.get("/")
 async def root():
-    """根路径"""
+    """Root path"""
     return {
         "name": settings.app_name,
         "version": settings.app_version,
@@ -261,28 +261,28 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """健康检查"""
+    """Health check"""
     return {"status": "healthy", "version": settings.app_version}
 
-# 注册路由
-# 认证和用户路由不需要API key验证
+# Register routes
+# Authentication and user routes do not need API key verification
 app.include_router(auth.router, prefix="/api/v1/auth")
 app.include_router(user.router, prefix="/api/v1/users")
 
-# 其他路由需要JWT认证或API key验证
+# Other routes need JWT authentication or API key verification
 from routers.auth import get_current_admin
 
 async def verify_user_auth(
     credentials: HTTPAuthorizationCredentials = Security(security),
     request: Request = None,
 ):
-    """验证用户认证（JWT token或API key）"""
+    """Verify user authentication (JWT token or API key)"""
     from database.connection import get_db_session
     from database.models import Tenant
     from utils.user import get_user_by_api_key
     from utils.auth import verify_token
     
-    # 若中间件已解析出认证上下文，则直接信任（避免重复解析差异带来的401）
+    # If the authentication context is parsed out by the middleware, trust it directly (to avoid 401 caused by repeated parsing differences)
     if request is not None:
         auth_ctx = getattr(request.state, 'auth_context', None)
         if auth_ctx:
@@ -315,7 +315,7 @@ async def verify_user_auth(
                             pass
                     return ctx
             else:
-                # 兼容旧token：优先 tenant_id，回退 sub
+                # Compatible with old token: prioritize tenant_id, fallback to sub
                 raw_tenant_id = user_data.get('tenant_id') or user_data.get('sub')
                 tenant_uuid = None
                 if isinstance(raw_tenant_id, uuid.UUID):
@@ -333,7 +333,7 @@ async def verify_user_auth(
                         "data": {
                             "tenant_id": str(user.id),
                             "email": user.email,
-                            # 仅依据 .env 判断超级管理员
+                            # Only judge super admin based on .env
                             "is_super_admin": admin_service.is_super_admin(user)
                         }
                     }
@@ -344,7 +344,7 @@ async def verify_user_auth(
                             pass
                     return ctx
                 else:
-                    # Fallback: 接受token声明（即使DB未能查询到），避免误判401
+                    # Fallback: accept token declaration (even if the DB cannot be queried), avoid false 401
                     ctx = {
                         "type": "jwt",
                         "data": {
@@ -362,7 +362,7 @@ async def verify_user_auth(
         except:
             pass
         
-        # JWT验证失败，尝试API key验证
+        # JWT verification failed, try API key verification
         user = get_user_by_api_key(db, token)
         # 允许使用有效的 API Key 直接访问（不强制邮箱激活）
         if user:
@@ -372,7 +372,7 @@ async def verify_user_auth(
                     "tenant_id": str(user.id),
                     "email": user.email,
                     "api_key": user.api_key,
-                    # 仅依据 .env 判断超级管理员
+                    # Only judge super admin based on .env
                     "is_super_admin": admin_service.is_super_admin(user)
                 }
             }
@@ -401,7 +401,7 @@ app.include_router(test_models.router, prefix="/api/v1", dependencies=[Depends(v
 app.include_router(data_security.router, dependencies=[Depends(verify_user_auth)])  # data_security已在路由内定义prefix
 app.include_router(media.router, prefix="/api/v1")  # media路由的认证在各个接口中单独控制
 
-# 全局异常处理
+# Global exception handling
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     logger.error(f"Global exception: {exc}")

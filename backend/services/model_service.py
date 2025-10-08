@@ -9,16 +9,16 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 class ModelService:
-    """模型服务类"""
+    """Model service class"""
 
     def __init__(self):
-        # 创建复用的HTTP客户端以提高性能
-        timeout = httpx.Timeout(30.0, connect=5.0)  # 连接超时5秒，总超时30秒
+        # Create reusable HTTP client to improve performance
+        timeout = httpx.Timeout(30.0, connect=5.0)  # Connection timeout 5 seconds, total timeout 30 seconds
         limits = httpx.Limits(max_keepalive_connections=100, max_connections=200)
         self._client = httpx.AsyncClient(
             timeout=timeout,
             limits=limits,
-            # 关闭 HTTP/2 以避免未安装 h2 依赖导致导入错误
+            # Close HTTP/2 to avoid import error due to missing h2 dependency
             http2=False
         )
         self._headers = {
@@ -35,29 +35,29 @@ class ModelService:
         self._vl_api_url = f"{settings.guardrails_vl_model_api_url}/chat/completions"
     
     async def check_messages(self, messages: List[dict]) -> str:
-        """检测内容安全性"""
+        """Check content security"""
 
         try:
             return await self._call_model_api(messages)
 
         except Exception as e:
             logger.error(f"Model service error: {e}")
-            # 返回安全的默认结果
+            # Return safe default result
             return "无风险"
 
     async def check_messages_with_confidence(self, messages: List[dict]) -> Tuple[str, Optional[float]]:
-        """检测内容安全性并返回敏感度分数"""
+        """Check content security and return confidence score"""
 
         try:
             return await self._call_model_api_with_logprobs(messages)
 
         except Exception as e:
             logger.error(f"Model service error: {e}")
-            # 返回安全的默认结果
+            # Return safe default result
             return "无风险", None
 
     async def check_messages_with_sensitivity(self, messages: List[dict], use_vl_model: bool = False) -> Tuple[str, Optional[float]]:
-        """检测内容安全性并返回敏感度分数"""
+        """Check content security and return sensitivity score"""
 
         try:
             if use_vl_model:
@@ -67,13 +67,13 @@ class ModelService:
 
         except Exception as e:
             logger.error(f"Model service error: {e}")
-            # 返回安全的默认结果
+            # Return safe default result
             return "无风险", None
     
     async def _call_model_api(self, messages: List[dict]) -> str:
-        """调用模型API（使用复用的客户端）"""
+        """Call model API (using reusable client)"""
         try:
-            logger.debug("Calling model API...")  # 降低日志级别，减少I/O
+            logger.debug("Calling model API...")  # Reduce log level, reduce I/O
             
             payload = {
                 "model": settings.guardrails_model_name,
@@ -81,7 +81,7 @@ class ModelService:
                 "temperature": 0.0
             }
             
-            # 使用复用的客户端，避免重复创建连接
+            # Use reusable client to avoid duplicate connection creation
             response = await self._client.post(
                 self._api_url,
                 json=payload,
@@ -102,7 +102,7 @@ class ModelService:
             raise
 
     async def _call_model_api_with_logprobs(self, messages: List[dict]) -> Tuple[str, Optional[float]]:
-        """调用模型API并获取logprobs来计算敏感度"""
+        """Call model API and get logprobs to calculate sensitivity"""
         try:
             logger.debug("Calling model API with logprobs...")
 
@@ -113,7 +113,7 @@ class ModelService:
                 "logprobs": True
             }
 
-            # 使用复用的客户端，避免重复创建连接
+            # Use reusable client to avoid duplicate connection creation
             response = await self._client.post(
                 self._api_url,
                 json=payload,
@@ -124,14 +124,14 @@ class ModelService:
                 result_data = response.json()
                 result = result_data["choices"][0]["message"]["content"].strip()
 
-                # 提取敏感度分数
+                # Extract sensitivity score
                 confidence_score = None
                 if "logprobs" in result_data["choices"][0] and result_data["choices"][0]["logprobs"]:
                     logprobs_data = result_data["choices"][0]["logprobs"]
                     if "content" in logprobs_data and logprobs_data["content"]:
-                        # 获取第一个token的logprob
+                        # Get logprob of the first token
                         first_token_logprob = logprobs_data["content"][0]["logprob"]
-                        # 转换为概率
+                        # Convert to probability
                         confidence_score = math.exp(first_token_logprob)
 
                 logger.debug(f"Model response: {result}, confidence: {confidence_score}")
@@ -145,7 +145,7 @@ class ModelService:
             raise
 
     async def _call_vl_model_api_with_logprobs(self, messages: List[dict]) -> Tuple[str, Optional[float]]:
-        """调用多模态模型API并获取logprobs来计算敏感度"""
+        """Call multi-modal model API and get logprobs to calculate sensitivity"""
         try:
             logger.debug("Calling VL model API with logprobs...")
 
@@ -156,7 +156,7 @@ class ModelService:
                 "logprobs": True
             }
 
-            # 使用复用的客户端，避免重复创建连接
+            # Use reusable client to avoid duplicate connection creation
             response = await self._client.post(
                 self._vl_api_url,
                 json=payload,
@@ -167,14 +167,14 @@ class ModelService:
                 result_data = response.json()
                 result = result_data["choices"][0]["message"]["content"].strip()
 
-                # 提取敏感度分数
+                # Extract sensitivity score
                 confidence_score = None
                 if "logprobs" in result_data["choices"][0] and result_data["choices"][0]["logprobs"]:
                     logprobs_data = result_data["choices"][0]["logprobs"]
                     if "content" in logprobs_data and logprobs_data["content"]:
-                        # 获取第一个token的logprob
+                        # Get logprob of the first token
                         first_token_logprob = logprobs_data["content"][0]["logprob"]
-                        # 转换为概率
+                        # Convert to probability
                         confidence_score = math.exp(first_token_logprob)
 
                 logger.debug(f"VL Model response: {result}, confidence: {confidence_score}")
@@ -188,7 +188,7 @@ class ModelService:
             raise
 
     def _has_image_content(self, messages: List[dict]) -> bool:
-        """检查消息中是否包含图片内容"""
+        """Check if the message contains image content"""
         for msg in messages:
             content = msg.get("content")
             if isinstance(content, list):
@@ -198,9 +198,9 @@ class ModelService:
         return False
 
     async def close(self):
-        """关闭HTTP客户端"""
+        """Close HTTP client"""
         if self._client:
             await self._client.aclose()
 
-# 全局模型服务实例
+# Global model service instance
 model_service = ModelService()

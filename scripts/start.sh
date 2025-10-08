@@ -1,139 +1,196 @@
 #!/bin/bash
 
-# 象信AI安全护栏平台启动脚本
+# Xiangxin AI Guardrails Platform Start Script
 
-echo "🛡️  象信AI安全护栏平台启动脚本"
+echo "🛡️  Xiangxin AI Guardrails Platform Start Script"
 echo "========================================"
 
-# 检查Docker和Docker Compose
-if ! command -v docker &> /dev/null; then
-    echo "❌ Docker未安装，请先安装Docker"
-    echo "   安装指南: https://docs.docker.com/get-docker/"
+# Check Python environment
+if ! command -v python3 &> /dev/null; then
+    echo "❌ Python3 not installed, please install Python3"
+    echo "   Installation guide: https://www.python.org/downloads/"
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-    echo "❌ Docker Compose未安装，请先安装Docker Compose"
-    echo "   安装指南: https://docs.docker.com/compose/install/"
+# Check pip
+if ! command -v pip3 &> /dev/null; then
+    echo "❌ pip3 not installed, please install pip3"
     exit 1
 fi
 
-# 检查Docker服务是否运行
-if ! docker info &> /dev/null; then
-    echo "❌ Docker服务未启动，请先启动Docker服务"
+# Check Node.js environment (for frontend)
+if ! command -v node &> /dev/null; then
+    echo "❌ Node.js not installed, please install Node.js"
+    echo "   Installation guide: https://nodejs.org/"
     exit 1
 fi
 
-# 创建必要的目录
-echo "📁 创建必要的目录..."
-mkdir -p logs backend/config
+# Check npm
+if ! command -v npm &> /dev/null; then
+    echo "❌ npm not installed, please install npm"
+    exit 1
+fi
 
-# 设置权限
-chmod 755 logs backend/config
+# Create necessary directories
+echo "📁 Create necessary directories..."
+mkdir -p logs backend/config data/logs
 
-# 检查端口占用
-echo "🔍 检查端口占用..."
+# Set permissions
+chmod 755 logs backend/config data/logs
+
+# Check port occupancy
+echo "🔍 Check port occupancy..."
 if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    echo "⚠️  端口3000已被占用，请先停止相关服务或修改docker-compose.yml中的端口配置"
+echo "⚠️  Port 3000 is occupied, please stop related services or modify configuration"
 fi
 
 if lsof -Pi :5000 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    echo "⚠️  端口5000已被占用，请先停止相关服务或修改docker-compose.yml中的端口配置"
+    echo "⚠️  Port 5000 is occupied, please stop related services or modify configuration"
 fi
 
-if lsof -Pi :54321 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    echo "⚠️  端口54321已被占用，请先停止相关服务或修改docker-compose.yml中的端口配置"
+if lsof -Pi :5001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "⚠️  Port 5001 is occupied, please stop related services or modify configuration"
 fi
 
-# 检查是否存在旧版本容器
-echo "🧹 清理旧版本容器..."
-docker-compose down --remove-orphans 2>/dev/null || true
-
-# 拉取最新镜像
-echo "📥 拉取PostgreSQL镜像..."
-docker pull postgres:15-alpine
-
-# 启动服务
-echo "🚀 启动服务..."
-if command -v docker-compose &> /dev/null; then
-    docker-compose up -d
-else
-    docker compose up -d
+if lsof -Pi :5002 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "⚠️  Port 5002 is occupied, please stop related services or modify configuration"
 fi
 
-# 等待数据库启动
-echo "⏳ 等待数据库启动..."
+# Stop possible running services
+echo "🧹 Stop possible running services..."
+if [ -f "/tmp/xiangxin_services.pid" ]; then
+    PIDS=$(cat /tmp/xiangxin_services.pid)
+    for PID in $PIDS; do
+        if kill -0 $PID 2>/dev/null; then
+            echo "Stop service PID: $PID"
+            kill $PID 2>/dev/null
+        fi
+    done
+    rm -f /tmp/xiangxin_services.pid
+fi
+
+# Stop possible running Python processes
+pkill -f "start_detection_service.py" 2>/dev/null || true
+pkill -f "start_admin_service.py" 2>/dev/null || true
+pkill -f "start_proxy_service.py" 2>/dev/null || true
+
+# Enter backend directory
+cd backend
+
+# Set environment variable
+export PYTHONPATH="$PWD:$PYTHONPATH"
+
+# Check Python dependencies
+echo "📦 Check Python dependencies..."
+if [ ! -f "requirements.txt" ]; then
+    echo "❌ requirements.txt file not found"
+    exit 1
+fi
+
+# Install Python dependencies
+echo "📦 Install Python dependencies..."
+pip3 install -r requirements.txt
+
+# Start all services
+echo "🚀 Start all services..."
+bash start_all_services.sh &
+SERVICES_PID=$!
+
+# Wait for services to start
+echo "⏳ Wait for services to start..."
+sleep 5
+
+# Check service status
+echo "🔍 Check service status..."
 for i in {1..30}; do
-    if docker exec xiangxin-guardrails-postgres pg_isready -U xiangxin -d xiangxin_guardrails >/dev/null 2>&1; then
-        echo "✅ 数据库启动成功"
+    if curl -f http://localhost:5000/health >/dev/null 2>&1; then
+        echo "✅ Management service started (port 5000)"
         break
     fi
     if [ $i -eq 30 ]; then
-        echo "❌ 数据库启动超时，请检查日志: docker-compose logs postgres"
-        exit 1
+        echo "❌ Management service startup timeout"
     fi
     sleep 2
 done
 
-# 等待后端服务启动
-echo "⏳ 等待后端服务启动..."
-for i in {1..60}; do
-    if curl -f http://localhost:5000/health >/dev/null 2>&1; then
-        echo "✅ 后端服务启动成功"
+for i in {1..30}; do
+    if curl -f http://localhost:5001/health >/dev/null 2>&1; then
+        echo "✅ Detection service started (port 5001)"
         break
     fi
-    if [ $i -eq 60 ]; then
-        echo "❌ 后端服务启动超时，请检查日志: docker-compose logs backend"
-        exit 1
+    if [ $i -eq 30 ]; then
+        echo "❌ Detection service startup timeout"
     fi
     sleep 2
 done
 
-# 等待前端服务启动
-echo "⏳ 等待前端服务启动..."
+for i in {1..30}; do
+    if curl -f http://localhost:5002/health >/dev/null 2>&1; then
+        echo "✅ Proxy service started (port 5002)"
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        echo "❌ Proxy service startup timeout"
+    fi
+    sleep 2
+done
+
+# Start frontend service
+echo "🌐 Start frontend service..."
+cd ../frontend
+
+# Check frontend dependencies
+if [ ! -f "package.json" ]; then
+    echo "❌ package.json file not found"
+    exit 1
+fi
+
+# Install frontend dependencies
+echo "📦 Install frontend dependencies..."
+npm install
+
+# Start frontend service
+echo "🚀 Start frontend service..."
+npm run dev &
+FRONTEND_PID=$!
+
+# Wait for frontend service to start
+echo "⏳ Wait for frontend service to start..."
 for i in {1..30}; do
     if curl -f http://localhost:3000 >/dev/null 2>&1; then
-        echo "✅ 前端服务启动成功"
+        echo "✅ Frontend service started (port 3000)"
         break
     fi
     if [ $i -eq 30 ]; then
-        echo "⚠️  前端服务可能需要更长时间启动，请稍后访问或查看日志"
+        echo "⚠️  Frontend service may take longer to start"
     fi
     sleep 2
 done
 
-# 检查服务状态
-echo "🔍 检查服务状态..."
-if command -v docker-compose &> /dev/null; then
-    docker-compose ps
-else
-    docker compose ps
-fi
+# Save all PIDs
+echo "$SERVICES_PID $FRONTEND_PID" > /tmp/xiangxin_all_services.pid
 
 echo ""
-echo "🎉 服务启动完成！"
+echo "🎉 All services started!"
 echo ""
-echo "📊 访问地址："
-echo "   🌐 前端管理界面: http://localhost:3000"
-echo "   📖 后端API文档: http://localhost:5000/docs"
-echo "   🛡️ 护栏检测API: http://localhost:5001/v1/guardrails"
-echo "   🐘 PostgreSQL数据库: localhost:54321"
+echo "📊 Access address:"
+echo "   🌐 Frontend management interface: http://localhost:3000"
+echo "   📖 Management API documentation: http://localhost:5000/docs"
+echo "   🛡️ Detection API: http://localhost:5001/v1/guardrails"
+echo "   🔄 Proxy API: http://localhost:5002/v1/chat/completions"
 echo ""
-echo "🔑 默认管理员账号："
-echo "   邮箱: admin@xiangxinai.cn"
-echo "   密码: admin123456"
-echo "   ⚠️  请在生产环境中修改默认密码！"
+echo "🔑 Default admin account:"
+echo "   Email: admin@xiangxinai.cn"
+echo "   Password: admin123456"
+echo "   ⚠️  Please modify the default password in the production environment!"
 echo ""
-echo "🔧 常用命令："
-echo "   查看所有日志: docker-compose logs -f"
-echo "   查看后端日志: docker-compose logs -f backend"
-echo "   查看数据库日志: docker-compose logs -f postgres"
-echo "   停止所有服务: docker-compose down"
-echo "   重启所有服务: docker-compose restart"
-echo "   进入数据库: docker exec -it xiangxin-guardrails-postgres psql -U xiangxin -d xiangxin_guardrails"
+echo "🔧 Common commands:"
+echo "   View service logs: tail -f data/logs/*.log"
+echo "   Stop all services: ./scripts/stop.sh"
+echo "   Restart all services: ./scripts/stop.sh && ./scripts/start.sh"
 echo ""
-echo "📚 文档："
-echo "   项目文档: https://github.com/xiangxinai/xiangxin-guardrails"
-echo "   API文档: http://localhost:5000/docs"
+echo "📚 Documentation:"
+echo "   Project documentation: https://github.com/xiangxinai/xiangxin-guardrails"
+echo "   API documentation: http://localhost:5000/docs"
 echo ""
-echo "📧 技术支持: wanglei@xiangxinai.cn"
+echo "📧 Technical support: wanglei@xiangxinai.cn"

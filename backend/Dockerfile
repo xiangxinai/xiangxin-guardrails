@@ -2,26 +2,26 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 安装系统依赖
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制依赖文件
+# Copy dependency files
 COPY requirements.txt .
 
-# 安装Python依赖
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制源代码
+# Copy source code
 COPY . .
 
-# 创建数据和日志目录
+# Create data and log directories
 RUN mkdir -p /app/data /app/logs
 
-# 暴露端口 - 支持所有服务
+# Expose ports - support all services
 EXPOSE 5000 5001 5002
 
-# 默认启动命令（会被docker-compose覆盖）
+# Default startup command (will be overridden by docker-compose)
 CMD ["python", "main.py"]

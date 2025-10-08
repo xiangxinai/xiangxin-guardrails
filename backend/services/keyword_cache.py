@@ -9,12 +9,12 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 class KeywordCache:
-    """高性能关键词缓存服务"""
+    """High-performance keyword cache service"""
     
-    def __init__(self, cache_ttl: int = 300):  # 5分钟缓存
-        # 多租户缓存结构：
-        # 黑名单: {tenant_id: {list_name: {keyword1, keyword2, ...}}}
-        # 白名单: {tenant_id: {list_name: {keyword1, keyword2, ...}}}
+    def __init__(self, cache_ttl: int = 300):  # 5 minutes cache
+        # Multi-tenant cache structure:
+        # Blacklist: {tenant_id: {list_name: {keyword1, keyword2, ...}}}
+        # Whitelist: {tenant_id: {list_name: {keyword1, keyword2, ...}}}
         self._blacklist_cache: Dict[str, Dict[str, Set[str]]] = {}
         self._whitelist_cache: Dict[str, Dict[str, Set[str]]] = {}
         self._cache_timestamp = 0
@@ -22,7 +22,7 @@ class KeywordCache:
         self._lock = asyncio.Lock()
         
     async def check_blacklist(self, content: str, tenant_id: Optional[str]) -> Tuple[bool, Optional[str], List[str]]:
-        """检查黑名单（内存缓存版）"""
+        """Check blacklist (memory cache version)"""
         await self._ensure_cache_fresh()
         
         if not tenant_id:
@@ -45,7 +45,7 @@ class KeywordCache:
         return False, None, []
     
     async def check_whitelist(self, content: str, tenant_id: Optional[str]) -> Tuple[bool, Optional[str], List[str]]:
-        """检查白名单（内存缓存版）"""
+        """Check whitelist (memory cache version)"""
         await self._ensure_cache_fresh()
         
         if not tenant_id:
@@ -68,21 +68,21 @@ class KeywordCache:
         return False, None, []
     
     async def _ensure_cache_fresh(self):
-        """确保缓存是最新的"""
+        """Ensure cache is fresh"""
         current_time = time.time()
         
         if current_time - self._cache_timestamp > self._cache_ttl:
             async with self._lock:
-                # 双重检查锁定
+                # Double check lock
                 if current_time - self._cache_timestamp > self._cache_ttl:
                     await self._refresh_cache()
     
     async def _refresh_cache(self):
-        """刷新缓存"""
+        """Refresh cache"""
         try:
             db = get_db_session()
             try:
-                # 加载黑名单（按用户分组）
+                # Load blacklist (grouped by tenant)
                 blacklists = db.query(Blacklist).filter_by(is_active=True).all()
                 new_blacklist_cache: Dict[str, Dict[str, Set[str]]] = {}
                 for blacklist in blacklists:
@@ -95,7 +95,7 @@ class KeywordCache:
                         new_blacklist_cache[tenant_id_str] = {}
                     new_blacklist_cache[tenant_id_str][blacklist.name] = keyword_set
 
-                # 加载白名单（按用户分组）
+                # Load whitelist (grouped by tenant)
                 whitelists = db.query(Whitelist).filter_by(is_active=True).all()
                 new_whitelist_cache: Dict[str, Dict[str, Set[str]]] = {}
                 for whitelist in whitelists:
@@ -108,7 +108,7 @@ class KeywordCache:
                         new_whitelist_cache[tenant_id_str] = {}
                     new_whitelist_cache[tenant_id_str][whitelist.name] = keyword_set
 
-                # 原子性更新缓存
+                # Atomic update cache
                 self._blacklist_cache = new_blacklist_cache
                 self._whitelist_cache = new_whitelist_cache
                 self._cache_timestamp = time.time()
@@ -134,13 +134,13 @@ class KeywordCache:
             logger.error(f"Failed to refresh keyword cache: {e}")
     
     async def invalidate_cache(self):
-        """立即失效缓存"""
+        """Immediately invalidate cache"""
         async with self._lock:
             self._cache_timestamp = 0
             logger.info("Keyword cache invalidated")
     
     def get_cache_info(self) -> dict:
-        """获取缓存统计信息"""
+        """Get cache statistics"""
         blacklist_list_count = sum(len(lists) for lists in self._blacklist_cache.values())
         whitelist_list_count = sum(len(lists) for lists in self._whitelist_cache.values())
         blacklist_keyword_count = sum(
@@ -161,5 +161,5 @@ class KeywordCache:
             "cache_age_seconds": time.time() - self._cache_timestamp if self._cache_timestamp > 0 else 0
         }
 
-# 全局关键词缓存实例
-keyword_cache = KeywordCache(cache_ttl=300)  # 5分钟缓存
+# Global keyword cache instance
+keyword_cache = KeywordCache(cache_ttl=300)  # 5 minutes cache

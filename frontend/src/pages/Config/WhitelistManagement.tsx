@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Switch, Space, message, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { configApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Whitelist } from '../../types';
@@ -8,6 +9,7 @@ import type { Whitelist } from '../../types';
 const { TextArea } = Input;
 
 const WhitelistManagement: React.FC = () => {
+  const { t } = useTranslation();
   const [data, setData] = useState<Whitelist[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -19,7 +21,7 @@ const WhitelistManagement: React.FC = () => {
     fetchData();
   }, []);
 
-  // 监听用户切换事件，自动刷新数据
+  // Listen to user switch event, automatically refresh data
   useEffect(() => {
     const unsubscribe = onUserSwitch(() => {
       fetchData();
@@ -63,28 +65,28 @@ const WhitelistManagement: React.FC = () => {
 
       if (editingItem) {
         await configApi.whitelist.update(editingItem.id, submitData);
-        message.success('更新成功');
+        message.success(t('common.updateSuccess'));
       } else {
         await configApi.whitelist.create(submitData);
-        message.success('创建成功');
+        message.success(t('common.createSuccess'));
       }
 
       setModalVisible(false);
       fetchData();
     } catch (error) {
       console.error('Error saving whitelist:', error);
-      message.error('保存失败，请重试');
+      message.error(t('common.saveFailed'));
     }
   };
 
   const handleDelete = async (record: Whitelist) => {
     try {
       await configApi.whitelist.delete(record.id);
-      message.success('删除成功');
+      message.success(t('common.deleteSuccess'));
       fetchData();
     } catch (error) {
       console.error('Error deleting whitelist:', error);
-      message.error('删除失败，请重试');
+      message.error(t('common.deleteFailed'));
     }
   };
 
@@ -96,59 +98,59 @@ const WhitelistManagement: React.FC = () => {
         description: record.description,
         is_active: !record.is_active
       });
-      message.success(`${!record.is_active ? '启用' : '禁用'}成功`);
+      message.success(t(!record.is_active ? 'common.enableSuccess' : 'common.disableSuccess'));
       fetchData();
     } catch (error) {
       console.error('Error toggling whitelist status:', error);
-      message.error('操作失败，请重试');
+      message.error(t('common.operationFailed'));
     }
   };
 
   const columns = [
     {
-      title: '名称',
+      title: t('whitelist.name'),
       dataIndex: 'name',
       key: 'name',
     },
     {
-      title: '关键词数量',
+      title: t('whitelist.keywordCount'),
       dataIndex: 'keywords',
       key: 'keywords',
       render: (keywords: string[]) => keywords?.length || 0,
     },
     {
-      title: '描述',
+      title: t('whitelist.description'),
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
     },
     {
-      title: '状态',
+      title: t('common.status'),
       dataIndex: 'is_active',
       key: 'is_active',
       render: (active: boolean, record: Whitelist) => (
         <Space>
           <Tag color={active ? 'green' : 'red'}>
-            {active ? '启用' : '禁用'}
+            {active ? t('common.enabled') : t('common.disabled')}
           </Tag>
           <Button
             type="link"
             size="small"
             onClick={() => handleToggleStatus(record)}
           >
-            {active ? '禁用' : '启用'}
+            {active ? t('common.disable') : t('common.enable')}
           </Button>
         </Space>
       ),
     },
     {
-      title: '创建时间',
+      title: t('common.createdAt'),
       dataIndex: 'created_at',
       key: 'created_at',
       render: (time: string) => new Date(time).toLocaleString(),
     },
     {
-      title: '操作',
+      title: t('common.action'),
       key: 'action',
       render: (_: any, record: Whitelist) => (
         <Space>
@@ -157,19 +159,19 @@ const WhitelistManagement: React.FC = () => {
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            编辑
+            {t('common.edit')}
           </Button>
           <Button
             type="link"
             danger
             icon={<DeleteOutlined />}
             onClick={() => {
-              if (confirm(`确定要删除白名单"${record.name}"吗？`)) {
+              if (confirm(t('whitelist.confirmDeleteContent', { name: record.name }))) {
                 handleDelete(record);
               }
             }}
           >
-            删除
+            {t('common.delete')}
           </Button>
         </Space>
       ),
@@ -184,7 +186,7 @@ const WhitelistManagement: React.FC = () => {
           icon={<PlusOutlined />}
           onClick={handleAdd}
         >
-          添加白名单
+          {t('whitelist.addWhitelist')}
         </Button>
       </div>
 
@@ -196,7 +198,7 @@ const WhitelistManagement: React.FC = () => {
       />
 
       <Modal
-        title={editingItem ? '编辑白名单' : '添加白名单'}
+        title={editingItem ? t('whitelist.editWhitelist') : t('whitelist.addWhitelist')}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         onOk={() => form.submit()}
@@ -209,37 +211,37 @@ const WhitelistManagement: React.FC = () => {
         >
           <Form.Item
             name="name"
-            label="名称"
-            rules={[{ required: true, message: '请输入名称' }]}
+            label={t('whitelist.name')}
+            rules={[{ required: true, message: t('whitelist.nameRequired') }]}
           >
-            <Input placeholder="请输入白名单名称" />
+            <Input placeholder={t('whitelist.namePlaceholder')} />
           </Form.Item>
 
           <Form.Item
             name="keywords"
-            label="关键词"
-            rules={[{ required: true, message: '请输入关键词' }]}
-            extra="每行一个关键词"
+            label={t('whitelist.keywords')}
+            rules={[{ required: true, message: t('whitelist.keywordsRequired') }]}
+            extra={t('whitelist.keywordsExtra')}
           >
             <TextArea
               rows={6}
-              placeholder="请输入关键词，每行一个"
+              placeholder={t('whitelist.keywordsPlaceholder')}
             />
           </Form.Item>
 
           <Form.Item
             name="description"
-            label="描述"
+            label={t('whitelist.description')}
           >
             <TextArea
               rows={3}
-              placeholder="请输入描述"
+              placeholder={t('whitelist.descriptionPlaceholder')}
             />
           </Form.Item>
 
           <Form.Item
             name="is_active"
-            label="启用状态"
+            label={t('common.enableStatus')}
             valuePropName="checked"
             initialValue={true}
           >
