@@ -3,7 +3,6 @@ import { Card, Table, Button, Modal, Form, Input, Switch, message, Space, Popcon
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, ApiOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { proxyModelsApi } from '../../services/api';
-import { authService } from '../../services/auth';
 import { useAuth } from '../../contexts/AuthContext';
 
 const { Paragraph, Text } = Typography;
@@ -40,20 +39,20 @@ const ProxyModelManagement: React.FC = () => {
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
   const [editingModel, setEditingModel] = useState<ProxyModel | null>(null);
   const [viewingModel, setViewingModel] = useState<ProxyModel | null>(null);
-  const [formKey, setFormKey] = useState(0); // 用于强制重新渲染表单
+  const [formKey, setFormKey] = useState(0); // For forcing form re-rendering
   const [form] = Form.useForm();
   const { onUserSwitch } = useAuth();
   
-  // 直接管理开关状态（极简配置）
+  // Directly manage switch states (minimal configuration)
   const [switchStates, setSwitchStates] = useState({
     enabled: true,
-    block_on_input_risk: false,  // 默认不阻断
-    block_on_output_risk: false, // 默认不阻断
-    enable_reasoning_detection: true, // 默认开启
-    stream_chunk_size: 50, // 默认每50个chunk检测一次
+    block_on_input_risk: false,  // Default not block
+    block_on_output_risk: false, // Default not block
+    enable_reasoning_detection: true, // Default enable
+    stream_chunk_size: 50, // Default check every 50 chunks
   });
 
-  // 获取模型列表
+  // Get model list
   const fetchModels = async () => {
     setLoading(true);
     try {
@@ -76,7 +75,7 @@ const ProxyModelManagement: React.FC = () => {
     fetchModels();
   }, []);
 
-  // 监听用户切换事件，自动刷新数据
+  // Listen to user switch event, automatically refresh data
   useEffect(() => {
     const unsubscribe = onUserSwitch(() => {
       fetchModels();
@@ -84,7 +83,7 @@ const ProxyModelManagement: React.FC = () => {
     return unsubscribe;
   }, [onUserSwitch]);
 
-  // 获取模型详细信息（用于编辑）
+  // Get model detailed information (for editing)
   const fetchModelDetail = async (modelId: string) => {
     try {
       const response = await proxyModelsApi.get(modelId);
@@ -102,21 +101,21 @@ const ProxyModelManagement: React.FC = () => {
     }
   };
 
-  // 显示创建/编辑弹窗
+  // Show create/edit modal
   const showModal = async (model?: ProxyModel) => {
     setEditingModel(model || null);
     
     if (model) {
-      // 编辑模式：先获取完整数据，再显示弹窗
+      // Editing mode: first get complete data, then show modal
       const modelDetail = await fetchModelDetail(model.id);
       if (modelDetail) {
-        console.log('=== 编辑模式 - 从服务器获取的数据 ===');
+        console.log('=== Editing mode - data from server ===');
         console.log('enabled:', modelDetail.enabled, typeof modelDetail.enabled);
         console.log('block_on_input_risk:', modelDetail.block_on_input_risk, typeof modelDetail.block_on_input_risk);
         console.log('block_on_output_risk:', modelDetail.block_on_output_risk, typeof modelDetail.block_on_output_risk);
         console.log('enable_reasoning_detection:', modelDetail.enable_reasoning_detection, typeof modelDetail.enable_reasoning_detection);
         
-        // 同步设置表单值和开关状态
+        // Sync set form values and switch states (minimal configuration)
         const formValues = {
           config_name: modelDetail.config_name,
           api_base_url: modelDetail.api_base_url,
@@ -131,68 +130,68 @@ const ProxyModelManagement: React.FC = () => {
           stream_chunk_size: modelDetail.stream_chunk_size || 50,
         };
         
-        // 重置表单并设置值
+        // Reset form and set values
         form.resetFields();
         form.setFieldsValue(formValues);
         setSwitchStates(switchValues);
         
-        // 更新表单key并显示弹窗
+        // Update form key and show modal
         setFormKey(prev => prev + 1);
         setIsModalVisible(true);
       } else {
         message.error(t('proxy.fetchModelDetailFailedCannotEdit'));
       }
     } else {
-      // 创建模式：直接设置默认值并显示弹窗
-      console.log('=== 创建模式 - 设置默认值 ===');
+      // Create mode: directly set default values and show modal
+      console.log('=== Create mode - set default values ===');
       
-      // 重置表单和开关状态
+      // Reset form and switch states
       form.resetFields();
       setSwitchStates({
         enabled: true,
-        block_on_input_risk: false,  // 默认不阻断
-        block_on_output_risk: false, // 默认不阻断
-        enable_reasoning_detection: true, // 默认开启
-        stream_chunk_size: 50, // 默认每50个chunk检测一次
+        block_on_input_risk: false,  // Default not block
+        block_on_output_risk: false, // Default not block
+        enable_reasoning_detection: true, // Default enable
+        stream_chunk_size: 50, // Default check every 50 chunks
       });
       
-      // 更新表单key并显示弹窗
+      // Update form key and show modal
       setFormKey(prev => prev + 1);
       setIsModalVisible(true);
     }
   };
 
-  // 显示查看弹窗
+  // Show view modal
   const showViewModal = (model: ProxyModel) => {
     setViewingModel(model);
     setIsViewModalVisible(true);
   };
 
-  // 取消编辑 - 关闭弹窗并重置表单状态
+  // Cancel editing - close modal and reset form state
   const handleCancel = () => {
     setIsModalVisible(false);
     setIsViewModalVisible(false);
     setEditingModel(null);
     setViewingModel(null);
-    // 不要立即重置表单，等Modal动画完成后再重置
+    // Do not reset form immediately, wait for modal animation to complete
     setTimeout(() => {
       form.resetFields();
     }, 300);
   };
 
-  // 成功后关闭弹窗
+  // After success, close modal
   const handleClose = () => {
     setIsModalVisible(false);
     setIsViewModalVisible(false);
     setEditingModel(null);
     setViewingModel(null);
-    // 不要立即重置表单，等Modal动画完成后再重置
+    // Do not reset form immediately, wait for modal animation to complete
     setTimeout(() => {
       form.resetFields();
     }, 300);
   };
 
-  // 检查代理模型名称是否重复
+  // Check if proxy model name is duplicate
   const checkConfigNameDuplicate = (configName: string): boolean => {
     return models.some(model => 
       model.config_name === configName && 
@@ -200,29 +199,26 @@ const ProxyModelManagement: React.FC = () => {
     );
   };
 
-  // 自定义验证器：检查代理模型名称重复
+  // Custom validator: check if proxy model name is duplicate
   const validateConfigName = async (_: any, value: string) => {
     if (value && checkConfigNameDuplicate(value)) {
       throw new Error(t('proxy.duplicateConfigName'));
     }
   };
 
-  // 自定义验证器：检查API Base URL格式
+  // Custom validator: check if API Base URL format is valid
   const validateApiBaseUrl = async (_: any, value: string) => {
     if (value && !value.match(/^https?:\/\/.+/)) {
       throw new Error(t('proxy.invalidApiBaseUrl'));
     }
   };
 
-  // 保存模型配置
+  // Save model configuration
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
       
-      console.log('=== Switch状态 ===');
-      console.log('switchStates:', switchStates);
-      
-      // 构造提交数据（极简配置）
+      // Construct submit data (minimal configuration)
       const formData: ProxyModelFormData = {
         config_name: values.config_name,
         api_base_url: values.api_base_url,
@@ -231,27 +227,21 @@ const ProxyModelManagement: React.FC = () => {
         enabled: switchStates.enabled,
         block_on_input_risk: switchStates.block_on_input_risk,
         block_on_output_risk: switchStates.block_on_output_risk,
-        enable_reasoning_detection: switchStates.enable_reasoning_detection, // 使用实际配置
+        enable_reasoning_detection: switchStates.enable_reasoning_detection, // Use actual configuration
         stream_chunk_size: switchStates.stream_chunk_size,
       };
 
-      // 编辑模式下，只有在用户输入了新的API Key时才包含在请求中
+      // In edit mode, only include API key if user entered a new one
       if (!editingModel || (values.api_key && values.api_key.trim() !== '')) {
         formData.api_key = values.api_key;
       }
-      
-      console.log('=== 提交给后端的数据 ===');
-      console.log('enabled:', formData.enabled, typeof formData.enabled);
-      console.log('block_on_input_risk:', formData.block_on_input_risk, typeof formData.block_on_input_risk);
-      console.log('block_on_output_risk:', formData.block_on_output_risk, typeof formData.block_on_output_risk);
-      console.log('enable_reasoning_detection:', formData.enable_reasoning_detection, typeof formData.enable_reasoning_detection);
 
       if (editingModel) {
-        // 编辑现有配置
+        // Edit existing configuration
         await proxyModelsApi.update(editingModel.id, formData);
         message.success(t('proxy.modelConfigUpdated'));
       } else {
-        // 创建新配置
+        // Create new configuration
         await proxyModelsApi.create(formData);
         message.success(t('proxy.modelConfigCreated'));
       }
@@ -261,9 +251,9 @@ const ProxyModelManagement: React.FC = () => {
     } catch (error: any) {
       console.error('Save failed:', error);
       
-      // 处理不同类型的错误
+      // Handle different types of errors
       if (error.response) {
-        // 服务器返回的错误
+        // Server returned error
         const errorMessage = error.response.data?.message || error.response.data?.error || t('proxy.saveFailed');
         if (error.response.status === 409 || errorMessage.includes('已存在') || errorMessage.includes('重复') || errorMessage.includes('exists') || errorMessage.includes('duplicate')) {
           message.error(t('proxy.duplicateConfigName'));
@@ -271,7 +261,7 @@ const ProxyModelManagement: React.FC = () => {
           message.error(t('proxy.saveFailedWithMessage', { message: errorMessage }));
         }
       } else if (error.errorFields) {
-        // 表单验证错误
+        // Form validation error
         const firstError = error.errorFields[0];
         if (firstError && firstError.errors && firstError.errors.length > 0) {
           message.error(firstError.errors[0]);
@@ -279,13 +269,13 @@ const ProxyModelManagement: React.FC = () => {
           message.error(t('proxy.checkFormInput'));
         }
       } else {
-        // 其他错误
+        // Other errors
         message.error(t('proxy.saveFailedNetworkError'));
       }
     }
   };
 
-  // 删除模型配置
+  // Delete model configuration
   const handleDelete = async (id: string) => {
     try {
       const response = await proxyModelsApi.delete(id);
@@ -300,7 +290,7 @@ const ProxyModelManagement: React.FC = () => {
     } catch (error: any) {
       console.error('Delete failed:', error);
       
-      // 处理不同类型的错误
+      // Handle different types of errors
       if (error.response) {
         const errorMessage = error.response.data?.error || error.response.data?.message || t('proxy.deleteFailed');
         if (error.response.status === 404) {
@@ -423,7 +413,7 @@ const ProxyModelManagement: React.FC = () => {
         />
       </Card>
 
-      {/* 使用说明 */}
+      {/* Usage instructions */}
       <Card 
         title={t('proxy.accessXiangxinGateway')} 
         style={{ marginTop: 16 }}
@@ -470,7 +460,7 @@ completion = openai_client.chat.completions.create(
         </Typography>
       </Card>
 
-      {/* 创建/编辑弹窗 */}
+      {/* Create/edit modal */}
       <Modal
         title={editingModel ? t('proxy.editModelConfig') : t('proxy.addModelConfig')}
         visible={isModalVisible}
@@ -510,7 +500,7 @@ completion = openai_client.chat.completions.create(
             <Input placeholder={t('proxy.upstreamApiBaseUrlPlaceholder')} autoComplete="url" />
           </Form.Item>
 
-          {/* 隐藏的用户名字段，防止浏览器将API Key识别为密码 */}
+          {/* Hidden username field, prevent browser from recognizing API Key as password */}
           <input 
             type="text" 
             name="username" 
@@ -593,7 +583,7 @@ completion = openai_client.chat.completions.create(
         </Form>
       </Modal>
 
-      {/* 查看弹窗 */}
+      {/* View modal */}
       <Modal
         title={t('proxy.viewModelConfig')}
         visible={isViewModalVisible}

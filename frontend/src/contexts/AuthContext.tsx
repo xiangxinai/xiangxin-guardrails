@@ -18,8 +18,8 @@ interface AuthContextType {
   switchToUser: (userId: string) => Promise<void>;
   exitSwitch: () => Promise<void>;
   refreshSwitchStatus: () => Promise<void>;
-  // 用户切换事件监听
-  onUserSwitch: (callback: () => void) => () => void; // 返回取消监听的函数
+  // User switch event listener
+  onUserSwitch: (callback: () => void) => () => void; // Return function to cancel listener
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,7 +46,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(userInfo);
         setIsAuthenticated(true);
         
-        // 检查用户切换状态
+        // Check user switch status
         await refreshSwitchStatus();
       } else {
         setUser(null);
@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await adminApi.getCurrentSwitch();
       setSwitchInfo(response);
     } catch (error) {
-      // 如果不是超级管理员或者没有切换权限，忽略错误
+      // If not super admin or no switch permission, ignore error
       setSwitchInfo({ is_switched: false });
     }
   };
@@ -82,11 +82,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userInfo = await authService.getCurrentUser();
       setUser(userInfo);
       setIsAuthenticated(true);
-      // 登录后刷新一次切换状态，避免首页并发请求导致401提示
+      // Refresh switch status after login, avoid 401 prompt due to concurrent requests on homepage
       try {
         await refreshSwitchStatus();
       } catch (e) {
-        // 忽略切换状态错误
+        // Ignore switch status error
       }
     } catch (error) {
       console.error('Login failed:', error);
@@ -112,7 +112,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await adminApi.switchToUser(userId);
       localStorage.setItem('switch_session_token', response.switch_session_token);
       await refreshSwitchStatus();
-      // 通知所有监听器用户切换了
+      // Notify all listeners that user switched
       switchCallbacks.forEach(callback => callback());
     } catch (error) {
       console.error('Switch user failed:', error);
@@ -125,7 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await adminApi.exitSwitch();
       localStorage.removeItem('switch_session_token');
       await refreshSwitchStatus();
-      // 通知所有监听器退出了用户切换
+      // Notify all listeners that user exited switch
       switchCallbacks.forEach(callback => callback());
     } catch (error) {
       console.error('Exit switch failed:', error);
@@ -135,7 +135,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const onUserSwitch = useCallback((callback: () => void) => {
     setSwitchCallbacks(prev => new Set(prev).add(callback));
-    // 返回取消监听的函数
+    // Return function to cancel listener
     return () => {
       setSwitchCallbacks(prev => {
         const newSet = new Set(prev);

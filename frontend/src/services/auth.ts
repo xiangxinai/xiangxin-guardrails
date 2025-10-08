@@ -31,16 +31,16 @@ export interface UserInfo {
   is_active: boolean;
   is_verified: boolean;
   is_super_admin: boolean;
-  rate_limit: number;  // 租户速度限制（每秒请求数，0表示无限制，默认为1）
+  rate_limit: number;  // Tenant speed limit (requests per second, 0 means unlimited, default is 1)
 }
 
-// 获取base URL的辅助函数，与api.ts保持一致
+// Get base URL auxiliary function, consistent with api.ts
 const getBaseURL = () => {
-  // 优先使用环境变量中的API URL
+  // Use API URL from environment variables first
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  // 生产环境和Docker环境都使用相对路径，通过nginx代理
+  // Production and Docker environments use relative path, through nginx proxy
   return '';
 };
 
@@ -126,7 +126,7 @@ class AuthService {
     }
 
     try {
-      // 简单检查token是否过期（这里可以解析JWT payload来检查exp字段）
+      // Simple check if token has expired (can parse JWT payload to check exp field)
       const payload = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Date.now() / 1000;
       return payload.exp > currentTime;

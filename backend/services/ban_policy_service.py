@@ -1,6 +1,6 @@
 """
-封禁策略服务模块
-负责封禁策略的管理、用户封禁检查和记录
+Ban policy service module
+Responsible for managing ban policies, user ban checks and records
 """
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta, timezone
@@ -13,16 +13,16 @@ import uuid
 logger = logging.getLogger(__name__)
 
 def utcnow():
-    """获取当前UTC时间（timezone-aware）"""
+    """Get current UTC time (timezone-aware)"""
     return datetime.now(timezone.utc)
 
 
 class BanPolicyService:
-    """封禁策略服务类"""
+    """Ban policy service class"""
 
     @staticmethod
     async def get_ban_policy(tenant_id: str) -> Optional[Dict[str, Any]]:
-        """获取租户的封禁策略配置"""
+        """Get tenant's ban policy configuration"""
         db = get_admin_db_session()
         try:
             result = db.execute(
@@ -54,10 +54,10 @@ class BanPolicyService:
 
     @staticmethod
     async def update_ban_policy(tenant_id: str, policy_data: Dict[str, Any]) -> Dict[str, Any]:
-        """更新封禁策略配置"""
+        """Update ban policy configuration"""
         db = get_admin_db_session()
         try:
-            # 检查策略是否存在
+            # Check if policy exists
             result = db.execute(
                 text("SELECT id FROM ban_policies WHERE tenant_id = :tenant_id"),
                 {"tenant_id": tenant_id}
@@ -65,7 +65,7 @@ class BanPolicyService:
             existing = result.fetchone()
 
             if existing:
-                # 更新现有策略
+                # Update existing policy
                 result = db.execute(
                     text("""
                     UPDATE ban_policies
@@ -91,7 +91,7 @@ class BanPolicyService:
                 )
                 db.commit()
             else:
-                # 创建新策略
+                # Create new policy
                 result = db.execute(
                     text("""
                     INSERT INTO ban_policies (tenant_id, enabled, risk_level, trigger_count,
@@ -133,7 +133,7 @@ class BanPolicyService:
 
     @staticmethod
     async def check_user_banned(tenant_id: str, user_id: str) -> Optional[Dict[str, Any]]:
-        """检查用户是否被封禁"""
+        """Check if user is banned"""
         db = get_admin_db_session()
         try:
             result = db.execute(
@@ -173,11 +173,11 @@ class BanPolicyService:
         detection_result_id: Optional[str] = None,
         language: str = 'zh'
     ) -> Optional[Dict[str, Any]]:
-        """检查并应用封禁策略"""
+        """Check and apply ban policy"""
         logger.info(f"check_and_apply_ban_policy called: tenant_id={tenant_id}, user_id={user_id}, risk_level={risk_level}")
         db = get_admin_db_session()
         try:
-            # 获取封禁策略
+            # Get ban policy
             logger.info(f"Fetching ban policy for tenant_id={tenant_id}")
             policy_result = db.execute(
                 text("""
@@ -190,7 +190,7 @@ class BanPolicyService:
             policy = policy_result.fetchone()
             logger.info(f"Ban policy fetched: {policy}")
 
-            # 如果策略不存在或未启用，直接返回
+            # If policy not exists or not enabled, return directly
             if not policy or not policy[0]:  # enabled
                 logger.info(f"Ban policy not found or disabled for tenant_id={tenant_id}")
                 return None
@@ -201,18 +201,18 @@ class BanPolicyService:
             ban_duration_minutes = policy[4]
             logger.info(f"Policy config: risk_level={policy_risk_level}, trigger_count={trigger_count}, window={time_window_minutes}min, duration={ban_duration_minutes}min")
 
-            # 风险等级映射
+            # Risk level mapping
             risk_level_map = {'low_risk': 1, 'medium_risk': 2, 'high_risk': 3}
             current_risk_value = risk_level_map.get(risk_level, 0)
             policy_risk_value = risk_level_map.get(policy_risk_level, 3)
             logger.info(f"Risk level check: current={risk_level}({current_risk_value}), policy={policy_risk_level}({policy_risk_value})")
 
-            # 如果当前风险等级低于策略要求的等级，不记录
+            # If current risk level is below policy required level, not record
             if current_risk_value < policy_risk_value:
                 logger.info(f"Risk level below policy threshold, skipping")
                 return None
 
-            # 记录风险触发
+            # Record risk trigger
             logger.info(f"Recording risk trigger for user_id={user_id}")
             db.execute(
                 text("""
@@ -229,11 +229,11 @@ class BanPolicyService:
             db.commit()
             logger.info(f"Risk trigger recorded successfully")
 
-            # 计算时间窗口起点
+            # Calculate window start
             window_start = utcnow() - timedelta(minutes=time_window_minutes)
             logger.info(f"Checking triggers since {window_start}")
 
-            # 统计时间窗口内的触发次数
+            # Count triggers in window
             count_result = db.execute(
                 text("""
                 SELECT COUNT(*) FROM user_risk_triggers
@@ -252,10 +252,10 @@ class BanPolicyService:
             trigger_count_actual = count_result.scalar()
             logger.info(f"Trigger count in window: {trigger_count_actual}/{trigger_count}")
 
-            # 如果达到阈值，创建封禁记录
+            # If threshold reached, create ban record
             if trigger_count_actual >= trigger_count:
                 logger.info(f"Trigger count threshold reached, creating ban record")
-                # 检查是否已有活跃的封禁记录
+                # Check if there is an active ban record
                 existing_result = db.execute(
                     text("""
                     SELECT id FROM user_ban_records
@@ -270,7 +270,7 @@ class BanPolicyService:
 
                 if not existing_ban:
                     logger.info(f"No existing ban found, creating new ban record")
-                    # 创建新的封禁记录
+                    # Create new ban record
                     ban_until = utcnow() + timedelta(minutes=ban_duration_minutes)
                     reason = format_ban_reason(
                         time_window=time_window_minutes,
@@ -303,7 +303,7 @@ class BanPolicyService:
                     db.commit()
 
                     row = result.fetchone()
-                    logger.warning(f"用户 {user_id} 已被封禁至 {ban_until}，原因：{reason}")
+                    logger.warning(f"User {user_id} has been banned until {ban_until}, reason: {reason}")
 
                     return {
                         'id': str(row[0]),
@@ -331,7 +331,7 @@ class BanPolicyService:
 
     @staticmethod
     async def get_banned_users(tenant_id: str, skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
-        """获取被封禁用户列表"""
+        """Get banned users list"""
         db = get_admin_db_session()
         try:
             result = db.execute(
@@ -339,7 +339,7 @@ class BanPolicyService:
                 SELECT id, user_id, banned_at, ban_until, trigger_count,
                        risk_level, reason, is_active,
                        CASE
-                           WHEN ban_until > CURRENT_TIMESTAMP THEN '封禁中'
+                           WHEN ban_until > CURRENT_TIMESTAMP THEN 'Banned'
                            ELSE '已解封'
                        END as status
                 FROM user_ban_records
@@ -370,7 +370,7 @@ class BanPolicyService:
 
     @staticmethod
     async def unban_user(tenant_id: str, user_id: str) -> bool:
-        """手动解封用户"""
+        """Manual unban user"""
         db = get_admin_db_session()
         try:
             result = db.execute(
@@ -387,13 +387,13 @@ class BanPolicyService:
 
             affected_rows = result.rowcount
             if affected_rows > 0:
-                logger.info(f"用户 {user_id} 已被手动解封")
+                logger.info(f"User {user_id} has been manually unbanned")
                 return True
             return False
 
         except Exception as e:
             db.rollback()
-            logger.error(f"解封用户失败: {e}")
+            logger.error(f"Failed to unban user: {e}")
             raise e
         finally:
             db.close()
@@ -404,7 +404,7 @@ class BanPolicyService:
         user_id: str,
         days: int = 7
     ) -> List[Dict[str, Any]]:
-        """获取用户风险触发历史"""
+        """Get user risk trigger history"""
         db = get_admin_db_session()
         try:
             since = utcnow() - timedelta(days=days)

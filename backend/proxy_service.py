@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-反向代理服务 - OpenAI兼容的代理护栏服务
-提供完整的OpenAI API兼容层，支持多模型配置和安全检测
+Reverse proxy service - OpenAI compatible proxy guardrails service
+Provide complete OpenAI API compatible layer, support multi-model configuration and security detection
 """
 from fastapi import FastAPI, HTTPException, Depends, Security, Request
 from contextlib import asynccontextmanager
@@ -17,22 +17,22 @@ from pathlib import Path
 import asyncio
 
 from config import settings
-# 导入完整的代理服务实现
+# Import complete proxy service implementation
 from routers import proxy_api
 from services.async_logger import async_detection_logger
 from utils.logger import setup_logger
 
-# 设置安全验证
+# Set security verification
 security = HTTPBearer()
 
-# 导入并发控制中间件
+# Import concurrent control middleware
 from middleware.concurrent_limit_middleware import ConcurrentLimitMiddleware
 
 class AuthContextMiddleware(BaseHTTPMiddleware):
-    """认证上下文中间件 - 代理服务版本"""
+    """Authentication context middleware - proxy service version"""
     
     async def dispatch(self, request: Request, call_next):
-        # 处理OpenAI兼容API路由
+        # Handle OpenAI compatible API routes
         if request.url.path.startswith('/v1/'):
             auth_header = request.headers.get('authorization')
             
@@ -50,11 +50,11 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         return response
     
     async def _get_auth_context(self, token: str):
-        """获取认证上下文（代理服务专用 - 支持API key验证）"""
+        """Get authentication context (proxy service专用 - support API key verification)"""
         from utils.auth_cache import auth_cache
         from utils.auth import verify_token
         
-        # 检查缓存
+        # Check cache
         cached_auth = auth_cache.get(token)
         if cached_auth:
             return cached_auth
@@ -62,7 +62,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         auth_context = None
         
         try:
-            # 首先尝试JWT验证
+            # First try JWT verification
             user_data = verify_token(token)
             raw_tenant_id = user_data.get('tenant_id') or user_data.get('sub')
             
@@ -79,7 +79,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                 except ValueError:
                     pass
         except:
-            # JWT验证失败，尝试API key验证
+            # JWT verification failed, try API key verification
             try:
                 from database.connection import get_admin_db_session
                 from utils.user import get_user_by_api_key
@@ -101,26 +101,26 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
             except Exception as e:
                 logger.error(f"API key verification failed: {e}")
         
-        # 如果所有验证都失败，不创建匿名用户上下文
-        # 这样会触发401错误，符合API的预期行为
+        # If all verification fails, do not create anonymous user context
+        # This will trigger a 401 error, which is expected behavior for the API
         
-        # 缓存认证结果
+        # Cache authentication result
         if auth_context:
             auth_cache.set(token, auth_context)
         
         return auth_context
 
-# 创建FastAPI应用
+# Create FastAPI application
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动阶段
+    # Startup phase
     os.makedirs(settings.data_dir, exist_ok=True)
     os.makedirs(settings.log_dir, exist_ok=True)
     os.makedirs(settings.detection_log_dir, exist_ok=True)
 
-    # 代理服务不初始化数据库，专注高并发代理功能
+    # Proxy service does not initialize database, focus on high concurrency proxy functionality
 
-    # 启动异步日志服务
+    # Start asynchronous log service
     await async_detection_logger.start()
 
     logger.info(f"{settings.app_name} Proxy Service started")
@@ -130,12 +130,12 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        # 关闭阶段
+        # Shutdown phase
         await async_detection_logger.stop()
         from services.model_service import model_service
         await model_service.close()
         
-        # 关闭HTTP客户端连接池
+        # Close HTTP client connection pool
         from services.proxy_service import proxy_service
         await proxy_service.close()
         
@@ -144,26 +144,26 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=f"{settings.app_name} - Proxy Service",
     version=settings.app_version,
-    description="象信AI安全护栏代理服务 - OpenAI兼容的反向代理",
+    description="Xiangxin AI safety guardrails proxy service - OpenAI compatible reverse proxy",
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
     lifespan=lifespan,
 )
 
-# 添加并发控制中间件（优先级最高，最后添加）
+# Add concurrent control middleware (highest priority, last added)
 app.add_middleware(ConcurrentLimitMiddleware, service_type="proxy", max_concurrent=settings.proxy_max_concurrent_requests)
 
-# 性能优化中间件
+# Performance optimization middleware
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# 添加限速中间件
+# Add rate limiting middleware
 from middleware.rate_limit_middleware import RateLimitMiddleware  
 app.add_middleware(RateLimitMiddleware)
 
-# 添加认证上下文中间件
+# Add authentication context middleware
 app.add_middleware(AuthContextMiddleware)
 
-# 配置CORS
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -172,12 +172,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 设置日志
+# Set log
 logger = setup_logger()
 
 @app.get("/")
 async def root():
-    """根路径"""
+    """Root path"""
     return {
         "name": f"{settings.app_name} - Proxy Service",
         "version": settings.app_version,
@@ -196,20 +196,20 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """健康检查"""
+    """Health check"""
     return {
         "status": "healthy", 
         "version": settings.app_version,
         "service": "proxy"
     }
 
-# 用户认证函数
+# User authentication function
 async def verify_user_auth(
     credentials: HTTPAuthorizationCredentials = Security(security),
     request: Request = None,
 ):
-    """验证用户认证（代理服务专用）"""
-    # 使用中间件解析的认证上下文
+    """Verify user authentication (proxy service专用)"""
+    # Use middleware to parse authentication context
     if request is not None:
         auth_ctx = getattr(request.state, 'auth_context', None)
         if auth_ctx:
@@ -217,10 +217,10 @@ async def verify_user_auth(
     
     raise HTTPException(status_code=401, detail="Invalid API key")
 
-# 注册代理路由 - 路由中已包含/v1前缀，无需重复添加
+# Register proxy routes - routes already contain /v1 prefix, no need to add again
 app.include_router(proxy_api.router, dependencies=[Depends(verify_user_auth)])
 
-# 全局异常处理
+# Global exception handling
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     logger.error(f"Proxy service exception: {exc}")

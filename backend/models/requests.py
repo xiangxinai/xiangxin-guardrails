@@ -2,14 +2,14 @@ from typing import List, Optional, Union, Any, Dict
 from pydantic import BaseModel, Field, validator, ConfigDict
 
 class ImageUrl(BaseModel):
-    """图片URL模型 - 支持file://路径、http(s)://URL或data:image base64编码"""
-    url: str = Field(..., description="图片URL: file://本地路径, http(s)://远程URL, 或 data:image/jpeg;base64,{base64编码}")
+    """Image URL model - support file:// path, http(s):// URL or data:image base64 encoding"""
+    url: str = Field(..., description="Image URL: file://local_path, http(s)://remote_URL, 或 data:image/jpeg;base64,{base64_coding}")
 
 class ContentPart(BaseModel):
-    """内容部分模型 - 支持文本和图片"""
-    type: str = Field(..., description="内容类型: text 或 image_url")
-    text: Optional[str] = Field(None, description="文本内容")
-    image_url: Optional[ImageUrl] = Field(None, description="图片URL")
+    """Content part model - support text and image"""
+    type: str = Field(..., description="Content type: text or image_url")
+    text: Optional[str] = Field(None, description="Text content")
+    image_url: Optional[ImageUrl] = Field(None, description="Image URL")
 
     @validator('type')
     def validate_type(cls, v):
@@ -18,9 +18,9 @@ class ContentPart(BaseModel):
         return v
 
 class Message(BaseModel):
-    """消息模型 - 支持文本和多模态内容"""
-    role: str = Field(..., description="消息角色: user, system, assistant")
-    content: Union[str, List[ContentPart]] = Field(..., description="消息内容，可以是字符串或内容部分列表")
+    """Message model - support text and multi-modal content"""
+    role: str = Field(..., description="Message role: user, system, assistant")
+    content: Union[str, List[ContentPart]] = Field(..., description="Message content, can be string or content part list")
 
     @validator('role')
     def validate_role(cls, v):
@@ -45,11 +45,11 @@ class Message(BaseModel):
         return v
 
 class GuardrailRequest(BaseModel):
-    """护栏检测请求模型"""
+    """Guardrail detection request model"""
     model: str = Field(..., description="模型名称")
-    messages: List[Message] = Field(..., description="消息列表")
-    max_tokens: Optional[int] = Field(None, description="最大令牌数")
-    extra_body: Optional[Dict[str, Any]] = Field(None, description="额外参数，可包含 xxai_app_user_id 等字段")
+    messages: List[Message] = Field(..., description="Message list")
+    max_tokens: Optional[int] = Field(None, description="Maximum tokens")
+    extra_body: Optional[Dict[str, Any]] = Field(None, description="Extra parameters, can contain xxai_app_user_id etc.")
 
     @validator('messages')
     def validate_messages(cls, v):
@@ -58,11 +58,11 @@ class GuardrailRequest(BaseModel):
         return v
 
 class BlacklistRequest(BaseModel):
-    """黑名单请求模型"""
-    name: str = Field(..., description="黑名单库名称")
-    keywords: List[str] = Field(..., description="关键词列表")
-    description: Optional[str] = Field(None, description="描述")
-    is_active: bool = Field(True, description="是否启用")
+    """Blacklist request model"""
+    name: str = Field(..., description="Blacklist library name")
+    keywords: List[str] = Field(..., description="Keyword list")
+    description: Optional[str] = Field(None, description="Description")
+    is_active: bool = Field(True, description="Whether enabled")
     
     @validator('keywords')
     def validate_keywords(cls, v):
@@ -71,11 +71,11 @@ class BlacklistRequest(BaseModel):
         return [kw.strip() for kw in v if kw.strip()]
 
 class WhitelistRequest(BaseModel):
-    """白名单请求模型"""
-    name: str = Field(..., description="白名单库名称")
-    keywords: List[str] = Field(..., description="关键词列表")
-    description: Optional[str] = Field(None, description="描述")
-    is_active: bool = Field(True, description="是否启用")
+    """Whitelist request model"""
+    name: str = Field(..., description="Whitelist library name")
+    keywords: List[str] = Field(..., description="Keyword list")
+    description: Optional[str] = Field(None, description="Description")
+    is_active: bool = Field(True, description="Whether enabled")
     
     @validator('keywords')
     def validate_keywords(cls, v):
@@ -84,12 +84,12 @@ class WhitelistRequest(BaseModel):
         return [kw.strip() for kw in v if kw.strip()]
 
 class ResponseTemplateRequest(BaseModel):
-    """代答模板请求模型"""
-    category: str = Field(..., description="风险类别")
-    risk_level: str = Field(..., description="风险等级")
-    template_content: str = Field(..., description="代答内容")
-    is_default: bool = Field(False, description="是否为默认模板")
-    is_active: bool = Field(True, description="是否启用")
+    """Response template request model"""
+    category: str = Field(..., description="Risk category")
+    risk_level: str = Field(..., description="Risk level")
+    template_content: str = Field(..., description="Response template content")
+    is_default: bool = Field(False, description="Whether it is a default template")
+    is_active: bool = Field(True, description="Whether enabled")
     
     @validator('category')
     def validate_category(cls, v):
@@ -100,46 +100,46 @@ class ResponseTemplateRequest(BaseModel):
     
     @validator('risk_level')
     def validate_risk_level(cls, v):
-        if v not in ['无风险', '低风险', '中风险', '高风险']:
-            raise ValueError('risk_level must be one of: 无风险, 低风险, 中风险, 高风险')
+        if v not in ['no risk', 'low risk', 'medium risk', 'high risk']:
+            raise ValueError('risk_level must be one of: no risk, low risk, medium risk, high risk')
         return v
 
 class ProxyCompletionRequest(BaseModel):
-    """代理完成请求模型"""
-    model: str = Field(..., description="模型名称")
-    messages: List[Message] = Field(..., description="消息列表")
-    temperature: Optional[float] = Field(None, description="温度参数")
-    top_p: Optional[float] = Field(None, description="Top-p参数")
-    n: Optional[int] = Field(1, description="生成数量")
-    stream: Optional[bool] = Field(False, description="是否流式输出")
-    stop: Optional[Union[str, List[str]]] = Field(None, description="停止词")
-    max_tokens: Optional[int] = Field(None, description="最大token数")
-    presence_penalty: Optional[float] = Field(None, description="存在惩罚")
-    frequency_penalty: Optional[float] = Field(None, description="频率惩罚")
-    user: Optional[str] = Field(None, description="用户标识")
+    """Proxy completion request model"""
+    model: str = Field(..., description="Model name")
+    messages: List[Message] = Field(..., description="Message list")
+    temperature: Optional[float] = Field(None, description="Temperature parameter")
+    top_p: Optional[float] = Field(None, description="Top-p parameter")
+    n: Optional[int] = Field(1, description="Generation quantity")
+    stream: Optional[bool] = Field(False, description="Whether to stream output")
+    stop: Optional[Union[str, List[str]]] = Field(None, description="Stop word")
+    max_tokens: Optional[int] = Field(None, description="Maximum token number")
+    presence_penalty: Optional[float] = Field(None, description="Presence penalty")
+    frequency_penalty: Optional[float] = Field(None, description="Frequency penalty")
+    user: Optional[str] = Field(None, description="User identifier")
 
 class ProxyModelConfig(BaseModel):
-    """代理模型配置模型"""
-    config_name: str = Field(..., description="配置名称")
-    api_base_url: str = Field(..., description="API基础URL")
-    api_key: str = Field(..., description="API密钥")
-    model_name: str = Field(..., description="模型名称")
-    enabled: Optional[bool] = Field(True, description="是否启用")
+    """Proxy model config model"""
+    config_name: str = Field(..., description="Config name")
+    api_base_url: str = Field(..., description="API base URL")
+    api_key: str = Field(..., description="API key")
+    model_name: str = Field(..., description="Model name")
+    enabled: Optional[bool] = Field(True, description="Whether enabled")
 
-    # 允许以 model_ 开头的字段名
+    # Allow fields starting with model_
     model_config = ConfigDict(protected_namespaces=())
 
     # 安全配置（极简设计）
-    block_on_input_risk: Optional[bool] = Field(False, description="输入风险时是否阻断，默认不阻断")
-    block_on_output_risk: Optional[bool] = Field(False, description="输出风险时是否阻断，默认不阻断")
-    enable_reasoning_detection: Optional[bool] = Field(True, description="是否检测reasoning内容，默认开启")
-    stream_chunk_size: Optional[int] = Field(50, description="流式检测间隔，每N个chunk检测一次，默认50", ge=1, le=500)
+    block_on_input_risk: Optional[bool] = Field(False, description="Whether to block on input risk, default not block")
+    block_on_output_risk: Optional[bool] = Field(False, description="Whether to block on output risk, default not block")
+    enable_reasoning_detection: Optional[bool] = Field(True, description="Whether to detect reasoning content, default enabled")
+    stream_chunk_size: Optional[int] = Field(50, description="Stream detection interval, detect every N chunks, default 50", ge=1, le=500)
 
 class InputGuardrailRequest(BaseModel):
-    """输入检测请求模型 - 适用于dify/coze等平台插件"""
-    input: str = Field(..., description="用户输入文本")
-    model: Optional[str] = Field("Xiangxin-Guardrails-Text", description="模型名称")
-    xxai_app_user_id: Optional[str] = Field(None, description="租户AI应用的用户ID")
+    """Input detection request model - For dify/coze etc. agent platform plugins"""
+    input: str = Field(..., description="User input text")
+    model: Optional[str] = Field("Xiangxin-Guardrails-Text", description="Model name")
+    xxai_app_user_id: Optional[str] = Field(None, description="Tenant AI application user ID")
 
     @validator('input')
     def validate_input(cls, v):
@@ -150,10 +150,10 @@ class InputGuardrailRequest(BaseModel):
         return v.strip()
 
 class OutputGuardrailRequest(BaseModel):
-    """输出检测请求模型 - 适用于dify/coze等平台插件"""
-    input: str = Field(..., description="用户输入文本")
-    output: str = Field(..., description="模型输出文本")
-    xxai_app_user_id: Optional[str] = Field(None, description="租户AI应用的用户ID")
+    """Output detection request model - For dify/coze etc. agent platform plugins"""
+    input: str = Field(..., description="User input text")
+    output: str = Field(..., description="Model output text")
+    xxai_app_user_id: Optional[str] = Field(None, description="Tenant AI application user ID")
 
     @validator('input')
     def validate_input(cls, v):
@@ -172,19 +172,19 @@ class OutputGuardrailRequest(BaseModel):
         return v.strip()
 
 class ConfidenceThresholdRequest(BaseModel):
-    """敏感度阈值配置请求模型"""
-    high_confidence_threshold: float = Field(..., description="高敏感度阈值", ge=0.0, le=1.0)
-    medium_confidence_threshold: float = Field(..., description="中敏感度阈值", ge=0.0, le=1.0)
-    low_confidence_threshold: float = Field(..., description="低敏感度阈值", ge=0.0, le=1.0)
-    confidence_trigger_level: str = Field(..., description="触发检测命中的最低敏感度等级", pattern="^(low|medium|high)$")
+    """Confidence threshold configuration request model"""
+    high_confidence_threshold: float = Field(..., description="High confidence threshold", ge=0.0, le=1.0)
+    medium_confidence_threshold: float = Field(..., description="Medium confidence threshold", ge=0.0, le=1.0)
+    low_confidence_threshold: float = Field(..., description="Low confidence threshold", ge=0.0, le=1.0)
+    confidence_trigger_level: str = Field(..., description="Lowest confidence level to trigger detection", pattern="^(low|medium|high)$")
 
 class KnowledgeBaseRequest(BaseModel):
-    """知识库请求模型"""
-    category: str = Field(..., description="风险类别")
-    name: str = Field(..., description="知识库名称")
-    description: Optional[str] = Field(None, description="描述")
-    is_active: bool = Field(True, description="是否启用")
-    is_global: Optional[bool] = Field(False, description="是否为全局知识库（仅管理员可设置）")
+    """Knowledge base request model"""
+    category: str = Field(..., description="Risk category")
+    name: str = Field(..., description="Knowledge base name")
+    description: Optional[str] = Field(None, description="Description")
+    is_active: bool = Field(True, description="Whether enabled")
+    is_global: Optional[bool] = Field(False, description="Whether it is a global knowledge base (only admin can set)")
 
     @validator('category')
     def validate_category(cls, v):

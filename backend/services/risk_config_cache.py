@@ -6,7 +6,7 @@ import time
 logger = setup_logger()
 
 class RiskConfigCache:
-    """风险配置缓存 - 内存缓存用户风险类型配置"""
+    """Risk config cache - memory cache for user risk type configuration"""
     
     def __init__(self):
         self._cache: Dict[str, Dict[str, bool]] = {}
@@ -15,24 +15,24 @@ class RiskConfigCache:
         self._cache_timestamps: Dict[str, float] = {}
         self._sensitivity_timestamps: Dict[str, float] = {}
         self._trigger_level_timestamps: Dict[str, float] = {}
-        self._cache_ttl = 300  # 5分钟缓存
+        self._cache_ttl = 300  # 5 minutes cache
         self._lock = asyncio.Lock()
     
     async def get_user_risk_config(self, tenant_id: str) -> Dict[str, bool]:
-        """获取用户风险配置（带缓存）"""
+        """Get user risk config (with cache)"""
         if not tenant_id:
-            # 无用户ID时返回默认全部启用
+            # Return default all enabled when no user ID
             return self._get_default_config()
         
         async with self._lock:
-            # 检查缓存是否有效
+            # Check if cache is valid
             current_time = time.time()
             if (tenant_id in self._cache and 
                 tenant_id in self._cache_timestamps and
                 current_time - self._cache_timestamps[tenant_id] < self._cache_ttl):
                 return self._cache[tenant_id]
             
-            # 缓存失效或不存在，从数据库获取
+            # Cache invalid or not exist, load from database
             try:
                 config = await self._load_from_db(tenant_id)
                 self._cache[tenant_id] = config
@@ -40,19 +40,19 @@ class RiskConfigCache:
                 return config
             except Exception as e:
                 logger.error(f"Failed to load risk config for user {tenant_id}: {e}")
-                # 数据库失败时返回默认配置
+                # Return default configuration when database fails
                 default_config = self._get_default_config()
                 self._cache[tenant_id] = default_config
                 self._cache_timestamps[tenant_id] = current_time
                 return default_config
     
     async def _load_from_db(self, tenant_id: str) -> Dict[str, bool]:
-        """从数据库加载风险配置"""
+        """Load risk config from database"""
         from database.connection import get_db
         from database.models import RiskTypeConfig
         from sqlalchemy.orm import Session
         
-        # 使用同步数据库连接
+        # Use synchronous database connection
         db: Session = next(get_db())
         try:
             config = db.query(RiskTypeConfig).filter(
@@ -66,13 +66,13 @@ class RiskConfigCache:
                     'S9': config.s9_enabled, 'S10': config.s10_enabled, 'S11': config.s11_enabled, 'S12': config.s12_enabled
                 }
             else:
-                # 用户没有配置，返回默认启用
+                # Return default enabled when user has no configuration
                 return self._get_default_config()
         finally:
             db.close()
     
     def _get_default_config(self) -> Dict[str, bool]:
-        """获取默认配置（全部启用）"""
+        """Get default configuration (all enabled)"""
         return {
             'S1': True, 'S2': True, 'S3': True, 'S4': True,
             'S5': True, 'S6': True, 'S7': True, 'S8': True,
@@ -80,12 +80,12 @@ class RiskConfigCache:
         }
     
     async def is_risk_type_enabled(self, tenant_id: str, risk_type: str) -> bool:
-        """检查指定风险类型是否启用"""
+        """Check if specified risk type is enabled"""
         config = await self.get_user_risk_config(tenant_id)
-        return config.get(risk_type, True)  # 默认启用
+        return config.get(risk_type, True)  # Default enabled
     
     async def invalidate_user_cache(self, tenant_id: str):
-        """使指定用户的缓存失效"""
+        """Invalidate cache for specified user"""
         async with self._lock:
             if tenant_id in self._cache:
                 del self._cache[tenant_id]
@@ -94,7 +94,7 @@ class RiskConfigCache:
             logger.info(f"Invalidated risk config cache for user {tenant_id}")
     
     async def clear_cache(self):
-        """清空所有缓存"""
+        """Clear all cache"""
         async with self._lock:
             self._cache.clear()
             self._cache_timestamps.clear()
@@ -105,19 +105,19 @@ class RiskConfigCache:
             logger.info("Cleared all risk config cache")
 
     async def get_sensitivity_thresholds(self, tenant_id: str) -> Dict[str, float]:
-        """获取用户敏感度阈值配置（带缓存）- 新的全局阈值"""
+        """Get user sensitivity threshold configuration (with cache) - new global thresholds"""
         if not tenant_id:
             return self._get_default_sensitivity_thresholds()
 
         async with self._lock:
-            # 检查缓存是否有效
+            # Check if cache is valid
             current_time = time.time()
             if (tenant_id in self._sensitivity_cache and
                 tenant_id in self._sensitivity_timestamps and
                 current_time - self._sensitivity_timestamps[tenant_id] < self._cache_ttl):
                 return self._sensitivity_cache[tenant_id]
 
-            # 缓存失效或不存在，从数据库获取
+            # Cache invalid or not exist, load from database
             try:
                 config = await self._load_sensitivity_thresholds_from_db(tenant_id)
                 self._sensitivity_cache[tenant_id] = config
@@ -125,19 +125,19 @@ class RiskConfigCache:
                 return config
             except Exception as e:
                 logger.error(f"Failed to load sensitivity thresholds for user {tenant_id}: {e}")
-                # 数据库失败时返回默认配置
+                # Return default configuration when database fails
                 default_config = self._get_default_sensitivity_thresholds()
                 self._sensitivity_cache[tenant_id] = default_config
                 self._sensitivity_timestamps[tenant_id] = current_time
                 return default_config
 
     async def _load_sensitivity_thresholds_from_db(self, tenant_id: str) -> Dict[str, float]:
-        """从数据库加载敏感度阈值配置"""
+        """Load sensitivity threshold configuration from database"""
         from database.connection import get_db
         from database.models import RiskTypeConfig
         from sqlalchemy.orm import Session
 
-        # 使用同步数据库连接
+        # Use synchronous database connection
         db: Session = next(get_db())
         try:
             config = db.query(RiskTypeConfig).filter(
@@ -151,13 +151,13 @@ class RiskConfigCache:
                     'high': config.high_sensitivity_threshold or 0.40,
                 }
             else:
-                # 用户没有配置，返回默认阈值
+                # Return default thresholds when user has no configuration
                 return self._get_default_sensitivity_thresholds()
         finally:
             db.close()
 
     def _get_default_sensitivity_thresholds(self) -> Dict[str, float]:
-        """获取默认敏感度阈值配置"""
+        """Get default sensitivity threshold configuration"""
         return {
             'low': 0.95,
             'medium': 0.60,
@@ -165,7 +165,7 @@ class RiskConfigCache:
         }
 
     async def invalidate_sensitivity_cache(self, tenant_id: str):
-        """使指定用户的敏感度缓存失效"""
+        """Invalidate sensitivity cache for specified user"""
         async with self._lock:
             if tenant_id in self._sensitivity_cache:
                 del self._sensitivity_cache[tenant_id]
@@ -178,19 +178,19 @@ class RiskConfigCache:
             logger.info(f"Invalidated sensitivity config cache for user {tenant_id}")
 
     async def get_sensitivity_trigger_level(self, tenant_id: str) -> str:
-        """获取用户敏感度触发等级配置（带缓存）"""
+        """Get user sensitivity trigger level configuration (with cache)"""
         if not tenant_id:
             return "low"
 
         async with self._lock:
-            # 检查缓存是否有效
+            # Check if cache is valid
             current_time = time.time()
             if (tenant_id in self._trigger_level_cache and
                 tenant_id in self._trigger_level_timestamps and
                 current_time - self._trigger_level_timestamps[tenant_id] < self._cache_ttl):
                 return self._trigger_level_cache[tenant_id]
 
-            # 缓存失效或不存在，从数据库获取
+            # Cache invalid or not exist, load from database
             try:
                 trigger_level = await self._load_trigger_level_from_db(tenant_id)
                 self._trigger_level_cache[tenant_id] = trigger_level
@@ -198,19 +198,19 @@ class RiskConfigCache:
                 return trigger_level
             except Exception as e:
                 logger.error(f"Failed to load trigger level for user {tenant_id}: {e}")
-                # 数据库失败时返回默认配置
+                # Return default configuration when database fails
                 default_level = "low"
                 self._trigger_level_cache[tenant_id] = default_level
                 self._trigger_level_timestamps[tenant_id] = current_time
                 return default_level
 
     async def _load_trigger_level_from_db(self, tenant_id: str) -> str:
-        """从数据库加载敏感度触发等级配置"""
+        """Load sensitivity trigger level configuration from database"""
         from database.connection import get_db
         from database.models import RiskTypeConfig
         from sqlalchemy.orm import Session
 
-        # 使用同步数据库连接
+        # Use synchronous database connection
         db: Session = next(get_db())
         try:
             config = db.query(RiskTypeConfig).filter(
@@ -220,10 +220,10 @@ class RiskConfigCache:
             if config:
                 return config.sensitivity_trigger_level or "medium"
             else:
-                # 用户没有配置，返回默认触发等级
+                # Return default trigger level when user has no configuration
                 return "medium"
         finally:
             db.close()
 
-# 全局实例
+# Global instance
 risk_config_cache = RiskConfigCache()

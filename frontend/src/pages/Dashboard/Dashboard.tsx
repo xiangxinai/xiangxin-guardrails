@@ -156,7 +156,7 @@ const Dashboard: React.FC = () => {
     <div>
       <h2 style={{ marginBottom: 24 }}>{t('dashboard.title')}</h2>
 
-      {/* 总体统计 */}
+      {/* Overall statistics */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={6}>
           <Card>
@@ -203,7 +203,7 @@ const Dashboard: React.FC = () => {
         </Col>
       </Row>
 
-      {/* 风险类型分布 */}
+      {/* Risk type distribution */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={8}>
           <Card>
@@ -241,7 +241,7 @@ const Dashboard: React.FC = () => {
       </Row>
 
 
-      {/* 图表 */}
+      {/* Charts */}
       <Row gutter={16}>
         <Col span={12}>
           <Card>

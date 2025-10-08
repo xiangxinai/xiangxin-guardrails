@@ -90,7 +90,7 @@ const EntityTypeManagement: React.FC = () => {
       check_input: true,
       check_output: true,
       anonymization_method: 'replace',
-      is_global: false, // 默认为个人配置
+      is_global: false, // Default to custom configuration
     });
     setModalVisible(true);
   };
@@ -118,7 +118,7 @@ const EntityTypeManagement: React.FC = () => {
     try {
       const values = await form.validateFields();
 
-      // 解析JSON配置
+      // Parse JSON config
       let anonymization_config = {};
 
       try {
@@ -144,7 +144,7 @@ const EntityTypeManagement: React.FC = () => {
         await dataSecurityApi.updateEntityType(editingEntity.id, data);
         message.success(t('common.updateSuccess'));
       } else {
-        // 根据is_global字段决定调用哪个API
+        // Determine which API to call based on is_global field
         if (values.is_global && user?.is_super_admin) {
           await dataSecurityApi.createGlobalEntityType(data);
           message.success(t('entityType.createGlobalSuccess'));
@@ -268,7 +268,7 @@ const EntityTypeManagement: React.FC = () => {
     },
   ];
 
-  // 过滤数据
+  // Filter data
   const filteredEntityTypes = entityTypes.filter(item => {
     const matchesSearch = !searchText ||
       item.entity_type.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -338,22 +338,22 @@ const EntityTypeManagement: React.FC = () => {
         <Form form={form} layout="vertical">
           <Form.Item
             name="entity_type"
-            label="实体类型代码"
-            rules={[{ required: true, message: '请输入实体类型代码' }]}
+            label="Entity type code"
+            rules={[{ required: true, message: 'Please enter entity type code' }]}
           >
-            <Input placeholder="例如: ID_CARD_NUMBER, PHONE_NUMBER, EMAIL" disabled={!!editingEntity} />
+            <Input placeholder="E.g. ID_CARD_NUMBER, PHONE_NUMBER, EMAIL" disabled={!!editingEntity} />
           </Form.Item>
 
           <Form.Item
             name="display_name"
-            label="显示名称"
-            rules={[{ required: true, message: '请输入显示名称' }]}
+            label="Display name"
+            rules={[{ required: true, message: 'Please enter display name' }]}
           >
-            <Input placeholder="例如: 身份证号, 手机号, 电子邮箱" />
+            <Input placeholder="E.g. ID Card Number, Phone Number, Email" />
           </Form.Item>
 
-          <Form.Item name="risk_level" label="风险等级" rules={[{ required: true, message: '请选择风险等级' }]}>
-            <Select placeholder="请选择风险等级">
+          <Form.Item name="risk_level" label="Risk level" rules={[{ required: true, message: 'Please select risk level' }]}>
+            <Select placeholder="Please select risk level">
               {RISK_LEVELS.map((level) => (
                 <Option key={level.value} value={level.value}>
                   {level.label}
@@ -364,23 +364,23 @@ const EntityTypeManagement: React.FC = () => {
 
           <Form.Item
             name="pattern"
-            label="识别规则（正则表达式）"
-            rules={[{ required: true, message: '请输入正则表达式' }]}
-            tooltip="使用正则表达式定义敏感数据的识别规则"
+            label="Recognition rule (regex)"
+            rules={[{ required: true, message: 'Please enter regex' }]}
+            tooltip="Use regex to define the recognition rule for sensitive data"
           >
             <TextArea
               rows={3}
-              placeholder='例如: 1[3-9]\d{9} (手机号)'
+              placeholder='E.g. 1[3-9]\d{9} (Phone Number)'
               style={{ fontFamily: 'monospace' }}
             />
           </Form.Item>
 
           <Form.Item
             name="anonymization_method"
-            label="脱敏方法"
-            rules={[{ required: true, message: '请选择脱敏方法' }]}
+            label="Anonymization method"
+            rules={[{ required: true, message: 'Please select anonymization method' }]}
           >
-            <Select placeholder="请选择脱敏方法">
+            <Select placeholder="Please select anonymization method">
               {ANONYMIZATION_METHODS.map((method) => (
                 <Option key={method.value} value={method.value}>
                   {method.label}
@@ -391,51 +391,51 @@ const EntityTypeManagement: React.FC = () => {
 
           <Form.Item
             name="anonymization_config_text"
-            label="脱敏配置 (JSON)"
+            label="Anonymization config (JSON)"
           >
             <TextArea
               rows={4}
-              placeholder='例如: {"mask_char": "*", "keep_prefix": 3, "keep_suffix": 4}'
+              placeholder='E.g. {"mask_char": "*", "keep_prefix": 3, "keep_suffix": 4}'
               style={{ fontFamily: 'monospace' }}
             />
             <Card size="small" style={{ marginTop: 8, backgroundColor: '#f5f5f5' }}>
-              <Text strong style={{ fontSize: 12 }}>脱敏方法配置说明：</Text>
+              <Text strong style={{ fontSize: 12 }}>Anonymization method config description:</Text>
               <ul style={{ margin: '8px 0', paddingLeft: 20, fontSize: 11 }}>
-                <li><Text code>replace</Text> - 替换为占位符
+                <li><Text code>replace</Text> - Replace with placeholder
                   <br /><Text type="secondary">{"{"}"replacement": "&lt;PHONE_NUMBER&gt;"{"}"}  → 13912345678 变为 &lt;PHONE_NUMBER&gt;</Text>
                 </li>
-                <li><Text code>mask</Text> - 部分掩码显示
+                <li><Text code>mask</Text> - Partial masking display
                   <br /><Text type="secondary">{"{"}"mask_char": "*", "keep_prefix": 3, "keep_suffix": 4{"}"}</Text>
-                  <br /><Text type="secondary">→ 13912345678 变为 139****5678</Text>
+                  <br /><Text type="secondary">→ 13912345678 becomes 139****5678</Text>
                 </li>
-                <li><Text code>hash</Text> - SHA256哈希（无需配置）
-                  <br /><Text type="secondary">{"{}"} → 13912345678 变为 sha256_abc123...</Text>
+                <li><Text code>hash</Text> - SHA256 hash (no config)
+                  <br /><Text type="secondary">{"{}"} → 13912345678 becomes sha256_abc123...</Text>
                 </li>
-                <li><Text code>encrypt</Text> - 加密处理（无需配置）
-                  <br /><Text type="secondary">{"{}"} → 13912345678 变为 &lt;ENCRYPTED_a1b2c3d4&gt;</Text>
+                <li><Text code>encrypt</Text> - Encryption (no config)
+                  <br /><Text type="secondary">{"{}"} → 13912345678 becomes &lt;ENCRYPTED_a1b2c3d4&gt;</Text>
                 </li>
-                <li><Text code>shuffle</Text> - 字符重排（无需配置）
-                  <br /><Text type="secondary">{"{}"} → 13912345678 变为 87654321913</Text>
+                <li><Text code>shuffle</Text> - Character reordering (no config)
+                  <br /><Text type="secondary">{"{}"} → 13912345678 becomes 87654321913</Text>
                 </li>
-                <li><Text code>random</Text> - 随机字符替换（无需配置）
-                  <br /><Text type="secondary">{"{}"} → 13912345678 变为 48273569102</Text>
+                <li><Text code>random</Text> - Random character replacement (no config)
+                  <br /><Text type="secondary">{"{}"} → 13912345678 becomes 48273569102</Text>
                 </li>
               </ul>
             </Card>
           </Form.Item>
 
-          <Form.Item label="检测范围">
+          <Form.Item label="Detection scope">
             <Space>
               <Form.Item name="check_input" valuePropName="checked" noStyle>
-                <Switch checkedChildren="输入" unCheckedChildren="输入" />
+                <Switch checkedChildren="Input" unCheckedChildren="Input" />
               </Form.Item>
               <Form.Item name="check_output" valuePropName="checked" noStyle>
-                <Switch checkedChildren="输出" unCheckedChildren="输出" />
+                <Switch checkedChildren="Output" unCheckedChildren="Output" />
               </Form.Item>
             </Space>
           </Form.Item>
 
-          <Form.Item name="is_active" label="是否启用" valuePropName="checked">
+          <Form.Item name="is_active" label="Enable status" valuePropName="checked">
             <Switch />
           </Form.Item>
 
@@ -444,8 +444,8 @@ const EntityTypeManagement: React.FC = () => {
               name="is_global"
               label={
                 <span>
-                  系统配置
-                  <Tooltip title="系统配置将对所有用户生效，只有管理员可以设置和修改">
+                  System configuration
+                  <Tooltip title="System configuration will take effect for all users, only administrators can set and modify">
                     <InfoCircleOutlined style={{ marginLeft: 4 }} />
                   </Tooltip>
                 </span>

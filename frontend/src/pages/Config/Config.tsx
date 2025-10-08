@@ -1,5 +1,4 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
 import { Tabs } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +32,7 @@ const Config: React.FC = () => {
   };
 
   const handleTabChange = (key: string) => {
-    // 确保在以 /platform 为前缀的基础路径下导航，避免刷新后丢失平台前缀
+    // Ensure navigation under base path with /platform prefix, avoid losing platform prefix after refresh
     navigate(`/config/${key}`);
   };
 

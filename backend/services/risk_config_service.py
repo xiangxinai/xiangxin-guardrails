@@ -6,13 +6,13 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 class RiskConfigService:
-    """风险类型配置服务"""
+    """Risk type configuration service"""
     
     def __init__(self, db: Session):
         self.db = db
     
     def get_user_risk_config(self, tenant_id: str) -> Optional[RiskTypeConfig]:
-        """获取用户风险配置"""
+        """Get user risk config"""
         try:
             config = self.db.query(RiskTypeConfig).filter(
                 RiskTypeConfig.tenant_id == tenant_id
@@ -23,7 +23,7 @@ class RiskConfigService:
             return None
     
     def create_default_risk_config(self, tenant_id: str) -> RiskTypeConfig:
-        """为用户创建默认风险配置（所有类型默认启用）"""
+        """Create default risk config for user (all types default enabled)"""
         try:
             config = RiskTypeConfig(tenant_id=tenant_id)
             self.db.add(config)
@@ -37,13 +37,13 @@ class RiskConfigService:
             raise
     
     def update_risk_config(self, tenant_id: str, config_data: Dict) -> Optional[RiskTypeConfig]:
-        """更新用户风险配置"""
+        """Update user risk config"""
         try:
             config = self.get_user_risk_config(tenant_id)
             if not config:
                 config = self.create_default_risk_config(tenant_id)
             
-            # 更新配置字段
+            # Update config fields
             for field, value in config_data.items():
                 if hasattr(config, field):
                     setattr(config, field, value)
@@ -58,10 +58,10 @@ class RiskConfigService:
             return None
     
     def get_enabled_risk_types(self, tenant_id: str) -> Dict[str, bool]:
-        """获取用户启用的风险类型映射"""
+        """Get user enabled risk type mapping"""
         config = self.get_user_risk_config(tenant_id)
         if not config:
-            # 如果没有配置，返回默认全部启用
+            # Return default all enabled when user has no configuration
             return {
                 'S1': True, 'S2': True, 'S3': True, 'S4': True,
                 'S5': True, 'S6': True, 'S7': True, 'S8': True,
@@ -84,12 +84,12 @@ class RiskConfigService:
         }
     
     def is_risk_type_enabled(self, tenant_id: str, risk_type: str) -> bool:
-        """检查指定风险类型是否启用"""
+        """Check if specified risk type is enabled"""
         enabled_types = self.get_enabled_risk_types(tenant_id)
-        return enabled_types.get(risk_type, True)  # 默认启用
+        return enabled_types.get(risk_type, True)  # Default enabled
     
     def get_risk_config_dict(self, tenant_id: str) -> Dict:
-        """获取用户风险配置的字典格式"""
+        """Get user risk config dictionary format"""
         config = self.get_user_risk_config(tenant_id)
         if not config:
             return {
@@ -114,13 +114,13 @@ class RiskConfigService:
         }
 
     def update_sensitivity_thresholds(self, tenant_id: str, threshold_data: Dict) -> Optional[RiskTypeConfig]:
-        """更新用户敏感度阈值配置"""
+        """Update user sensitivity threshold configuration"""
         try:
             config = self.get_user_risk_config(tenant_id)
             if not config:
                 config = self.create_default_risk_config(tenant_id)
 
-            # 更新敏感度阈值字段
+            # Update sensitivity threshold fields
             for field, value in threshold_data.items():
                 if hasattr(config, field):
                     setattr(config, field, value)
@@ -135,7 +135,7 @@ class RiskConfigService:
             return None
 
     def get_sensitivity_threshold_dict(self, tenant_id: str) -> Dict:
-        """获取用户敏感度阈值配置的字典格式"""
+        """Get user sensitivity threshold configuration dictionary format"""
         config = self.get_user_risk_config(tenant_id)
         if not config:
             return {
@@ -153,7 +153,7 @@ class RiskConfigService:
         }
 
     def get_sensitivity_thresholds(self, tenant_id: str) -> Dict[str, float]:
-        """获取用户敏感度阈值映射"""
+        """Get user sensitivity threshold mapping"""
         config = self.get_user_risk_config(tenant_id)
         if not config:
             return {
@@ -169,7 +169,7 @@ class RiskConfigService:
         }
 
     def get_sensitivity_trigger_level(self, tenant_id: str) -> str:
-        """获取用户敏感度触发等级"""
+        """Get user sensitivity trigger level"""
         config = self.get_user_risk_config(tenant_id)
         if not config:
             return "medium"

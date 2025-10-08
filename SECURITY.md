@@ -1,215 +1,238 @@
-# 象信AI安全护栏平台 - 安全指南
+# Xiangxin AI Guardrails Platform - Security Guide
 
-## 🛡️ 安全概述
+## 🛡️ Security Overview
 
-象信AI安全护栏平台采用多层安全防护措施，确保系统安全可靠。本文档提供安全配置和部署的详细指南。
+The Xiangxin AI Guardrails Platform employs multi-layered security measures to ensure system reliability and safety.  
+This document provides detailed guidance for secure configuration and deployment.
 
-## 🔐 安全特性
+## 🔐 Security Features
 
-### 1. 用户身份认证
-- **UUID用户ID**: 使用UUID替代顺序数字ID，防止用户枚举攻击
-- **JWT认证**: 使用JSON Web Token进行用户身份验证
-- **密码哈希**: 使用bcrypt对用户密码进行安全哈希存储
-- **登录防爆破**: 实现基于IP和邮箱的登录频率限制
+### 1. User Authentication
+- **UUID User ID**: Uses UUIDs instead of sequential numeric IDs to prevent user enumeration attacks  
+- **JWT Authentication**: Uses JSON Web Tokens for user identity verification  
+- **Password Hashing**: Securely hashes passwords with bcrypt  
+- **Brute-Force Protection**: Implements IP and email-based login rate limiting  
 
-### 2. API安全
-- **API密钥认证**: 支持基于API密钥的服务认证
-- **请求速率限制**: 防止API滥用和DOS攻击
-- **CORS配置**: 可配置的跨域资源共享策略
+### 2. API Security
+- **API Key Authentication**: Supports service-level authentication via API keys  
+- **Rate Limiting**: Prevents API abuse and DOS attacks  
+- **CORS Configuration**: Configurable Cross-Origin Resource Sharing policies  
 
-### 3. 数据安全
-- **数据库加密**: 敏感数据加密存储
-- **传输加密**: 支持HTTPS加密传输
-- **审计日志**: 完整的操作审计跟踪
+### 3. Data Security
+- **Database Encryption**: Encrypts sensitive data at rest  
+- **Transport Encryption**: Supports HTTPS for encrypted data transmission  
+- **Audit Logging**: Provides comprehensive operation tracking  
 
-## ⚙️ 安全配置
+## ⚙️ Security Configuration
 
-### 1. 基本安全配置
+### 1. Basic Security Settings
 
-#### JWT密钥配置
+#### JWT Secret Configuration
 ```bash
-# 生成安全的JWT密钥
+# Generate a secure JWT secret
 openssl rand -base64 64
 
-# 在.env文件中设置
+# Set it in your .env file
 JWT_SECRET_KEY=YOUR_GENERATED_SECURE_KEY_HERE
-```
+````
 
-#### 管理员账户配置
+#### Administrator Account Configuration
+
 ```bash
-# 修改默认管理员凭据
+# Change the default admin credentials
 SUPER_ADMIN_USERNAME=admin@yourdomain.com
 SUPER_ADMIN_PASSWORD=YourSecurePassword123!
 ```
 
-#### 数据库安全配置
+#### Database Security Configuration
+
 ```bash
-# 使用强密码
+# Use a strong password
 DATABASE_URL=postgresql://username:secure_password@localhost:5432/database
 ```
 
-### 2. 登录安全配置
+### 2. Login Security Configuration
 
-登录防爆破机制默认配置：
-- **时间窗口**: 15分钟
-- **最大尝试次数**: 5次
-- **限制维度**: IP地址 + 邮箱地址
+Default brute-force protection:
 
-可在代码中调整相关参数：
+* **Time Window**: 15 minutes
+* **Max Attempts**: 5
+* **Rate Limit Scope**: IP address + Email address
+
+Adjustable parameters in code:
+
 ```python
-# 在utils/user.py中的check_login_rate_limit函数
-time_window_minutes=15,  # 时间窗口
-max_attempts=5          # 最大尝试次数
+# In utils/user.py, within the check_login_rate_limit function
+time_window_minutes=15,  # Time window
+max_attempts=5           # Maximum attempts
 ```
 
-### 3. CORS安全配置
+### 3. CORS Security Configuration
 
-生产环境建议配置具体域名：
+Specify allowed domains for production:
+
 ```bash
-# 开发环境
+# Development environment
 CORS_ORIGINS=*
 
-# 生产环境
+# Production environment
 CORS_ORIGINS=https://yourdomain.com,https://api.yourdomain.com
 ```
 
-## 🚀 安全部署指南
+## 🚀 Secure Deployment Guide
 
-### 1. 生产环境部署检查清单
+### 1. Production Deployment Checklist
 
-#### 🔒 配置安全
-- [ ] 修改默认管理员用户名和密码
-- [ ] 生成安全的JWT密钥
-- [ ] 配置强数据库密码
-- [ ] 设置具体的CORS域名
-- [ ] 关闭调试模式 (DEBUG=false)
-- [ ] 配置正确的SMTP设置
+#### 🔒 Configuration Security
 
-#### 🌐 网络安全
-- [ ] 启用HTTPS (推荐使用Let's Encrypt)
-- [ ] 配置防火墙规则
-- [ ] 限制数据库端口访问
-- [ ] 配置反向代理 (Nginx/Apache)
+* [ ] Change default admin username and password
+* [ ] Generate a secure JWT secret
+* [ ] Set a strong database password
+* [ ] Specify production CORS origins
+* [ ] Disable debug mode (DEBUG=false)
+* [ ] Configure proper SMTP settings
 
-#### 📁 文件权限
-- [ ] 设置.env文件权限为600
-- [ ] 确保日志目录权限正确
-- [ ] 限制应用程序运行用户权限
+#### 🌐 Network Security
 
-#### 🔍 监控和审计
-- [ ] 启用访问日志
-- [ ] 配置错误日志监控
-- [ ] 设置异常登录告警
-- [ ] 定期安全检查
+* [ ] Enable HTTPS (recommended: Let’s Encrypt)
+* [ ] Configure firewall rules
+* [ ] Restrict database port access
+* [ ] Set up a reverse proxy (Nginx/Apache)
 
-### 2. 安全检查工具
+#### 📁 File Permissions
 
-运行内置安全检查工具：
+* [ ] Set `.env` file permissions to 600
+* [ ] Ensure correct log directory permissions
+* [ ] Limit application user privileges
+
+#### 🔍 Monitoring and Auditing
+
+* [ ] Enable access logging
+* [ ] Configure error log monitoring
+* [ ] Set up abnormal login alerts
+* [ ] Conduct regular security reviews
+
+### 2. Security Check Tool
+
+Run the built-in security check tool:
+
 ```bash
 cd backend
 python scripts/security_check.py
 ```
 
-该工具会检查：
-- JWT密钥安全性
-- 管理员账户配置
-- 数据库安全设置
-- CORS配置
-- 文件权限
-- 调试模式状态
+The tool checks:
 
-### 3. 数据库迁移
+* JWT secret strength
+* Admin account configuration
+* Database security settings
+* CORS configuration
+* File permissions
+* Debug mode status
 
-如果从旧版本升级，需要运行UUID迁移：
+### 3. Database Migration
+
+If upgrading from an older version, run the UUID migration:
+
 ```bash
-# 备份数据库
+# Backup the database
 cp data/guardrails.db data/guardrails.db.backup
 
-# 运行迁移脚本
+# Run migration script
 python migrations/migrate_to_uuid.py
 ```
 
-**注意**: 迁移脚本会自动备份数据库，但建议手动备份重要数据。
+**Note:** The script automatically backs up your database, but manual backups of critical data are strongly recommended.
 
-## 🛠️ 安全维护
+## 🛠️ Security Maintenance
 
-### 1. 定期安全任务
+### 1. Regular Security Tasks
 
-#### 每周
-- [ ] 检查系统更新
-- [ ] 审查访问日志
-- [ ] 检查异常登录
+#### Weekly
 
-#### 每月
-- [ ] 运行安全检查工具
-- [ ] 清理旧的登录尝试记录
-- [ ] 更新依赖包
+* [ ] Check for system updates
+* [ ] Review access logs
+* [ ] Inspect for abnormal login attempts
 
-#### 每季度
-- [ ] 更换JWT密钥
-- [ ] 审计用户权限
-- [ ] 备份恢复测试
+#### Monthly
 
-### 2. 安全事件响应
+* [ ] Run the security check tool
+* [ ] Clean old login attempt records
+* [ ] Update dependency packages
 
-如发现安全问题：
-1. **立即响应**: 记录问题详情
-2. **隔离威胁**: 暂停受影响服务
-3. **分析影响**: 评估数据泄露风险
-4. **修复漏洞**: 应用安全补丁
-5. **恢复服务**: 验证修复效果
-6. **事后分析**: 改进安全措施
+#### Quarterly
 
-## 📞 安全联系方式
+* [ ] Rotate JWT secret keys
+* [ ] Audit user permissions
+* [ ] Test backup and recovery
 
-如发现安全漏洞或有安全问题，请联系：
-- **邮箱**: wanglei@xiangxinai.cn
-- **项目**: https://github.com/xiangxinai/Xiangxin-Guardrails
+### 2. Incident Response
 
-## 📚 安全最佳实践
+If a security issue is discovered:
 
-### 1. 密码安全
-- 使用强密码 (至少12字符，包含大小写字母、数字、特殊字符)
-- 定期更换密码
-- 不要重复使用密码
-- 考虑使用密码管理器
+1. **Immediate Response**: Record issue details
+2. **Isolate Threat**: Suspend affected services
+3. **Impact Analysis**: Assess data breach risks
+4. **Patch Vulnerabilities**: Apply security fixes
+5. **Restore Services**: Verify that patches work correctly
+6. **Postmortem Review**: Improve future security controls
 
-### 2. 访问控制
-- 遵循最小权限原则
-- 定期审核用户权限
-- 及时删除不活跃用户
-- 启用双因子认证 (如可用)
+## 📞 Security Contact
 
-### 3. 系统维护
-- 保持系统和依赖包更新
-- 定期备份重要数据
-- 监控系统资源使用
-- 配置日志轮转
+If you discover vulnerabilities or have security concerns, please contact:
 
-### 4. 网络安全
-- 使用HTTPS加密传输
-- 配置适当的防火墙规则
-- 使用CDN和DDoS防护
-- 定期进行安全扫描
+* **Email**: [wanglei@xiangxinai.cn](mailto:wanglei@xiangxinai.cn)
+* **Project**: [https://github.com/xiangxinai/Xiangxin-Guardrails](https://github.com/xiangxinai/Xiangxin-Guardrails)
 
-## 🔄 版本更新安全
+## 📚 Security Best Practices
 
-升级系统时请注意：
-1. 阅读更新日志中的安全相关内容
-2. 在测试环境验证更新
-3. 备份生产数据
-4. 按照安全检查清单验证配置
-5. 运行安全检查工具
+### 1. Password Security
 
-## 📋 安全合规
+* Use strong passwords (min. 12 characters, including uppercase, lowercase, numbers, and symbols)
+* Change passwords regularly
+* Avoid password reuse
+* Consider using a password manager
 
-本平台遵循以下安全标准和最佳实践：
-- OWASP Top 10 Web应用安全风险防护
-- ISO 27001 信息安全管理标准
-- 《网络安全法》合规要求
-- 《数据安全法》数据保护要求
-- 《个人信息保护法》隐私保护要求
+### 2. Access Control
+
+* Follow the principle of least privilege
+* Periodically review user permissions
+* Remove inactive users promptly
+* Enable two-factor authentication (if available)
+
+### 3. System Maintenance
+
+* Keep the system and dependencies updated
+* Regularly back up important data
+* Monitor resource usage
+* Configure log rotation
+
+### 4. Network Security
+
+* Use HTTPS for secure transmission
+* Apply appropriate firewall rules
+* Utilize CDN and DDoS protection
+* Perform regular security scans
+
+## 🔄 Secure Version Updates
+
+When upgrading the system:
+
+1. Review release notes for security-related updates
+2. Test updates in a staging environment
+3. Back up production data
+4. Verify configuration against the security checklist
+5. Run the security check tool
+
+## 📋 Security Compliance
+
+The platform adheres to the following security standards and best practices:
+
+* OWASP Top 10 Web Application Security Risks
+* ISO 27001 Information Security Management Standard
 
 ---
 
-**免责声明**: 本安全指南提供了推荐的安全实践，但不能保证绝对安全。用户需要根据自身环境和需求调整安全策略，并持续关注安全威胁情报。
+**Disclaimer:**
+This guide provides recommended security practices but does not guarantee absolute security.
+Users should tailor security policies to their specific environments and stay informed of emerging security threats.

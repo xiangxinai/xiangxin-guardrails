@@ -1,11 +1,11 @@
-// API响应类型
+// API response type
 export interface ApiResponse<T = any> {
   success: boolean;
   message: string;
   data?: T;
 }
 
-// 护栏检测相关类型
+// Guardrail detection related types
 export interface GuardrailRequest {
   model: string;
   messages: Message[];
@@ -37,10 +37,10 @@ export interface GuardrailResponse {
   overall_risk_level: string;
   suggest_action: string;
   suggest_answer?: string;
-  score?: number;  // 检测概率分数 (0.0-1.0)
+  score?: number;  // Detection probability score (0.0-1.0)
 }
 
-// 检测结果类型
+// Detection result type
 export interface DetectionResult {
   id: number;
   request_id: string;
@@ -50,24 +50,24 @@ export interface DetectionResult {
   hit_keywords?: string;
   created_at: string;
   ip_address?: string;
-  // 分离的安全和合规检测结果
+  // Separated security and compliance detection results
   security_risk_level: string;
   security_categories: string[];
   compliance_risk_level: string;
   compliance_categories: string[];
-  // 数据安全检测结果
+  // Data security detection results
   data_risk_level: string;
   data_categories: string[];
-  // 检测结果相关字段
-  score?: number;  // 检测概率分数 (0.0-1.0)
+  // Detection result related fields
+  score?: number;  // Detection probability score (0.0-1.0)
   // 多模态相关字段
   has_image?: boolean;
   image_count?: number;
   image_paths?: string[];
-  image_urls?: string[];  // 带签名的图片访问URLs
+  image_urls?: string[];  // Signed image access URLs
 }
 
-// 分页响应类型
+// Paginated response type
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;
@@ -76,7 +76,7 @@ export interface PaginatedResponse<T> {
   pages: number;
 }
 
-// 配置相关类型
+// Configuration related types
 export interface Blacklist {
   id: number;
   name: string;
@@ -108,7 +108,7 @@ export interface ResponseTemplate {
   updated_at: string;
 }
 
-// 仪表板统计类型
+// Dashboard statistics type
 export interface DashboardStats {
   total_requests: number;
   security_risks: number;
@@ -119,10 +119,10 @@ export interface DashboardStats {
   low_risk_count: number;
   safe_count: number;
   risk_distribution: {
-    '高风险': number;
-    '中风险': number;
-    '低风险': number;
-    '无风险': number;
+    'high_risk': number;
+    'medium_risk': number;
+    'low_risk': number;
+    'no_risk': number;
   };
   daily_trends: DailyTrend[];
 }
@@ -136,7 +136,7 @@ export interface DailyTrend {
   safe: number;
 }
 
-// 知识库相关类型
+// Knowledge base related types
 export interface KnowledgeBase {
   id: number;
   category: string;
@@ -167,12 +167,12 @@ export interface SimilarQuestionResult {
   rank: number;
 }
 
-// 数据安全相关类型
+// Data security related types
 export interface DataSecurityEntityType {
   id: string;
   entity_type: string;
   display_name: string;
-  risk_level: string;  // 低、中、高
+  risk_level: string;  // Low, medium, high
   pattern: string;
   anonymization_method: string;
   anonymization_config: Record<string, any>;

@@ -10,74 +10,74 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 class PostgreSQLRateLimiter:
-    """基于PostgreSQL的跨进程限速器"""
+    """Cross-process rate limiter based on PostgreSQL"""
 
     def __init__(self):
-        # 本地缓存租户限速配置 {tenant_id: requests_per_second}
+        # Local cache of tenant rate limits {tenant_id: requests_per_second}
         self._rate_limits: Dict[str, int] = {}
-        # 本地缓存租户当前计数（用于快速预检查）{tenant_id: (count, window_start_time)}
+        # Local cache of tenant current count (for quick pre-check) {tenant_id: (count, window_start_time)}
         self._local_cache: Dict[str, tuple] = {}
-        # 配置缓存更新时间
+        # Configuration cache update time
         self._cache_update_time = 0
-        self._cache_ttl = 30  # 30秒缓存配置
-        self._local_cache_ttl = 0.5  # 本地计数缓存500ms，减少DB查询
+        self._cache_ttl = 30  # 30 seconds cache configuration
+        self._local_cache_ttl = 0.5  # Local count cache 500ms, reduce DB queries
         self._lock = asyncio.Lock()
     
     async def is_allowed(self, tenant_id: str, db: Session) -> bool:
-        """检查租户是否允许请求（跨进程安全）
+        """Check if tenant is allowed to request (cross-process safe)
 
-        注意：为保持向后兼容，参数名保持为 tenant_id，但实际处理的是 tenant_id
+        Note: For backward compatibility, parameter name remains tenant_id, but tenant_id is actually processed
         """
         tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
         try:
-            # 更新配置缓存
+            # Update configuration cache
             await self._update_config_cache_if_needed(db)
 
-            # 获取租户限速配置
+            # Get tenant rate limit configuration
             rate_limit = self._rate_limits.get(tenant_id, 1)  # 默认每秒1个请求
 
-            # 0表示无限制
+            # 0 means no limit
             if rate_limit == 0:
                 return True
 
-            # 先检查本地缓存，快速判断是否明显超限
+            # First check local cache, quickly determine if it is obviously over limit
             if await self._quick_local_check(tenant_id, rate_limit):
-                # 本地缓存显示可能超限，需要精确的数据库检查
+                # Local cache shows possible over limit, need precise database check
                 return await self._db_rate_limit_check(tenant_id, rate_limit, db)
             else:
-                # 本地缓存显示安全范围内，直接进行数据库原子操作
+                # Local cache shows within safe range, directly perform database atomic operation
                 return await self._db_rate_limit_check(tenant_id, rate_limit, db)
 
         except Exception as e:
             logger.error(f"Rate limit check failed for tenant {tenant_id}: {e}")
-            # 发生错误时允许通过，避免影响服务
+            # Allow through when error occurs, avoid affecting service
             return True
     
     async def _quick_local_check(self, tenant_id: str, rate_limit: int) -> bool:
-        """快速本地缓存检查（不准确但高效）"""
+        """Quick local cache check (not accurate but efficient)"""
         current_time = time.time()
         cache_entry = self._local_cache.get(tenant_id)
 
         if not cache_entry:
-            return False  # 没有缓存，需要DB检查
+            return False  # No cache, need DB check
 
         count, window_start = cache_entry
 
-        # 检查缓存是否过期
+        # Check if cache is expired
         if current_time - window_start > self._local_cache_ttl:
-            return False  # 缓存过期，需要DB检查
+            return False  # Cache expired, need DB check
 
-        # 如果本地计数接近限制，返回True表示需要精确检查
-        return count >= rate_limit * 0.8  # 达到80%时触发精确检查
+        # If local count is approaching limit, return True to trigger precise check
+        return count >= rate_limit * 0.8  # Trigger precise check when reaching 80%
     
     async def _db_rate_limit_check(self, tenant_id: str, rate_limit: int, db: Session) -> bool:
-        """数据库原子限速检查和更新"""
+        """Database atomic rate limit check and update"""
         try:
             from uuid import UUID
             tenant_uuid = UUID(tenant_id)
             current_time = datetime.now()
 
-            # 使用数据库原子操作进行限速检查和更新
+            # Use database atomic operation for rate limit check and update
             result = db.execute(text("""
                 INSERT INTO tenant_rate_limit_counters (tenant_id, current_count, window_start, last_updated)
                 VALUES (:tenant_id, 1, :current_time, :current_time)
@@ -105,14 +105,14 @@ class PostgreSQLRateLimiter:
             row = result.fetchone()
 
             if row:
-                # 请求被允许，更新本地缓存
+                # Request allowed, update local cache
                 self._local_cache[tenant_id] = (row[0], time.time())
                 logger.debug(f"Rate limit allowed for tenant {tenant_id}: {row[0]}/{rate_limit}")
                 db.commit()
                 return True
             else:
-                # 请求被限制
-                # 获取当前计数用于日志记录
+                # Request limited
+                # Get current count for logging
                 counter_result = db.execute(text("""
                     SELECT current_count FROM tenant_rate_limit_counters WHERE tenant_id = :tenant_id
                 """), {"tenant_id": tenant_uuid})
@@ -126,18 +126,18 @@ class PostgreSQLRateLimiter:
         except Exception as e:
             logger.error(f"Database rate limit check failed for tenant {tenant_id}: {e}")
             db.rollback()
-            # 数据库错误时允许通过
+            # Allow through when database error occurs
             return True
     
     async def _update_config_cache_if_needed(self, db: Session):
-        """根据需要更新配置缓存"""
+        """Update configuration cache if needed"""
         current_time = time.time()
         if current_time - self._cache_update_time > self._cache_ttl:
             try:
-                # 查询所有启用的租户限速配置
+                # Query all enabled tenant rate limit configurations
                 rate_limits = db.query(TenantRateLimit).filter(TenantRateLimit.is_active == True).all()
 
-                # 更新缓存
+                # Update cache
                 new_limits = {}
                 for limit in rate_limits:
                     new_limits[str(limit.tenant_id)] = limit.requests_per_second
@@ -151,33 +151,33 @@ class PostgreSQLRateLimiter:
                 logger.error(f"Failed to update rate limit config cache: {e}")
     
     def clear_user_cache(self, tenant_id: str):
-        """清除指定租户的缓存
+        """Clear cache for specified tenant
 
-        注意：为保持向后兼容，函数名保持为 clear_user_cache，参数名保持为 tenant_id，但实际处理的是 tenant_id
+        Note: For backward compatibility, function name remains clear_user_cache, parameter name remains tenant_id, but tenant_id is actually processed
         """
-        tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
-        # 清除本地缓存
+        tenant_id = tenant_id  # For backward compatibility, internally use tenant_id
+        # Clear local cache
         if tenant_id in self._local_cache:
             del self._local_cache[tenant_id]
 
-        # 强制下次更新配置缓存
+        # Force next update configuration cache
         self._cache_update_time = 0
 
-# 全局限速器实例
+# Global rate limiter instance
 rate_limiter = PostgreSQLRateLimiter()
 
 class RateLimitService:
-    """限速服务"""
+    """Rate limit service"""
     
     def __init__(self, db: Session):
         self.db = db
     
     def get_user_rate_limit(self, tenant_id: str) -> Optional[TenantRateLimit]:
-        """获取租户限速配置
+        """Get tenant rate limit configuration
 
-        注意：为保持向后兼容，函数名保持为 get_user_rate_limit，参数名保持为 tenant_id，但实际处理的是 tenant_id
+        Note: For backward compatibility, function name remains get_user_rate_limit, parameter name remains tenant_id, but tenant_id is actually processed
         """
-        tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
+        tenant_id = tenant_id  # For backward compatibility, internally use tenant_id
         try:
             from uuid import UUID
             tenant_uuid = UUID(tenant_id)
@@ -187,30 +187,30 @@ class RateLimitService:
             return None
     
     def set_user_rate_limit(self, tenant_id: str, requests_per_second: int) -> TenantRateLimit:
-        """设置租户限速
+        """Set tenant rate limit
 
-        注意：为保持向后兼容，函数名保持为 set_user_rate_limit，参数名保持为 tenant_id，但实际处理的是 tenant_id
+        Note: For backward compatibility, function name remains set_user_rate_limit, parameter name remains tenant_id, but tenant_id is actually processed
         """
-        tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
+        tenant_id = tenant_id  # For backward compatibility, internally use tenant_id
         try:
             from uuid import UUID
             tenant_uuid = UUID(tenant_id)
 
-            # 检查租户是否存在
+            # Check if tenant exists
             tenant = self.db.query(Tenant).filter(Tenant.id == tenant_uuid).first()
             if not tenant:
                 raise ValueError(f"Tenant {tenant_id} not found")
 
-            # 查找现有配置
+            # Find existing configuration
             rate_limit_config = self.db.query(TenantRateLimit).filter(TenantRateLimit.tenant_id == tenant_uuid).first()
 
             if rate_limit_config:
-                # 更新现有配置
+            # Update existing configuration
                 rate_limit_config.requests_per_second = requests_per_second
                 rate_limit_config.is_active = True
                 rate_limit_config.updated_at = datetime.now()
             else:
-                # 创建新配置
+                # Create new configuration
                 rate_limit_config = TenantRateLimit(
                     tenant_id=tenant_uuid,
                     requests_per_second=requests_per_second,
@@ -220,7 +220,7 @@ class RateLimitService:
 
             self.db.commit()
 
-            # 清除租户缓存，强制重新加载
+            # Clear tenant cache, force reload
             rate_limiter.clear_user_cache(tenant_id)
 
             logger.info(f"Set rate limit for tenant {tenant_id}: {requests_per_second} rps")
@@ -232,11 +232,11 @@ class RateLimitService:
             raise
     
     def disable_user_rate_limit(self, tenant_id: str):
-        """禁用租户限速
+        """Disable tenant rate limit
 
-        注意：为保持向后兼容，函数名保持为 disable_user_rate_limit，参数名保持为 tenant_id，但实际处理的是 tenant_id
+        Note: For backward compatibility, function name remains disable_user_rate_limit, parameter name remains tenant_id, but tenant_id is actually processed
         """
-        tenant_id = tenant_id  # 为保持向后兼容，内部使用 tenant_id
+        tenant_id = tenant_id  # For backward compatibility, internally use tenant_id
         try:
             from uuid import UUID
             tenant_uuid = UUID(tenant_id)
@@ -247,7 +247,7 @@ class RateLimitService:
                 rate_limit_config.updated_at = datetime.now()
                 self.db.commit()
 
-                # 清除租户缓存
+                # Clear tenant cache
                 rate_limiter.clear_user_cache(tenant_id)
 
                 logger.info(f"Disabled rate limit for tenant {tenant_id}")
@@ -258,9 +258,9 @@ class RateLimitService:
             raise
     
     def list_user_rate_limits(self, skip: int = 0, limit: int = 100):
-        """列出所有租户限速配置
+        """List all tenant rate limit configurations
 
-        注意：为保持向后兼容，函数名保持为 list_user_rate_limits
+        Note: For backward compatibility, function name remains list_user_rate_limits
         """
         return (
             self.db.query(TenantRateLimit)

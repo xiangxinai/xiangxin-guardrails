@@ -29,30 +29,30 @@ async def get_detection_results(
     content_search: Optional[str] = Query(None, description="检测内容搜索"),
     request_id_search: Optional[str] = Query(None, description="请求ID搜索")
 ):
-    """获取检测结果"""
+    """Get detection results"""
     try:
-        # 获取用户上下文
+        # Get user context
         auth_context = getattr(request.state, 'auth_context', None)
         tenant_id = None
         if auth_context and auth_context.get('data'):
             tenant_id = auth_context['data'].get('tenant_id')
         
-        # 构建查询条件
+        # Build query conditions
         filters = []
         
-        # 添加用户过滤条件
+        # Add user filter conditions
         if tenant_id is not None:
             try:
                 import uuid
                 tenant_uuid = uuid.UUID(str(tenant_id))
                 filters.append(DetectionResult.tenant_id == tenant_uuid)
             except ValueError:
-                # 如果tenant_id格式无效，返回空结果
+                # If tenant_id format is invalid, return empty result
                 raise HTTPException(status_code=400, detail="Invalid user ID format")
         
-        # 风险等级过滤 - 支持整体风险等级或具体类型风险等级
+        # Risk level filter - support overall risk level or specific type risk level
         if risk_level:
-            # 整体风险等级过滤：查找任一类型匹配的记录
+            # Overall risk level filter: find records that match any type
             filters.append(or_(
                 DetectionResult.security_risk_level == risk_level,
                 DetectionResult.compliance_risk_level == risk_level
@@ -64,9 +64,9 @@ async def get_detection_results(
         if compliance_risk_level:
             filters.append(DetectionResult.compliance_risk_level == compliance_risk_level)
         
-        # 类别过滤 - 在security_categories或compliance_categories中查找
+        # Category filter - find in security_categories or compliance_categories
         if category:
-            # 使用PostgreSQL的JSON数组函数进行搜索
+            # Use PostgreSQL JSON array function for search
             filters.append(or_(
                 text(f"'{category}' = ANY(SELECT json_array_elements_text(security_categories))"),
                 text(f"'{category}' = ANY(SELECT json_array_elements_text(compliance_categories))")
@@ -84,49 +84,49 @@ async def get_detection_results(
         if request_id_search:
             filters.append(DetectionResult.request_id.like(f'%{request_id_search}%'))
         
-        # 构建基础查询
+        # Build base query
         base_query = db.query(DetectionResult)
         if filters:
             base_query = base_query.filter(and_(*filters))
         else:
-            # 如果无过滤条件也必须限定用户
+            # If no filter conditions, also must limit user
             if tenant_id is not None:
                 try:
                     import uuid
                     tenant_uuid = uuid.UUID(str(tenant_id))
                     base_query = base_query.filter(DetectionResult.tenant_id == tenant_uuid)
                 except ValueError:
-                    # 如果tenant_id格式无效，返回空结果
+                    # If tenant_id format is invalid, return empty result
                     raise HTTPException(status_code=400, detail="Invalid user ID format")
         
-        # 获取总数
+        # Get total
         total = base_query.count()
         
-        # 分页查询
+        # Paginated query
         offset = (page - 1) * per_page
         results = base_query.order_by(
             DetectionResult.created_at.desc()
         ).offset(offset).limit(per_page).all()
         
-        # 转换为响应模型
+        # Convert to response model
         items = []
         for result in results:
-            # 生成带签名的图片URLs
+            # Generate signed image URLs
             image_urls = []
             if hasattr(result, 'image_paths') and result.image_paths:
                 for image_path in result.image_paths:
                     try:
-                        # 从路径提取 tenant_id 和 filename
-                        # 路径格式: /mnt/data/xiangxin-guardrails-data/media/{tenant_id}/{filename}
+                        # Extract tenant_id and filename from path
+                        # Path format: /mnt/data/xiangxin-guardrails-data/media/{tenant_id}/{filename}
                         path_parts = Path(image_path).parts
                         filename = path_parts[-1]
                         extracted_tenant_id = path_parts[-2]
 
-                        # 生成带签名的URL
+                        # Generate signed URL
                         signed_url = generate_signed_media_url(
                             tenant_id=extracted_tenant_id,
                             filename=filename,
-                            expires_in_seconds=86400  # 24小时有效期
+                            expires_in_seconds=86400  # 24 hours valid
                         )
                         image_urls.append(signed_url)
                     except Exception as e:
@@ -148,7 +148,7 @@ async def get_detection_results(
                 has_image=result.has_image if hasattr(result, 'has_image') else False,
                 image_count=result.image_count if hasattr(result, 'image_count') else 0,
                 image_paths=result.image_paths if hasattr(result, 'image_paths') else [],
-                image_urls=image_urls  # 新增带签名的URLs
+                image_urls=image_urls  # New signed URLs
             ))
         
         pages = (total + per_page - 1) // per_page
@@ -167,9 +167,9 @@ async def get_detection_results(
 
 @router.get("/results/{result_id}", response_model=DetectionResultResponse)
 async def get_detection_result(result_id: int, request: Request, db: Session = Depends(get_db)):
-    """获取单个检测结果详情（确保当前用户只能查看自己的结果）"""
+    """Get single detection result detail (ensure current user can only view their own results)"""
     try:
-        # 获取用户上下文
+        # Get user context
         auth_context = getattr(request.state, 'auth_context', None)
         tenant_id = None
         if auth_context and auth_context.get('data'):
@@ -179,9 +179,9 @@ async def get_detection_result(result_id: int, request: Request, db: Session = D
         if not result:
             raise HTTPException(status_code=404, detail="Detection result not found")
         
-        # 权限校验：只能查看自己的记录
+        # Permission check: can only view own records
         if tenant_id is not None:
-            # 将字符串类型的tenant_id转换为UUID进行比较
+            # Convert string type tenant_id to UUID for comparison
             try:
                 import uuid
                 tenant_uuid = uuid.UUID(str(tenant_id))
@@ -190,22 +190,22 @@ async def get_detection_result(result_id: int, request: Request, db: Session = D
             except ValueError:
                 raise HTTPException(status_code=403, detail="Invalid user ID format")
         
-        # 生成带签名的图片URLs
+        # Generate signed image URLs
         image_urls = []
         if hasattr(result, 'image_paths') and result.image_paths:
             for image_path in result.image_paths:
                 try:
-                    # 从路径提取 tenant_id 和 filename
-                    # 路径格式: /mnt/data/xiangxin-guardrails-data/media/{tenant_id}/{filename}
+                    # Extract tenant_id and filename from path
+                    # Path format: /mnt/data/xiangxin-guardrails-data/media/{tenant_id}/{filename}
                     path_parts = Path(image_path).parts
                     filename = path_parts[-1]
                     extracted_tenant_id = path_parts[-2]
 
-                    # 生成带签名的URL
+                    # Generate signed URL
                     signed_url = generate_signed_media_url(
                         tenant_id=extracted_tenant_id,
                         filename=filename,
-                        expires_in_seconds=86400  # 24小时有效期
+                        expires_in_seconds=86400  # 24 hours valid
                     )
                     image_urls.append(signed_url)
                 except Exception as e:
@@ -227,7 +227,7 @@ async def get_detection_result(result_id: int, request: Request, db: Session = D
             has_image=result.has_image if hasattr(result, 'has_image') else False,
             image_count=result.image_count if hasattr(result, 'image_count') else 0,
             image_paths=result.image_paths if hasattr(result, 'image_paths') else [],
-            image_urls=image_urls  # 新增带签名的URLs
+            image_urls=image_urls  # New signed URLs
         )
         
     except HTTPException:

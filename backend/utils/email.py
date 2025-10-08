@@ -8,7 +8,7 @@ from typing import Optional
 from config import settings
 
 def generate_verification_code(length: int = 6) -> str:
-    """生成验证码"""
+    """Generate verification code"""
     return ''.join(random.choices(string.digits, k=length))
 
 def get_email_template(language: str, verification_code: str) -> tuple[str, str]:
@@ -105,24 +105,24 @@ def send_verification_email(email: str, verification_code: str, language: str = 
         # Get email template based on language
         subject, html_body = get_email_template(language, verification_code)
         
-        # 创建邮件
+        # Create email
         msg = MIMEMultipart('alternative')
         msg['Subject'] = subject
         msg['From'] = settings.smtp_username
         msg['To'] = email
         
-        # 添加HTML内容
+        # Add HTML content
         html_part = MIMEText(html_body, 'html', 'utf-8')
         msg.attach(html_part)
         
-        # 发送邮件
+        # Send email
         if settings.smtp_use_ssl:
-            # 使用SSL连接
+            # Use SSL connection
             with smtplib.SMTP_SSL(settings.smtp_server, settings.smtp_port) as server:
                 server.login(settings.smtp_username, settings.smtp_password)
                 server.send_message(msg)
         else:
-            # 使用TLS连接
+            # Use TLS connection
             with smtplib.SMTP(settings.smtp_server, settings.smtp_port) as server:
                 if settings.smtp_use_tls:
                     server.starttls()
@@ -136,5 +136,5 @@ def send_verification_email(email: str, verification_code: str, language: str = 
         return False
 
 def get_verification_expiry() -> datetime:
-    """获取验证码过期时间（10分钟后）"""
+    """Get verification code expiry time (10 minutes later)"""
     return datetime.utcnow() + timedelta(minutes=10)

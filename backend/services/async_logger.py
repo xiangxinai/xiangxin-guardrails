@@ -10,7 +10,7 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 class AsyncDetectionLogger:
-    """异步检测结果日志记录器"""
+    """Async detection result logger"""
     
     def __init__(self, log_dir: Optional[str] = None):
         if log_dir is None:
@@ -23,7 +23,7 @@ class AsyncDetectionLogger:
         self._running = False
     
     async def start(self):
-        """启动异步写入任务"""
+        """Start async write task"""
         if not self._running:
             self._running = True
             self._writer_task = asyncio.create_task(self._writer_loop())
@@ -32,28 +32,28 @@ class AsyncDetectionLogger:
             logger.debug("AsyncDetectionLogger already running, skipping start")
     
     async def stop(self):
-        """停止异步写入任务"""
+        """Stop async write task"""
         if self._running:
             self._running = False
-            # 发送停止信号
+            # Send stop signal
             await self._queue.put(None)
             if self._writer_task:
                 await self._writer_task
             logger.info("AsyncDetectionLogger stopped")
     
     async def log_detection(self, detection_data: Dict[str, Any]):
-        """记录检测结果到日志"""
+        """Log detection result to file"""
         if not self._running:
             await self.start()
         
-        # 清理数据中的NUL字符
+        # Clean NUL characters in data
         from utils.validators import clean_detection_data
         cleaned_data = clean_detection_data(detection_data.copy())
         
-        # 添加时间戳（带时区信息）
+        # Add timestamp (with timezone info)
         cleaned_data['logged_at'] = datetime.now(timezone.utc).isoformat()
         
-        # 直接写入文件（简化版本用于调试）
+        # Direct write to file (simplified version for debugging)
         try:
             today = datetime.now().strftime('%Y%m%d')
             log_file_path = self.log_dir / f"detection_{today}.jsonl"
@@ -69,33 +69,33 @@ class AsyncDetectionLogger:
         except Exception as e:
             logger.error(f"Failed to log detection: {e}")
         
-        # 也加入队列（保持兼容性）
+        # Also add to queue (for compatibility)
         await self._queue.put(cleaned_data)
     
     async def _writer_loop(self):
-        """异步写入循环（批量优化版）"""
+        """Async write loop (batch optimized version)"""
         current_date = None
         current_file = None
         batch = []
-        batch_size = 1  # 立即写入模式（用于调试）
+        batch_size = 1  # Immediate write mode (for debugging)
         last_flush_time = asyncio.get_event_loop().time()
-        flush_interval = 0.1  # 0.1秒强制刷新一次（立即写入）
+        flush_interval = 0.1  # 0.1 seconds force flush (immediate write)
         
         try:
             while self._running:
                 try:
-                    # 收集批量数据
+                    # Collect batch data
                     current_time = asyncio.get_event_loop().time()
                     try:
                         data = await asyncio.wait_for(self._queue.get(), timeout=0.5)
                         
-                        # 停止信号
+                        # Stop signal
                         if data is None:
                             break
                         
                         batch.append(data)
                         
-                        # 检查是否需要写入
+                        # Check if need to write
                         should_flush = (
                             len(batch) >= batch_size or 
                             (current_time - last_flush_time) >= flush_interval
@@ -106,7 +106,7 @@ class AsyncDetectionLogger:
                             batch.clear()
                             last_flush_time = current_time
                             
-                            # 更新文件句柄
+                            # Update file handle
                             today = datetime.now().strftime('%Y%m%d')
                             if current_date != today:
                                 if current_file:
@@ -118,7 +118,7 @@ class AsyncDetectionLogger:
                                 logger.debug(f"Opened new log file: {log_file_path}")
                         
                     except asyncio.TimeoutError:
-                        # 超时，检查是否需要刷新积累的数据
+                        # Timeout, check if need to flush accumulated data
                         if batch and (current_time - last_flush_time) >= flush_interval:
                             await self._flush_batch(batch, current_date, current_file)
                             batch.clear()
@@ -128,7 +128,7 @@ class AsyncDetectionLogger:
                 except Exception as e:
                     logger.error(f"Error in async logger writer loop: {e}")
             
-            # 处理剩余的批量数据
+            # Process remaining batch data
             if batch:
                 await self._flush_batch(batch, current_date, current_file)
                 
@@ -140,12 +140,12 @@ class AsyncDetectionLogger:
             logger.info("Async logger writer loop stopped")
     
     async def _flush_batch(self, batch: list, current_date: str, current_file):
-        """刷新批量数据到文件"""
+        """Flush batch data to file"""
         if not batch or not current_file:
             return
             
         try:
-            # 批量写入
+            # Batch write
             lines = []
             for data in batch:
                 json_line = json.dumps(data, ensure_ascii=False) + '\n'
@@ -160,7 +160,7 @@ class AsyncDetectionLogger:
             logger.error(f"Error flushing batch: {e}")
     
     def get_log_files(self, date_range: Optional[tuple] = None) -> list:
-        """获取日志文件列表"""
+        """Get log file list"""
         pattern = "detection_*.jsonl"
         files = list(self.log_dir.glob(pattern))
         files.sort(key=lambda x: x.name)
@@ -179,5 +179,5 @@ class AsyncDetectionLogger:
         
         return files
 
-# 全局实例
+# Global instance
 async_detection_logger = AsyncDetectionLogger()

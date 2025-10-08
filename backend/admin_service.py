@@ -24,7 +24,7 @@ from services.admin_service import admin_service
 # Set security verification
 security = HTTPBearer()
 
-# 导入并发控制中间件
+# Import concurrent control middleware
 from middleware.concurrent_limit_middleware import ConcurrentLimitMiddleware
 
 class AuthContextMiddleware(BaseHTTPMiddleware):
@@ -255,7 +255,7 @@ async def verify_user_auth(
     credentials: HTTPAuthorizationCredentials = Security(security),
     request: Request = None,
 ):
-    """Verify user authentication (management service专用)"""
+    """Verify user authentication (management service only)"""
     # Use middleware to parse authentication context
     if request is not None:
         auth_ctx = getattr(request.state, 'auth_context', None)

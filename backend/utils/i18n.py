@@ -1,10 +1,10 @@
 """
-国际化工具模块
-提供多语言支持功能
+Internationalization tool module
+Provide multi-language support functionality
 """
 from typing import Dict, Any, Optional
 
-# 翻译字典
+# Translation dictionary
 TRANSLATIONS = {
     'zh': {
         'ban_reason_template': '在 {time_window} 分钟内触发 {trigger_count} 次{risk_level}风险',
@@ -26,67 +26,67 @@ TRANSLATIONS = {
 
 def get_language_from_request(request=None, tenant_id: Optional[str] = None) -> str:
     """
-    从请求中获取语言设置
+    Get language setting from request
     
     Args:
-        request: FastAPI Request对象
-        tenant_id: 租户ID（可用于获取租户语言偏好）
+        request: FastAPI Request object
+        tenant_id: Tenant ID (can be used to get tenant language preference)
         
     Returns:
-        语言代码，默认为'zh'
+        Language code, default is 'zh'
     """
-    # 优先级：
-    # 1. 请求头中的Accept-Language
-    # 2. 租户设置（如果有的话）
-    # 3. 默认中文
+    # Priority:
+    # 1. Accept-Language in request header
+    # 2. Tenant setting (if any)
+    # 3. Default Chinese
     
     if request:
-        # 检查Accept-Language头
+        # Check Accept-Language header
         accept_language = request.headers.get('accept-language', '')
         if 'en' in accept_language.lower():
             return 'en'
     
-    # 默认返回中文
+    # Default return Chinese
     return 'zh'
 
 def translate(key: str, language: str = 'zh', **kwargs) -> str:
     """
-    翻译指定的键值
+    Translate specified key value
     
     Args:
-        key: 翻译键
-        language: 语言代码
-        **kwargs: 模板参数
+        key: Translation key
+        language: Language code
+        **kwargs: Template parameters
         
     Returns:
-        翻译后的文本
+        Translated text
     """
-    # 获取对应语言的翻译
+    # Get translation for corresponding language
     lang_dict = TRANSLATIONS.get(language, TRANSLATIONS['zh'])
     
-    # 获取翻译文本
+    # Get translated text
     text = lang_dict.get(key, key)
     
-    # 如果有参数，进行格式化
+    # If there are parameters, format them
     if kwargs:
         try:
             return text.format(**kwargs)
         except (KeyError, ValueError):
-            # 如果格式化失败，返回原文本
+            # If formatting fails, return original text
             return text
     
     return text
 
 def get_risk_level_text(risk_level: str, language: str = 'zh') -> str:
     """
-    获取风险等级的本地化文本
+    Get localized text for risk level
     
     Args:
-        risk_level: 风险等级（如 'high_risk'）
-        language: 语言代码
+        risk_level: Risk level (e.g. 'high_risk')
+        language: Language code
         
     Returns:
-        本地化的风险等级文本
+        Localized risk level text
     """
     lang_dict = TRANSLATIONS.get(language, TRANSLATIONS['zh'])
     risk_levels = lang_dict.get('risk_levels', {})
@@ -94,21 +94,21 @@ def get_risk_level_text(risk_level: str, language: str = 'zh') -> str:
 
 def format_ban_reason(time_window: int, trigger_count: int, risk_level: str, language: str = 'zh') -> str:
     """
-    格式化封禁原因
+    Format ban reason
     
     Args:
-        time_window: 时间窗口（分钟）
-        trigger_count: 触发次数
-        risk_level: 风险等级
-        language: 语言代码
+        time_window: Time window (minutes)
+        trigger_count: Trigger count
+        risk_level: Risk level
+        language: Language code
         
     Returns:
-        格式化后的封禁原因
+        Formatted ban reason
     """
-    # 获取风险等级的本地化文本
+    # Get localized text for risk level
     risk_level_text = get_risk_level_text(risk_level, language)
     
-    # 格式化封禁原因
+    # Format ban reason
     return translate(
         'ban_reason_template',
         language=language,

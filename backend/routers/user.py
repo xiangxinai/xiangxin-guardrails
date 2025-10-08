@@ -38,23 +38,23 @@ class LoginResponse(BaseModel):
     token_type: str
     expires_in: int
     api_key: str
-    tenant_id: str  # 改为字符串UUID
+    tenant_id: str  # Changed to string UUID
     is_super_admin: bool
 
 class UserInfo(BaseModel):
-    id: str  # 改为字符串UUID
+    id: str  # Changed to string UUID
     email: str
     api_key: str
     is_active: bool
     is_verified: bool
     is_super_admin: bool
-    rate_limit: int  # 速度限制（每秒请求数，0表示无限制，默认为1）
+    rate_limit: int  # Speed limit (requests per second, 0 means unlimited, default is 1)
 
 class ApiKeyResponse(BaseModel):
     api_key: str
 
 def get_current_user_from_token(credentials: HTTPAuthorizationCredentials, db: Session) -> Tenant:
-    """从JWT token获取当前租户"""
+    """Get current tenant from JWT token"""
     try:
         tenant_data = verify_token(credentials.credentials)
         tenant_id = tenant_data.get('tenant_id') or tenant_data.get('tenant_id') or tenant_data.get('sub')
@@ -62,7 +62,7 @@ def get_current_user_from_token(credentials: HTTPAuthorizationCredentials, db: S
         if not tenant_id:
             raise HTTPException(status_code=401, detail="Invalid token: tenant ID not found")
 
-        # 确保tenant_id是UUID对象或字符串
+        # Ensure tenant_id is a UUID object or string
         if isinstance(tenant_id, str):
             try:
                 import uuid
@@ -80,8 +80,8 @@ def get_current_user_from_token(credentials: HTTPAuthorizationCredentials, db: S
 
 @router.post("/register")
 async def register_user(register_data: RegisterRequest, db: Session = Depends(get_db)):
-    """租户注册"""
-    # 检查邮箱是否已存在
+    """Tenant registration"""
+    # Check if email already exists
     existing_tenant = get_user_by_email(db, register_data.email)
     if existing_tenant:
         raise HTTPException(
@@ -89,7 +89,7 @@ async def register_user(register_data: RegisterRequest, db: Session = Depends(ge
             detail="Email already registered"
         )
 
-    # 创建租户
+    # Create tenant
     try:
         tenant = create_user(db, register_data.email, register_data.password)
     except Exception as e:
@@ -98,11 +98,11 @@ async def register_user(register_data: RegisterRequest, db: Session = Depends(ge
             detail="Failed to create tenant"
         )
     
-    # 生成验证码并发送邮件
+    # Generate verification code and send email
     verification_code = generate_verification_code()
     verification_expiry = get_verification_expiry()
     
-    # 保存验证码到数据库
+    # Save verification code to database
     email_verification = EmailVerification(
         email=register_data.email,
         verification_code=verification_code,
@@ -126,7 +126,7 @@ async def register_user(register_data: RegisterRequest, db: Session = Depends(ge
 
 @router.post("/verify-email")
 async def verify_email(verify_data: VerifyEmailRequest, db: Session = Depends(get_db)):
-    """验证邮箱"""
+    """Verify email"""
     if not verify_user_email(db, verify_data.email, verify_data.verification_code):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -137,9 +137,9 @@ async def verify_email(verify_data: VerifyEmailRequest, db: Session = Depends(ge
 
 @router.post("/resend-verification-code")
 async def resend_verification_code(resend_data: ResendCodeRequest, db: Session = Depends(get_db)):
-    """重发邮箱验证码"""
+    """Resend verification code"""
     try:
-        # 检查租户是否存在且未验证
+        # Check if tenant exists and is not verified
         tenant = get_user_by_email(db, resend_data.email)
         if not tenant:
             raise HTTPException(
@@ -153,11 +153,11 @@ async def resend_verification_code(resend_data: ResendCodeRequest, db: Session =
                 detail="Email already verified"
             )
         
-        # 生成新验证码
+        # Generate new verification code
         verification_code = generate_verification_code()
         verification_expiry = get_verification_expiry()
         
-        # 保存新验证码
+        # Save new verification code
         email_verification = EmailVerification(
             email=resend_data.email,
             verification_code=verification_code,
@@ -187,12 +187,12 @@ async def resend_verification_code(resend_data: ResendCodeRequest, db: Session =
 
 @router.post("/login", response_model=LoginResponse)
 async def login_user(login_data: LoginRequest, request: Request, db: Session = Depends(get_db)):
-    """租户登录"""
-    # 获取客户端信息
+    """Tenant login"""
+    # Get client information
     client_ip = request.client.host if request.client else "unknown"
     user_agent = request.headers.get("user-agent", "")
 
-    # 检查登录速率限制
+    # Check login rate limit
     if not check_login_rate_limit(db, login_data.email, client_ip):
         record_login_attempt(db, login_data.email, client_ip, user_agent, False)
         raise HTTPException(
@@ -200,7 +200,7 @@ async def login_user(login_data: LoginRequest, request: Request, db: Session = D
             detail="Too many login attempts. Please try again later."
         )
 
-    # 统一租户登录
+    # Unified tenant login
     tenant = get_user_by_email(db, login_data.email)
     if not tenant:
         record_login_attempt(db, login_data.email, client_ip, user_agent, False)
@@ -216,7 +216,7 @@ async def login_user(login_data: LoginRequest, request: Request, db: Session = D
             detail="Invalid credentials"
         )
 
-    # 检查账号是否已激活且邮箱已验证
+    # Check if account is active and email is verified
     if not tenant.is_active or not tenant.is_verified:
         record_login_attempt(db, login_data.email, client_ip, user_agent, False)
         raise HTTPException(
@@ -224,7 +224,7 @@ async def login_user(login_data: LoginRequest, request: Request, db: Session = D
             detail="Account not verified. Please check your email address and complete verification."
         )
 
-    # 记录成功登录
+    # Record successful login
     record_login_attempt(db, login_data.email, client_ip, user_agent, True)
 
     access_token_expires = timedelta(minutes=settings.jwt_access_token_expire_minutes)
@@ -248,10 +248,10 @@ async def get_current_user_info(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """获取当前租户信息"""
+    """Get current tenant information"""
     tenant = get_current_user_from_token(credentials, db)
 
-    # 获取租户的速度限制配置
+    # Get tenant speed limit configuration
     try:
         from services.rate_limiter import RateLimitService
         from utils.logger import setup_logger
@@ -259,17 +259,17 @@ async def get_current_user_info(
 
         rate_limit_service = RateLimitService(db)
         rate_limit_config = rate_limit_service.get_user_rate_limit(str(tenant.id))
-        # 如果有配置且激活，使用配置值；否则使用默认值1 RPS
+        # If there is a configuration and it is active, use the configuration value; otherwise use default value 1 RPS
         rate_limit = rate_limit_config.requests_per_second if rate_limit_config and rate_limit_config.is_active else 1
         logger.info(f"租户 {tenant.email} 的速度限制: {rate_limit} (配置存在: {rate_limit_config is not None})")
     except Exception as e:
         from utils.logger import setup_logger
         logger = setup_logger()
-        logger.error(f"获取租户速度限制失败: {e}")
+        logger.error(f"Get tenant speed limit failed: {e}")
         rate_limit = 1  # 默认值
 
     return UserInfo(
-        id=str(tenant.id),  # 转换为字符串格式
+        id=str(tenant.id),  # Convert to string format
         email=tenant.email,
         api_key=tenant.api_key,
         is_active=tenant.is_active,
@@ -283,7 +283,7 @@ async def regenerate_user_api_key(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """重新生成API密钥"""
+    """Regenerate API key"""
     tenant = get_current_user_from_token(credentials, db)
 
     new_api_key = regenerate_api_key(db, tenant.id)
@@ -297,5 +297,5 @@ async def regenerate_user_api_key(
 
 @router.post("/logout")
 async def logout_user():
-    """租户登出（前端处理token清除）"""
+    """Tenant logout (front-end handles token clearing)"""
     return {"message": "Successfully logged out"}

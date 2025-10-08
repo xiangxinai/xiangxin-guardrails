@@ -15,30 +15,30 @@ import type {
   SimilarQuestionResult
 } from '../types';
 
-// 创建axios实例 - 使用环境变量中的API URL
+// Create axios instance - Use API URL from environment variables
 const getBaseURL = () => {
-  // 优先使用环境变量中的API URL
+  // Use API URL from environment variables
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  // 生产环境和Docker环境都使用相对路径，通过nginx代理
+  // Production and Docker environments use relative path, through nginx proxy
   return '';
 };
 
 const api = axios.create({
   baseURL: getBaseURL(),
-  timeout: 300000, // 增加到5分钟超时
+  timeout: 300000, // Increase to 5 minutes timeout
 });
 
-// 请求拦截器
+// Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // 跳过认证路由，不添加Authorization头部
+    // Skip authentication routes, do not add Authorization header
     if (config.url && config.url.includes('/auth/')) {
       return config;
     }
     
-    // 添加认证头 - 优先使用JWT token，其次使用API key
+    // Add authentication header - Use JWT token first, then use API key
     const authToken = localStorage.getItem('auth_token');
     const apiToken = localStorage.getItem('api_token');
 
@@ -47,7 +47,7 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // 添加租户切换会话token
+    // Add tenant switch session token
     const switchToken = localStorage.getItem('switch_session_token');
     if (switchToken) {
       config.headers['X-Switch-Session'] = switchToken;
@@ -60,7 +60,7 @@ api.interceptors.request.use(
   }
 );
 
-// 响应拦截器
+// Response interceptor
 api.interceptors.response.use(
   (response) => {
     return response;
@@ -69,42 +69,42 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const url: string | undefined = error.config?.url;
     
-    // 静默处理某些非关键性401（例如检查切换状态时未就绪）
+    // Silent handling of certain non-critical 401 (e.g. when checking switch status is not ready)
     if (status === 401 && url && url.includes('/admin/current-switch')) {
       return Promise.reject(error);
     }
     
-    // 对于429限速错误，让业务逻辑自行处理，不在全局显示弹窗
+    // For 429 rate limit errors, let business logic handle it, do not show a popup globally
     if (status === 429) {
       return Promise.reject(error);
     }
     
-    const errorMessage = error.response?.data?.detail || error.message || '请求失败';
+    const errorMessage = error.response?.data?.detail || error.message || 'Request failed';
     message.error(errorMessage);
     return Promise.reject(error);
   }
 );
 
-// 护栏API
+// Guardrails API
 export const guardrailsApi = {
-  // 检测内容
+  // Check content
   check: (data: GuardrailRequest): Promise<GuardrailResponse> =>
     api.post('/v1/guardrails', data).then(res => res.data),
   
-  // 健康检查
+  // Health check
   health: () => api.get('/v1/guardrails/health').then(res => res.data),
   
-  // 获取模型列表
+  // Get model list
   models: () => api.get('/v1/guardrails/models').then(res => res.data),
 };
 
-// 仪表板API
+// Dashboard API
 export const dashboardApi = {
-  // 获取统计数据
+  // Get stats data
   getStats: (): Promise<DashboardStats> =>
     api.get('/api/v1/dashboard/stats').then(res => res.data),
   
-  // 获取风险类别分布
+  // Get risk category distribution
   getCategoryDistribution: (params?: {
     start_date?: string;
     end_date?: string;
@@ -112,9 +112,9 @@ export const dashboardApi = {
     api.get('/api/v1/dashboard/category-distribution', { params }).then(res => res.data),
 };
 
-// 检测结果API
+// Detection results API
 export const resultsApi = {
-  // 获取检测结果列表
+  // Get detection results list
   getResults: (params?: {
     page?: number;
     per_page?: number;
@@ -126,14 +126,14 @@ export const resultsApi = {
   }): Promise<PaginatedResponse<DetectionResult>> =>
     api.get('/api/v1/results', { params }).then(res => res.data),
   
-  // 获取单个检测结果
+  // Get single detection result
   getResult: (id: number): Promise<DetectionResult> =>
     api.get(`/api/v1/results/${id}`).then(res => res.data),
 };
 
-// 配置API
+// Config API
 export const configApi = {
-  // 黑名单管理
+  // Blacklist management
   blacklist: {
     list: (): Promise<Blacklist[]> => api.get('/api/v1/config/blacklist').then(res => res.data),
     create: (data: Omit<Blacklist, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse> =>
@@ -144,7 +144,7 @@ export const configApi = {
       api.delete(`/api/v1/config/blacklist/${id}`).then(res => res.data),
   },
   
-  // 白名单管理
+  // Whitelist management
   whitelist: {
     list: (): Promise<Whitelist[]> => api.get('/api/v1/config/whitelist').then(res => res.data),
     create: (data: Omit<Whitelist, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse> =>
@@ -155,7 +155,7 @@ export const configApi = {
       api.delete(`/api/v1/config/whitelist/${id}`).then(res => res.data),
   },
   
-  // 代答模板管理
+  // Response template management
   responses: {
     list: (): Promise<ResponseTemplate[]> => api.get('/api/v1/config/responses').then(res => res.data),
     create: (data: Omit<ResponseTemplate, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse> =>
@@ -166,16 +166,16 @@ export const configApi = {
       api.delete(`/api/v1/config/responses/${id}`).then(res => res.data),
   },
   
-  // 获取系统信息
+  // Get system info
   getSystemInfo: (): Promise<{ support_email: string | null; app_name: string; app_version: string }> =>
     api.get('/api/v1/config/system-info').then(res => res.data),
 
-  // 封禁策略管理
+  // Ban policy management
   banPolicy: {
-    // 获取封禁策略
+    // Get ban policy
     get: (): Promise<any> => api.get('/api/v1/ban-policy').then(res => res.data),
 
-    // 更新封禁策略
+    // Update ban policy
     update: (data: {
       enabled: boolean;
       risk_level: string;
@@ -184,27 +184,27 @@ export const configApi = {
       ban_duration_minutes: number;
     }): Promise<any> => api.put('/api/v1/ban-policy', data).then(res => res.data),
 
-    // 获取封禁用户列表
+    // Get banned users list
     getBannedUsers: (skip?: number, limit?: number): Promise<{ users: any[] }> =>
       api.get('/api/v1/ban-policy/banned-users', { params: { skip, limit } }).then(res => res.data),
 
-    // 解封用户
+    // Unban user
     unbanUser: (userId: string): Promise<any> =>
       api.post('/api/v1/ban-policy/unban', { user_id: userId }).then(res => res.data),
 
-    // 获取用户风险历史
+    // Get user risk history
     getUserHistory: (userId: string, days?: number): Promise<{ history: any[] }> =>
       api.get(`/api/v1/ban-policy/user-history/${userId}`, { params: { days } }).then(res => res.data),
 
-    // 检查用户封禁状态
+    // Check user ban status
     checkUserStatus: (userId: string): Promise<any> =>
       api.get(`/api/v1/ban-policy/check-status/${userId}`).then(res => res.data),
   },
 };
 
-// 管理员API
+// Admin API
 export const adminApi = {
-  // 获取管理员统计信息
+  // Get admin stats info
   getAdminStats: (): Promise<{
     status: string;
     data: {
@@ -219,11 +219,11 @@ export const adminApi = {
   }> =>
     api.get('/api/v1/admin/stats').then(res => res.data),
 
-  // 获取所有租户列表
+  // Get all tenants list
   getUsers: (): Promise<{ status: string; users: any[]; total: number }> =>
     api.get('/api/v1/admin/users').then(res => res.data),
 
-  // 切换到指定租户视角
+  // Switch to specified tenant perspective
   switchToUser: (tenantId: string): Promise<{
     status: string;
     message: string;
@@ -232,11 +232,11 @@ export const adminApi = {
   }> =>
     api.post(`/api/v1/admin/switch-user/${tenantId}`).then(res => res.data),
 
-  // 退出租户切换
+  // Exit tenant switch
   exitSwitch: (): Promise<{ status: string; message: string }> =>
     api.post('/api/v1/admin/exit-switch').then(res => res.data),
 
-  // 获取当前切换状态
+  // Get current switch status
   getCurrentSwitch: (): Promise<{
     is_switched: boolean;
     admin_user?: { id: string; email: string };
@@ -244,7 +244,7 @@ export const adminApi = {
   }> =>
     api.get('/api/v1/admin/current-switch').then(res => res.data),
 
-  // 租户管理
+  // Tenant management
   createUser: (data: {
     email: string;
     password: string;
@@ -268,7 +268,7 @@ export const adminApi = {
   resetUserApiKey: (tenantId: string): Promise<ApiResponse> =>
     api.post(`/api/v1/admin/users/${tenantId}/reset-api-key`).then(res => res.data),
 
-  // 租户限速管理
+  // Tenant rate limit management
   getRateLimits: (): Promise<{ status: string; data: any[]; total: number }> =>
     api.get('/api/v1/admin/rate-limits').then(res => res.data),
 
@@ -282,22 +282,22 @@ export const adminApi = {
     api.delete(`/api/v1/admin/rate-limits/${tenantId}`).then(res => res.data),
 };
 
-// 在线测试模型API - 使用代理模型配置
+// Online test model API - Use proxy model configuration
 export const testModelsApi = {
-  // 获取在线测试可用的代理模型列表
+  // Get online test available proxy model list
   getModels: () => api.get('/api/v1/test/models').then(res => res.data),
   
-  // 更新在线测试模型选择
+  // Update online test model selection
   updateSelection: (model_selections: Array<{ id: string; selected: boolean }>) => 
     api.post('/api/v1/test/models/selection', { model_selections }).then(res => res.data),
 };
 
-// 风险类型配置API
+// Risk type configuration API
 export const riskConfigApi = {
-  // 获取风险配置
+  // Get risk configuration
   get: () => api.get('/api/v1/config/risk-types').then(res => res.data),
 
-  // 更新风险配置
+  // Update risk configuration
   update: (config: {
     s1_enabled: boolean;
     s2_enabled: boolean;
@@ -313,19 +313,19 @@ export const riskConfigApi = {
     s12_enabled: boolean;
   }) => api.put('/api/v1/config/risk-types', config).then(res => res.data),
 
-  // 获取启用的风险类型
+  // Get enabled risk types
   getEnabled: () => api.get('/api/v1/config/risk-types/enabled').then(res => res.data),
 
-  // 重置为默认配置
+  // Reset to default configuration
   reset: () => api.post('/api/v1/config/risk-types/reset').then(res => res.data),
 };
 
-// 敏感度阈值配置API
+// Sensitivity threshold configuration API
 export const sensitivityThresholdApi = {
-  // 获取敏感度阈值配置
+  // Get sensitivity threshold configuration
   get: () => api.get('/api/v1/config/sensitivity-thresholds').then(res => res.data),
 
-  // 更新敏感度阈值配置
+  // Update sensitivity threshold configuration
   update: (config: {
     high_sensitivity_threshold: number;
     medium_sensitivity_threshold: number;
@@ -333,21 +333,21 @@ export const sensitivityThresholdApi = {
     sensitivity_trigger_level: string;
   }) => api.put('/api/v1/config/sensitivity-thresholds', config).then(res => res.data),
 
-  // 重置为默认配置
+  // Reset to default configuration
   reset: () => api.post('/api/v1/config/sensitivity-thresholds/reset').then(res => res.data),
 };
 
-// 代理模型配置API
+// Proxy model configuration API
 export const proxyModelsApi = {
-  // 获取代理模型列表
+  // Get proxy model list
   list: (): Promise<{ success: boolean; data: any[] }> =>
     api.get('/api/v1/proxy/models').then(res => res.data),
   
-  // 获取代理模型详情
+  // Get proxy model detail
   get: (id: string): Promise<{ success: boolean; data: any }> =>
     api.get(`/api/v1/proxy/models/${id}`).then(res => res.data),
   
-  // 创建代理模型配置
+  // Create proxy model configuration
   create: (data: {
     config_name: string;
     api_base_url: string;
@@ -361,7 +361,7 @@ export const proxyModelsApi = {
   }): Promise<{ success: boolean; message: string; data?: any }> =>
     api.post('/api/v1/proxy/models', data).then(res => res.data),
   
-  // 更新代理模型配置
+  // Update proxy model configuration
   update: (id: string, data: {
     config_name?: string;
     api_base_url?: string;
@@ -375,24 +375,24 @@ export const proxyModelsApi = {
   }): Promise<{ success: boolean; message: string }> =>
     api.put(`/api/v1/proxy/models/${id}`, data).then(res => res.data),
   
-  // 删除代理模型配置
+  // Delete proxy model configuration
   delete: (id: string): Promise<{ success: boolean; message: string }> =>
     api.delete(`/api/v1/proxy/models/${id}`).then(res => res.data),
   
-  // 测试代理模型配置
+  // Test proxy model configuration
   test: (id: string): Promise<{ success: boolean; message: string; data?: any }> =>
     api.post(`/api/v1/proxy/models/${id}/test`).then(res => res.data),
 };
 
-// 知识库管理API
+// Knowledge base management API
 export const knowledgeBaseApi = {
-  // 获取知识库列表
+  // Get knowledge base list
   list: (category?: string): Promise<KnowledgeBase[]> => {
     const url = category ? `/api/v1/config/knowledge-bases?category=${category}` : '/api/v1/config/knowledge-bases';
     return api.get(url).then(res => res.data);
   },
 
-  // 创建知识库
+  // Create knowledge base
   create: (data: FormData): Promise<{ success: boolean; message: string }> =>
     api.post('/api/v1/config/knowledge-bases', data, {
       headers: {
@@ -400,7 +400,7 @@ export const knowledgeBaseApi = {
       },
     }).then(res => res.data),
 
-  // 更新知识库
+  // Update knowledge base
   update: (id: number, data: {
     category: string;
     name: string;
@@ -409,11 +409,11 @@ export const knowledgeBaseApi = {
   }): Promise<{ success: boolean; message: string }> =>
     api.put(`/api/v1/config/knowledge-bases/${id}`, data).then(res => res.data),
 
-  // 删除知识库
+  // Delete knowledge base
   delete: (id: number): Promise<{ success: boolean; message: string }> =>
     api.delete(`/api/v1/config/knowledge-bases/${id}`).then(res => res.data),
 
-  // 替换知识库文件
+  // Replace knowledge base file
   replaceFile: (id: number, file: File): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();
     formData.append('file', file);
@@ -424,50 +424,58 @@ export const knowledgeBaseApi = {
     }).then(res => res.data);
   },
 
-  // 获取知识库文件信息
+  // Get knowledge base file info
   getInfo: (id: number): Promise<KnowledgeBaseFileInfo> =>
     api.get(`/api/v1/config/knowledge-bases/${id}/info`).then(res => res.data),
 
-  // 搜索相似问题
+  // Search similar questions
   search: (id: number, query: string, topK?: number): Promise<SimilarQuestionResult[]> => {
     const params = new URLSearchParams({ query });
     if (topK) params.append('top_k', topK.toString());
     return api.post(`/api/v1/config/knowledge-bases/${id}/search?${params.toString()}`).then(res => res.data);
   },
 
-  // 按类别获取知识库
+  // Get knowledge base by category
   getByCategory: (category: string): Promise<KnowledgeBase[]> =>
     api.get(`/api/v1/config/categories/${category}/knowledge-bases`).then(res => res.data),
 };
 
-// 数据安全API
+// Data security API
 export const dataSecurityApi = {
-  // 获取所有敏感数据类型
+  // Get all sensitive data types
   getEntityTypes: (): Promise<{ items: any[] }> =>
     api.get('/api/v1/config/data-security/entity-types').then(res => res.data),
 
-  // 获取单个敏感数据类型
+  // Get single sensitive data type
   getEntityType: (id: string): Promise<any> =>
     api.get(`/api/v1/config/data-security/entity-types/${id}`).then(res => res.data),
 
-  // 创建敏感数据类型
+  // Create sensitive data type
   createEntityType: (data: any): Promise<any> =>
     api.post('/api/v1/config/data-security/entity-types', data).then(res => res.data),
 
-  // 更新敏感数据类型
+  // Update sensitive data type
   updateEntityType: (id: string, data: any): Promise<any> =>
     api.put(`/api/v1/config/data-security/entity-types/${id}`, data).then(res => res.data),
 
-  // 删除敏感数据类型
+  // Delete sensitive data type
   deleteEntityType: (id: string): Promise<any> =>
     api.delete(`/api/v1/config/data-security/entity-types/${id}`).then(res => res.data),
 
-  // 创建全局敏感数据类型（仅管理员）
+  // Create global sensitive data type (only admin)
   createGlobalEntityType: (data: any): Promise<any> =>
     api.post('/api/v1/config/data-security/global-entity-types', data).then(res => res.data),
+
+  // Get detection results list
+  getDetectionResults: (limit: number, offset: number): Promise<{ items: any[]; total: number }> =>
+    api.get(`/api/v1/results?per_page=${limit}&page=${Math.floor(offset / limit) + 1}`).then(res => res.data),
+
+  // Get single detection result detail
+  getDetectionResult: (requestId: string): Promise<any> =>
+    api.get(`/api/v1/results/${requestId}`).then(res => res.data),
 };
 
-// 便捷函数
+// Convenient functions
 export const getRiskConfig = () => riskConfigApi.get();
 export const updateRiskConfig = (config: any) => riskConfigApi.update(config);
 

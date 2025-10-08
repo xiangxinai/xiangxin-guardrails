@@ -12,7 +12,6 @@ import {
   Alert,
   Modal,
   Select,
-  Divider
 } from 'antd';
 import {
   InfoCircleOutlined,
@@ -53,7 +52,7 @@ const SensitivityThresholdManagement: React.FC = () => {
     loadConfig();
   }, []);
 
-  // 监听用户切换事件，自动刷新配置
+  // Listen to user switch event, automatically refresh config
   useEffect(() => {
     const unsubscribe = onUserSwitch(() => {
       loadConfig();
@@ -74,7 +73,7 @@ const SensitivityThresholdManagement: React.FC = () => {
     }
   };
 
-  // 获取敏感度等级数据
+  // Get sensitivity level data
   const getSensitivityLevels = (): SensitivityLevel[] => {
     if (!config) return [];
 
@@ -103,29 +102,29 @@ const SensitivityThresholdManagement: React.FC = () => {
     ];
   };
 
-  // 打开编辑模态框
+  // Open edit modal
   const handleEdit = () => {
     const levels = getSensitivityLevels();
     setEditingLevels(levels);
     setEditModalVisible(true);
   };
 
-  // 验证阈值设置
+  // Validate threshold settings
   const validateThresholds = (levels: SensitivityLevel[]): boolean => {
     const sortedLevels = [...levels].sort((a, b) => b.threshold - a.threshold);
-    // 阈值必须是0-1之间
+    // Threshold must be between 0 and 1
     if (sortedLevels[0].threshold < 0 || sortedLevels[0].threshold > 1) {
       message.error(t('sensitivity.invalidThreshold'));
       return false;
     }
 
-    // 检查是否从高到低排序
+    // Check if sorted from high to low
     if (sortedLevels[0].key !== 'low' || sortedLevels[1].key !== 'medium' || sortedLevels[2].key !== 'high') {
       message.error(t('sensitivity.thresholdOrder'));
       return false;
     }
 
-    // 检查是否有重叠
+    // Check if there is overlap
     for (let i = 0; i < sortedLevels.length - 1; i++) {
       if (sortedLevels[i].threshold <= sortedLevels[i + 1].threshold) {
         message.error(t('sensitivity.thresholdOrder'));
@@ -136,7 +135,7 @@ const SensitivityThresholdManagement: React.FC = () => {
     return true;
   };
 
-  // 保存配置
+  // Save config
   const handleSave = async () => {
     if (!validateThresholds(editingLevels)) return;
 
@@ -162,7 +161,7 @@ const SensitivityThresholdManagement: React.FC = () => {
     }
   };
 
-  // 处理当前敏感度等级的变更
+  // Handle current sensitivity level change
   const handleTriggerLevelChange = async (value: string) => {
     if (!config) return;
 
@@ -174,7 +173,7 @@ const SensitivityThresholdManagement: React.FC = () => {
       setConfig(newConfig);
 
       const levelNames = { low: t('sensitivity.low'), medium: t('sensitivity.medium'), high: t('sensitivity.high') };
-      message.success(`当前敏感度等级已设置为 ${levelNames[value as keyof typeof levelNames]}敏感度`);
+      message.success(`Current sensitivity level is set to ${levelNames[value as keyof typeof levelNames]} sensitivity`);
     } catch (error) {
       message.error(t('sensitivity.fetchFailed'));
       console.error('Failed to update sensitivity trigger level:', error);
@@ -183,7 +182,7 @@ const SensitivityThresholdManagement: React.FC = () => {
     }
   };
 
-  // 表格列定义
+  // Table column definition
   const columns = [
     {
       title: t('sensitivity.levelName'),
@@ -212,7 +211,7 @@ const SensitivityThresholdManagement: React.FC = () => {
     }
   ];
 
-  // 编辑模态框的表格列
+  // Edit modal table column
   const editColumns = [
     {
       title: t('sensitivity.sensitivityLevel'),
@@ -220,7 +219,7 @@ const SensitivityThresholdManagement: React.FC = () => {
       key: 'name',
       render: (text: string) => {
         const colors = { [t('sensitivity.high')]: '#f5222d', [t('sensitivity.medium')]: '#fa8c16', [t('sensitivity.low')]: '#52c41a' };
-        return <Tag color={colors[text as keyof typeof colors]}>{text}敏感度</Tag>;
+        return <Tag color={colors[text as keyof typeof colors]}>{text}sensitivity</Tag>;
       }
     },
     {
@@ -275,7 +274,7 @@ const SensitivityThresholdManagement: React.FC = () => {
             </Paragraph>
           </div>
 
-          {/* 当前配置表格 */}
+          {/* Current config table */}
           <Card
             title={t('sensitivity.currentSensitivityLevel')}
             extra={
@@ -297,7 +296,7 @@ const SensitivityThresholdManagement: React.FC = () => {
             />
           </Card>
 
-          {/* 当前敏感度等级配置 */}
+          {/* Current sensitivity level config */}
           <Card title={t('sensitivity.currentSensitivityLevel')}>
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <Alert
@@ -369,7 +368,7 @@ const SensitivityThresholdManagement: React.FC = () => {
             </Space>
           </Card>
 
-          {/* 编辑模态框 */}
+          {/* Edit modal */}
           <Modal
             title={t('sensitivity.editThresholds')}
             open={editModalVisible}

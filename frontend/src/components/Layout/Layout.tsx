@@ -39,17 +39,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   } = theme.useToken();
 
   useEffect(() => {
-    // 如果是超级管理员，定期检查切换状态
+    // If super admin, periodically check switch status
     if (user?.is_super_admin) {
       const interval = setInterval(() => {
         refreshSwitchStatus();
-      }, 30000); // 每30秒检查一次
+      }, 30000); // Check every 30 seconds
       return () => clearInterval(interval);
     }
   }, [user?.is_super_admin, refreshSwitchStatus]);
 
   useEffect(() => {
-    // 获取系统版本信息
+    // Get system version information
     const fetchSystemVersion = async () => {
       try {
         const systemInfo = await configApi.getSystemInfo();
@@ -197,7 +197,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       await switchToUser(userId);
       setSwitchModalVisible(false);
       message.success(t('layout.switchSuccess'));
-      // 刷新当前页面
+      // Refresh current page
       window.location.reload();
     } catch (error) {
       console.error('Switch user failed:', error);
@@ -209,7 +209,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     try {
       await exitSwitch();
       message.success(t('layout.exitSwitchSuccess'));
-      // 刷新当前页面
+      // Refresh current page
       window.location.reload();
     } catch (error) {
       console.error('Exit switch failed:', error);
@@ -384,7 +384,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Content>
       </AntLayout>
       
-      {/* 租户切换Modal */}
+      {/* Tenant switch Modal */}
       <Modal
         title={t('layout.switchTenant')}
         open={switchModalVisible}
@@ -401,7 +401,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           loading={loading}
           showSearch
           filterOption={(input, option) => {
-            // 从 users 数组中找到对应的租户进行过滤
+            // Find corresponding tenant from users array for filtering
             const user = users.find(u => u.id === option?.value);
             return user ? user.email.toLowerCase().includes(input.toLowerCase()) : false;
           }}

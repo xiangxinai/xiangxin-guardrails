@@ -114,17 +114,17 @@ const UserManagement: React.FC = () => {
   const handleSave = async (values: any) => {
     try {
       if (editingUser) {
-        // 更新租户
+        // Update tenant
         await adminApi.updateUser(editingUser.id, values);
         message.success(t('admin.tenantUpdated'));
       } else {
-        // 创建新租户
+        // Create new tenant
         await adminApi.createUser(values);
         message.success(t('admin.tenantCreated'));
       }
 
       setModalVisible(false);
-      // 延迟重置表单，避免用户看到按钮状态变化
+      // Delay reset form, avoid user seeing button state change
       setTimeout(() => {
         form.resetFields();
       }, 300);
@@ -161,7 +161,7 @@ const UserManagement: React.FC = () => {
     try {
       await switchToUser(tenantId);
       message.success(t('admin.switchedToTenant', { email }));
-      // 刷新当前页面以更新状态
+      // Refresh current page to update status
       window.location.reload();
     } catch (error: any) {
       console.error('Switch user failed:', error);
@@ -177,7 +177,7 @@ const UserManagement: React.FC = () => {
       render: (email: string, record: User) => (
         <Space>
           <UserOutlined />
-          {/* 只有超级管理员且不是当前租户且未在切换状态时才可点击切换 */}
+          {/* Only super admin and not current tenant and not in switching state can click switch */}
           {currentUser?.is_super_admin && record.id !== currentUser?.id && !switchInfo.is_switched ? (
             <Text
               style={{ cursor: 'pointer', color: '#1890ff' }}
@@ -340,7 +340,7 @@ const UserManagement: React.FC = () => {
           </Space>
         </div>
 
-        {/* 搜索框 */}
+        {/* Search box */}
         <div style={{ marginBottom: 16 }}>
           <Input.Search
             placeholder={t('admin.searchTenantPlaceholder')}
@@ -373,7 +373,7 @@ const UserManagement: React.FC = () => {
         open={modalVisible}
         onCancel={() => {
           setModalVisible(false);
-          // 延迟重置表单，避免用户看到按钮状态变化
+          // Delay reset form, avoid user seeing button state change
           setTimeout(() => {
             form.resetFields();
           }, 300);

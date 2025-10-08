@@ -33,22 +33,22 @@ async def get_test_models(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """获取用户的被测模型配置"""
+    """Get the user's test model configuration"""
     try:
-        # 获取用户上下文
+        # Get user context
         auth_context = getattr(request.state, 'auth_context', None)
         if not auth_context:
-            raise HTTPException(status_code=401, detail="用户未认证")
+            raise HTTPException(status_code=401, detail="User not authenticated")
         
         tenant_id = str(auth_context['data'].get('tenant_id'))
         tenant_uuid = uuid.UUID(tenant_id)
         
-        # 查询用户的模型配置
+        # Query user's model configuration
         models = db.query(TestModelConfig).filter(
             TestModelConfig.tenant_id == tenant_uuid
         ).all()
         
-        # 返回时不包含API Key（安全考虑）
+        # Return without API Key (security consideration)
         return [TestModelResponse(
             id=model.id,
             name=model.name,
@@ -59,7 +59,7 @@ async def get_test_models(
         
     except Exception as e:
         logger.error(f"Get test models error: {e}")
-        raise HTTPException(status_code=500, detail="获取模型配置失败")
+        raise HTTPException(status_code=500, detail="Failed to get model configuration")
 
 @router.post("/test-models", response_model=TestModelResponse)
 async def create_test_model(
@@ -67,17 +67,17 @@ async def create_test_model(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """创建被测模型配置"""
+    """Create the user's test model configuration"""
     try:
-        # 获取用户上下文
+        # Get user context
         auth_context = getattr(request.state, 'auth_context', None)
         if not auth_context:
-            raise HTTPException(status_code=401, detail="用户未认证")
+            raise HTTPException(status_code=401, detail="User not authenticated")
         
         tenant_id = str(auth_context['data'].get('tenant_id'))
         tenant_uuid = uuid.UUID(tenant_id)
         
-        # 创建新的模型配置
+        # Create new model configuration
         new_model = TestModelConfig(
             tenant_id=tenant_uuid,
             name=model_data.name,
@@ -102,7 +102,7 @@ async def create_test_model(
     except Exception as e:
         db.rollback()
         logger.error(f"Create test model error: {e}")
-        raise HTTPException(status_code=500, detail="创建模型配置失败")
+        raise HTTPException(status_code=500, detail="Failed to create model configuration")
 
 @router.put("/test-models/{model_id}", response_model=TestModelResponse)
 async def update_test_model(
@@ -111,26 +111,26 @@ async def update_test_model(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """更新被测模型配置"""
+    """Update the user's test model configuration"""
     try:
-        # 获取用户上下文
+        # Get user context
         auth_context = getattr(request.state, 'auth_context', None)
         if not auth_context:
-            raise HTTPException(status_code=401, detail="用户未认证")
+            raise HTTPException(status_code=401, detail="User not authenticated")
         
         tenant_id = str(auth_context['data'].get('tenant_id'))
         tenant_uuid = uuid.UUID(tenant_id)
         
-        # 查询模型配置
+        # Query model configuration
         model = db.query(TestModelConfig).filter(
             TestModelConfig.id == model_id,
             TestModelConfig.tenant_id == tenant_uuid
         ).first()
         
         if not model:
-            raise HTTPException(status_code=404, detail="模型配置不存在")
+            raise HTTPException(status_code=404, detail="Model configuration does not exist")
         
-        # 更新配置
+        # Update configuration
         model.name = model_data.name
         model.base_url = model_data.base_url
         model.api_key = model_data.api_key
@@ -151,7 +151,7 @@ async def update_test_model(
     except Exception as e:
         db.rollback()
         logger.error(f"Update test model error: {e}")
-        raise HTTPException(status_code=500, detail="更新模型配置失败")
+        raise HTTPException(status_code=500, detail="Failed to update model configuration")
 
 @router.delete("/test-models/{model_id}")
 async def delete_test_model(
@@ -159,34 +159,34 @@ async def delete_test_model(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """删除被测模型配置"""
+    """Delete the user's test model configuration"""
     try:
-        # 获取用户上下文
+        # Get user context
         auth_context = getattr(request.state, 'auth_context', None)
         if not auth_context:
-            raise HTTPException(status_code=401, detail="用户未认证")
+            raise HTTPException(status_code=401, detail="User not authenticated")
         
         tenant_id = str(auth_context['data'].get('tenant_id'))
         tenant_uuid = uuid.UUID(tenant_id)
         
-        # 查询并删除模型配置
+        # Query and delete model configuration
         model = db.query(TestModelConfig).filter(
             TestModelConfig.id == model_id,
             TestModelConfig.tenant_id == tenant_uuid
         ).first()
         
         if not model:
-            raise HTTPException(status_code=404, detail="模型配置不存在")
+            raise HTTPException(status_code=404, detail="Model configuration does not exist")
         
         db.delete(model)
         db.commit()
         
-        return {"message": "模型配置已删除"}
+        return {"message": "Model configuration has been deleted"}
         
     except Exception as e:
         db.rollback()
         logger.error(f"Delete test model error: {e}")
-        raise HTTPException(status_code=500, detail="删除模型配置失败")
+        raise HTTPException(status_code=500, detail="Failed to delete model configuration")
 
 @router.patch("/test-models/{model_id}/toggle")
 async def toggle_test_model(
@@ -194,32 +194,32 @@ async def toggle_test_model(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """切换被测模型启用状态"""
+    """Toggle the user's test model enabled status"""
     try:
-        # 获取用户上下文
+        # Get user context
         auth_context = getattr(request.state, 'auth_context', None)
         if not auth_context:
-            raise HTTPException(status_code=401, detail="用户未认证")
+            raise HTTPException(status_code=401, detail="User not authenticated")
         
         tenant_id = str(auth_context['data'].get('tenant_id'))
         tenant_uuid = uuid.UUID(tenant_id)
         
-        # 查询模型配置
+        # Query model configuration
         model = db.query(TestModelConfig).filter(
             TestModelConfig.id == model_id,
             TestModelConfig.tenant_id == tenant_uuid
         ).first()
         
         if not model:
-            raise HTTPException(status_code=404, detail="模型配置不存在")
+            raise HTTPException(status_code=404, detail="Model configuration does not exist")
         
-        # 切换启用状态
+        # Toggle enabled status
         model.enabled = not model.enabled
         db.commit()
         
-        return {"message": f"模型已{'启用' if model.enabled else '禁用'}"}
+        return {"message": f"Model has been {'enabled' if model.enabled else 'disabled'}"}
         
     except Exception as e:
         db.rollback()
         logger.error(f"Toggle test model error: {e}")
-        raise HTTPException(status_code=500, detail="切换模型状态失败")
+        raise HTTPException(status_code=500, detail="Failed to toggle model status")

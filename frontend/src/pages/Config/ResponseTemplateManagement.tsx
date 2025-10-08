@@ -20,35 +20,35 @@ const ResponseTemplateManagement: React.FC = () => {
 
   const getRiskLevelLabel = (riskLevel: string) => {
     const riskLevelMap: { [key: string]: string } = {
-      '高风险': t('risk.level.high_risk'),
-      '中风险': t('risk.level.medium_risk'),
-      '低风险': t('risk.level.low_risk'),
-      '无风险': t('risk.level.no_risk'),
+      'high_risk': t('risk.level.high_risk'),
+      'medium_risk': t('risk.level.medium_risk'),
+      'low_risk': t('risk.level.low_risk'),
+      'no_risk': t('risk.level.no_risk'),
     };
     return riskLevelMap[riskLevel] || riskLevel;
   };
 
   const categories = [
-    { value: 'S1', label: `S1 - ${t('category.S1')}`, riskLevel: '中风险' },
-    { value: 'S2', label: `S2 - ${t('category.S2')}`, riskLevel: '高风险' },
-    { value: 'S3', label: `S3 - ${t('category.S3')}`, riskLevel: '高风险' },
-    { value: 'S4', label: `S4 - ${t('category.S4')}`, riskLevel: '中风险' },
-    { value: 'S5', label: `S5 - ${t('category.S5')}`, riskLevel: '高风险' },
-    { value: 'S6', label: `S6 - ${t('category.S6')}`, riskLevel: '中风险' },
-    { value: 'S7', label: `S7 - ${t('category.S7')}`, riskLevel: '中风险' },
-    { value: 'S8', label: `S8 - ${t('category.S8')}`, riskLevel: '低风险' },
-    { value: 'S9', label: `S9 - ${t('category.S9')}`, riskLevel: '高风险' },
-    { value: 'S10', label: `S10 - ${t('category.S10')}`, riskLevel: '低风险' },
-    { value: 'S11', label: `S11 - ${t('category.S11')}`, riskLevel: '低风险' },
-    { value: 'S12', label: `S12 - ${t('category.S12')}`, riskLevel: '低风险' },
-    { value: 'default', label: t('template.defaultReject'), riskLevel: '无风险' },
+    { value: 'S1', label: `S1 - ${t('category.S1')}`, riskLevel: 'medium_risk' },
+    { value: 'S2', label: `S2 - ${t('category.S2')}`, riskLevel: 'high_risk' },
+    { value: 'S3', label: `S3 - ${t('category.S3')}`, riskLevel: 'high_risk' },
+    { value: 'S4', label: `S4 - ${t('category.S4')}`, riskLevel: 'medium_risk' },
+    { value: 'S5', label: `S5 - ${t('category.S5')}`, riskLevel: 'high_risk' },
+    { value: 'S6', label: `S6 - ${t('category.S6')}`, riskLevel: 'medium_risk' },
+    { value: 'S7', label: `S7 - ${t('category.S7')}`, riskLevel: 'medium_risk' },
+    { value: 'S8', label: `S8 - ${t('category.S8')}`, riskLevel: 'low_risk' },
+    { value: 'S9', label: `S9 - ${t('category.S9')}`, riskLevel: 'high_risk' },
+    { value: 'S10', label: `S10 - ${t('category.S10')}`, riskLevel: 'low_risk' },
+    { value: 'S11', label: `S11 - ${t('category.S11')}`, riskLevel: 'low_risk' },
+    { value: 'S12', label: `S12 - ${t('category.S12')}`, riskLevel: 'low_risk' },
+    { value: 'default', label: t('template.defaultReject'), riskLevel: 'no_risk' },
   ];
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  // 监听用户切换事件，自动刷新数据
+  // Listen to user switch event, automatically refresh data
   useEffect(() => {
     const unsubscribe = onUserSwitch(() => {
       fetchData();
@@ -61,13 +61,13 @@ const ResponseTemplateManagement: React.FC = () => {
       setLoading(true);
       const result = await configApi.responses.list();
       
-      // 确保每个类别都有一条拒答记录，如果没有则创建默认的
+      // Ensure each category has one reject record, if not, create a default one
       const existingCategories = result.map((item: ResponseTemplate) => item.category);
       const missingCategories = categories.filter(cat => !existingCategories.includes(cat.value));
       
-      // 为缺失的类别创建默认拒答内容
+      // Create default reject content for missing categories
       for (const category of missingCategories) {
-        // 使用国际化的默认拒答内容
+        // Use internationalized default reject content
         const defaultContent = t(`template.defaultContents.${category.value}`);
         try {
           await configApi.responses.create({
@@ -82,7 +82,7 @@ const ResponseTemplateManagement: React.FC = () => {
         }
       }
       
-      // 重新获取数据
+      // Re-fetch data
       const updatedResult = await configApi.responses.list();
       setData(updatedResult);
     } catch (error) {
@@ -109,7 +109,7 @@ const ResponseTemplateManagement: React.FC = () => {
         return;
       }
 
-      // 更新拒答内容，保持原有的类别和风险等级
+      // Update reject content, keep the original category and risk level
       const submissionData = {
         category: editingItem.category,
         risk_level: editingItem.risk_level,
@@ -150,7 +150,7 @@ const ResponseTemplateManagement: React.FC = () => {
       dataIndex: 'risk_level',
       key: 'risk_level',
       render: (level: string) => {
-        const color = level === '高风险' ? 'red' : level === '中风险' ? 'orange' : level === '低风险' ? 'yellow' : 'green';
+        const color = level === 'high_risk' ? 'red' : level === 'medium_risk' ? 'orange' : level === 'low_risk' ? 'yellow' : 'green';
         return (
           <Tag color={color}>
             {getRiskLevelLabel(level)}

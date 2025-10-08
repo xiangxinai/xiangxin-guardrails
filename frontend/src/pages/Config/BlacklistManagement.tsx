@@ -21,7 +21,7 @@ const BlacklistManagement: React.FC = () => {
     fetchData();
   }, []);
 
-  // 监听用户切换事件，自动刷新数据
+  // Listen to user switch event, automatically refresh data
   useEffect(() => {
     const unsubscribe = onUserSwitch(() => {
       fetchData();

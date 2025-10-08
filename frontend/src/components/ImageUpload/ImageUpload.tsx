@@ -20,7 +20,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   const [previewImage, setPreviewImage] = useState('');
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // 将文件转换为base64
+  // Convert file to base64
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -36,11 +36,11 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     });
   };
 
-  // 处理文件选择
+  // Handle file selection
   const handleChange = async (info: any) => {
     let newFileList = [...info.fileList];
 
-    // 限制数量
+    // Limit quantity
     if (newFileList.length > maxCount) {
       message.warning(t('imageUpload.maxCountWarning', { count: maxCount }));
       newFileList = newFileList.slice(0, maxCount);
@@ -48,7 +48,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
     setFileList(newFileList);
 
-    // 转换所有文件为base64
+    // Convert all files to base64
     try {
       const base64List: string[] = [];
       for (const file of newFileList) {
@@ -64,26 +64,26 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     }
   };
 
-  // 上传前的验证
+  // Validation before upload
   const beforeUpload = (file: File) => {
-    // 验证文件类型
+    // Validate file type
     const isImage = file.type.startsWith('image/');
     if (!isImage) {
       message.error(t('imageUpload.onlyImageFiles'));
       return Upload.LIST_IGNORE;
     }
 
-    // 验证文件大小
+    // Validate file size
     const isLtMaxSize = file.size / 1024 / 1024 < maxSize;
     if (!isLtMaxSize) {
       message.error(t('imageUpload.fileSizeExceeded', { size: maxSize }));
       return Upload.LIST_IGNORE;
     }
 
-    return false; // 阻止自动上传
+    return false; // Prevent automatic upload
   };
 
-  // 预览图片
+  // Preview image
   const handlePreview = async (file: UploadFile) => {
     if (!file.url && !file.preview && file.originFileObj) {
       file.preview = await fileToBase64(file.originFileObj as File);
@@ -92,12 +92,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     setPreviewOpen(true);
   };
 
-  // 移除图片
+  // Remove image
   const handleRemove = (file: UploadFile) => {
     const newFileList = fileList.filter(item => item.uid !== file.uid);
     setFileList(newFileList);
 
-    // 更新base64列表
+    // Update base64 list
     const updateBase64List = async () => {
       const base64List: string[] = [];
       for (const f of newFileList) {

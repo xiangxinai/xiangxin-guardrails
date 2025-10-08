@@ -36,7 +36,7 @@ interface TestModel {
   api_base_url: string;
   model_name: string;
   enabled: boolean;
-  selected: boolean;  // 是否被选中用于在线测试
+  selected: boolean;  // Whether it has been selected for online testing
 }
 
 interface TestCase {
@@ -64,7 +64,7 @@ interface GuardrailResult {
   overall_risk_level: string;
   suggest_action: string;
   suggest_answer: string;
-  error?: string; // 添加错误信息字段
+  error?: string; // Add error information field
 }
 
 interface ModelResponse {
@@ -109,7 +109,7 @@ const OnlineTest: React.FC = () => {
       setModels(newModels);
       setModelSelectionChanged(true);
 
-      // 保存到后端
+      // Save to backend
       const selections = newModels.map(model => ({
         id: model.id,
         selected: model.selected
@@ -121,7 +121,7 @@ const OnlineTest: React.FC = () => {
     } catch (error) {
       console.error('Failed to update model selection:', error);
       message.error(t('onlineTest.loadModelsFailed'));
-      // 回滚本地状态
+      // Roll back local state
       loadModels();
     }
   };
@@ -216,18 +216,18 @@ const OnlineTest: React.FC = () => {
 
     setLoading(true);
     try {
-      // 构造消息格式
+      // Construct message format
       let messages;
-      let content: any[] = []; // 提升作用域到函数顶部
+      let content: any[] = []; // Promote scope to function top
 
       if (inputType === 'question') {
-        // 构建多模态内容
-        // 添加文本内容（如果有）
+        // Construct multi-modal content
+        // Add text content (if any)
         if (testInput.trim()) {
           content.push({ type: 'text', text: testInput });
         }
 
-        // 添加图片内容
+        // Add image content
         uploadedImages.forEach(base64Image => {
           content.push({
             type: 'image_url',
@@ -235,7 +235,7 @@ const OnlineTest: React.FC = () => {
           });
         });
 
-        // 如果只有文本，使用简单格式；如果有图片，使用多模态格式
+        // If there is only text, use simple format; if there are images, use multi-modal format
         if (uploadedImages.length > 0) {
           messages = [{ role: 'user', content }];
         } else {
@@ -258,7 +258,7 @@ const OnlineTest: React.FC = () => {
         ];
       }
 
-      // 检查是否有图片，决定使用哪个API和模型
+      // Check if there are images, decide which API and model to use
       const hasImages = uploadedImages.length > 0;
       let response;
 
@@ -368,57 +368,41 @@ const OnlineTest: React.FC = () => {
 
 
   const getRiskColor = (level: string) => {
-    const highRisk = t('risk.level.high_risk');
-    const mediumRisk = t('risk.level.medium_risk');
-    const lowRisk = t('risk.level.low_risk');
-    const noRisk = t('risk.level.no_risk');
-    const testFailed = t('onlineTest.testFailed');
-    const detectionFailed = t('onlineTest.detectionFailed');
-
+    // The backend returns standardized English values, directly match
     switch (level) {
-      case highRisk:
-      case '高风险':
+      case 'high_risk':
         return 'red';
-      case mediumRisk:
-      case '中风险':
+      case 'medium_risk':
         return 'orange';
-      case lowRisk:
-      case '低风险':
+      case 'low_risk':
         return 'yellow';
-      case noRisk:
-      case '无风险':
+      case 'no_risk':
       case 'safe':
         return 'green';
-      case testFailed:
-      case detectionFailed:
-      case '测试失败':
-      case '检测失败':
+      case 'test_failed':
+      case 'detection_failed':
+      case 'error':
         return 'red';
-      default: return 'default';
+      default: 
+        return 'default';
     }
   };
 
   const getActionColor = (action: string) => {
-    const pass = t('action.pass');
-    const reject = t('action.reject');
-    const replace = t('action.replace');
-    const testFailed = t('onlineTest.testFailed');
-
+    // The backend returns standardized English values, directly match
     switch (action) {
-      case reject:
-      case '拒答':
+      case 'reject':
         return 'red';
-      case replace:
-      case '代答':
+      case 'replace':
         return 'orange';
-      case pass:
-      case '通过':
+      case 'pass':
         return 'green';
-      case testFailed:
-      case '测试失败':
-      case '系统错误':
+      case 'test_failed':
+      case 'error':
+      case 'system_error':
         return 'red';
-      default: return 'default';
+      default: 
+        return 'default';
     }
   };
 

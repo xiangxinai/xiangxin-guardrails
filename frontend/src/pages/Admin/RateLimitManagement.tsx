@@ -103,14 +103,14 @@ const RateLimitManagement: React.FC = () => {
   const handleSave = async (values: any) => {
     try {
       if (editingRateLimit) {
-        // 更新限速配置
+        // Update rate limit config
         await adminApi.setUserRateLimit({
           tenant_id: editingRateLimit.tenant_id,
           requests_per_second: values.requests_per_second
         });
         message.success(t('rateLimit.rateLimitUpdated'));
       } else {
-        // 创建新限速配置
+        // Create new rate limit config
         await adminApi.setUserRateLimit({
           tenant_id: values.tenant_id,
           requests_per_second: values.requests_per_second
@@ -139,7 +139,7 @@ const RateLimitManagement: React.FC = () => {
   };
 
   const getAvailableUsers = () => {
-    // 过滤掉已有限速配置的租户
+    // Filter out tenants with existing rate limit config
     const configuredTenantIds = rateLimits.map(rl => rl.tenant_id);
     return users.filter(user => !configuredTenantIds.includes(user.id));
   };
@@ -357,7 +357,7 @@ const RateLimitManagement: React.FC = () => {
                 {getAvailableUsers().map(user => (
                   <Option key={user.id} value={user.id}>
                     {user.email}
-                    {user.is_super_admin && <Tag color="red" size="small" style={{ marginLeft: 8 }}>{t('admin.admin')}</Tag>}
+                    {user.is_super_admin && <Tag color="red" style={{ marginLeft: 8 }}>{t('admin.admin')}</Tag>}
                   </Option>
                 ))}
               </Select>

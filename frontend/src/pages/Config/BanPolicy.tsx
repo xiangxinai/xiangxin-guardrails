@@ -68,7 +68,7 @@ const BanPolicy: React.FC = () => {
     }
   };
 
-  // 获取封禁用户列表
+  // Fetch banned users list
   const fetchBannedUsers = async () => {
     try {
       setTableLoading(true);
@@ -86,7 +86,7 @@ const BanPolicy: React.FC = () => {
     fetchBannedUsers();
   }, []);
 
-  // 保存策略
+  // Save policy
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
@@ -101,7 +101,7 @@ const BanPolicy: React.FC = () => {
     }
   };
 
-  // 应用模板
+  // Apply template
   const applyTemplate = (template: string) => {
     const templates: { [key: string]: any } = {
       strict: {
@@ -137,7 +137,7 @@ const BanPolicy: React.FC = () => {
     form.setFieldsValue(templates[template]);
   };
 
-  // 解封用户
+  // Unban user
   const handleUnban = async (userId: string) => {
     try {
       await configApi.banPolicy.unbanUser(userId);
@@ -148,7 +148,7 @@ const BanPolicy: React.FC = () => {
     }
   };
 
-  // 查看用户风险历史
+  // View user risk history
   const viewUserHistory = async (userId: string) => {
     try {
       setSelectedUserId(userId);
@@ -193,11 +193,11 @@ const BanPolicy: React.FC = () => {
       key: 'risk_level',
       width: 100,
       render: (level) => {
-        const color = level === '高风险' ? 'red' : level === '中风险' ? 'orange' : 'blue';
+        const color = level === 'high_risk' ? 'red' : level === 'medium_risk' ? 'orange' : 'blue';
         let displayLevel = level;
-        if (level === '高风险') displayLevel = t('banPolicy.highRisk');
-        else if (level === '中风险') displayLevel = t('banPolicy.mediumRisk');
-        else if (level === '低风险') displayLevel = t('banPolicy.lowRisk');
+        if (level === 'high_risk') displayLevel = t('banPolicy.highRisk');
+        else if (level === 'medium_risk') displayLevel = t('banPolicy.mediumRisk');
+        else if (level === 'low_risk') displayLevel = t('banPolicy.lowRisk');
         return <Tag color={color}>{displayLevel}</Tag>;
       },
     },
@@ -213,10 +213,10 @@ const BanPolicy: React.FC = () => {
       key: 'status',
       width: 100,
       render: (status) => {
-        const color = status === '封禁中' ? 'red' : 'green';
+        const color = status === 'banned' ? 'red' : 'green';
         let displayStatus = status;
-        if (status === '封禁中') displayStatus = t('banPolicy.banned');
-        else if (status === '已解封') displayStatus = t('banPolicy.unbanned');
+        if (status === 'banned') displayStatus = t('banPolicy.banned');
+        else if (status === 'unbanned') displayStatus = t('banPolicy.unbanned');
         return <Tag color={color}>{displayStatus}</Tag>;
       },
     },
@@ -226,7 +226,7 @@ const BanPolicy: React.FC = () => {
       width: 150,
       render: (_, record) => (
         <Space size="small">
-          {record.status === '封禁中' && (
+          {record.status === 'banned' && (
             <Button type="link" size="small" onClick={() => handleUnban(record.user_id)}>
               {t('banPolicy.unbanUser')}
             </Button>
@@ -251,11 +251,11 @@ const BanPolicy: React.FC = () => {
       dataIndex: 'risk_level',
       key: 'risk_level',
       render: (level) => {
-        const color = level === '高风险' ? 'red' : level === '中风险' ? 'orange' : 'blue';
+        const color = level === 'high_risk' ? 'red' : level === 'medium_risk' ? 'orange' : 'blue';
         let displayLevel = level;
-        if (level === '高风险') displayLevel = t('banPolicy.highRisk');
-        else if (level === '中风险') displayLevel = t('banPolicy.mediumRisk');
-        else if (level === '低风险') displayLevel = t('banPolicy.lowRisk');
+        if (level === 'high_risk') displayLevel = t('banPolicy.highRisk');
+        else if (level === 'medium_risk') displayLevel = t('banPolicy.mediumRisk');
+        else if (level === 'low_risk') displayLevel = t('banPolicy.lowRisk');
         return <Tag color={color}>{displayLevel}</Tag>;
       },
     },
@@ -286,9 +286,9 @@ const BanPolicy: React.FC = () => {
             extra={t('banPolicy.triggerRiskLevelDesc')}
           >
             <Select>
-              <Option value="高风险">{t('banPolicy.highRisk')}</Option>
-              <Option value="中风险">{t('banPolicy.mediumRisk')}</Option>
-              <Option value="低风险">{t('banPolicy.lowRisk')}</Option>
+              <Option value="high_risk">{t('banPolicy.highRisk')}</Option>
+              <Option value="medium_risk">{t('banPolicy.mediumRisk')}</Option>
+              <Option value="low_risk">{t('banPolicy.lowRisk')}</Option>
             </Select>
           </Form.Item>
 

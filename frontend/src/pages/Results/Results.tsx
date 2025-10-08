@@ -83,14 +83,14 @@ const Results: React.FC = () => {
       ...prev,
       [key]: value,
     }));
-    setPagination(prev => ({ ...prev, current: 1 })); // 重置页码
+    setPagination(prev => ({ ...prev, current: 1 })); // Reset page number
   };
 
   const showDetail = async (record: DetectionResult) => {
     setDetailLoading(true);
     setDrawerVisible(true);
     try {
-      // 调用详情API获取完整内容
+      // Call detail API to get full content
       const fullRecord = await resultsApi.getResult(record.id);
       console.log('Full record from API:', fullRecord);
       console.log('has_image:', fullRecord.has_image);
@@ -99,7 +99,7 @@ const Results: React.FC = () => {
       setSelectedResult(fullRecord);
     } catch (error) {
       console.error('Failed to fetch full record:', error);
-      // 如果获取详情失败，仍然显示截断的内容
+      // If fetching detail fails, still display truncated content
       setSelectedResult(record);
     } finally {
       setDetailLoading(false);
@@ -107,25 +107,19 @@ const Results: React.FC = () => {
   };
 
   const getRiskLevelColor = (level: string) => {
-    const highRisk = t('risk.level.high_risk');
-    const mediumRisk = t('risk.level.medium_risk');
-    const lowRisk = t('risk.level.low_risk');
-    const noRisk = t('risk.level.no_risk');
-
+    // 后端返回的是标准化的英文值，直接匹配
     switch (level) {
-      case highRisk:
-      case '高风险':
+      case 'high_risk':
         return 'red';
-      case mediumRisk:
-      case '中风险':
+      case 'medium_risk':
         return 'orange';
-      case lowRisk:
-      case '低风险':
+      case 'low_risk':
         return 'yellow';
-      case noRisk:
-      case '无风险':
+      case 'no_risk':
+      case 'safe':
         return 'green';
-      default: return 'default';
+      default: 
+        return 'default';
     }
   };
 
@@ -153,18 +147,18 @@ const Results: React.FC = () => {
   // 定义所有风险类别
   const getAllCategories = () => {
     return [
-      '敏感政治话题',
-      '损害国家形象',
-      '暴力犯罪',
-      '提示词攻击',
-      '一般政治话题',
-      '伤害未成年人',
-      '违法犯罪',
-      '色情',
-      '歧视内容',
-      '辱骂',
-      '侵犯个人隐私',
-      '商业违法违规'
+      'sensitive_political_topic',
+      'damage_to_national_image',
+      'violent_crime',
+      'prompt_attack',
+      'general_political_topic',
+      'harm_to_minors',
+      'illegal_activities',
+      'pornography',
+      'discriminatory_content',
+      'insults',
+      'privacy_violation',
+      'business_violations',
     ];
   };
 
@@ -337,10 +331,10 @@ const Results: React.FC = () => {
             value={filters.risk_level}
             onChange={(value) => handleFilterChange('risk_level', value)}
           >
-            <Option value="高风险">{t('risk.level.high_risk')}</Option>
-            <Option value="中风险">{t('risk.level.medium_risk')}</Option>
-            <Option value="低风险">{t('risk.level.low_risk')}</Option>
-            <Option value="无风险">{t('risk.level.no_risk')}</Option>
+            <Option value="high_risk">{t('risk.level.high_risk')}</Option>
+            <Option value="medium_risk">{t('risk.level.medium_risk')}</Option>
+            <Option value="low_risk">{t('risk.level.low_risk')}</Option>
+            <Option value="no_risk">{t('risk.level.no_risk')}</Option>
           </Select>
 
 

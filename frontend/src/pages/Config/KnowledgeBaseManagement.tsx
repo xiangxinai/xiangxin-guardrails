@@ -71,7 +71,7 @@ const KnowledgeBaseManagement: React.FC = () => {
     fetchData();
   }, []);
 
-  // 监听用户切换事件，自动刷新数据
+  // Listen to user switch event, automatically refresh data
   useEffect(() => {
     const unsubscribe = onUserSwitch(() => {
       fetchData();
@@ -109,17 +109,9 @@ const KnowledgeBaseManagement: React.FC = () => {
     setModalVisible(true);
   };
 
-  // 严格的文件内容验证
+  // Strict file content validation
   const validateTextFile = async (file: File): Promise<boolean> => {
-    try {
-      // 打印文件信息用于调试
-      console.log('=== 文件调试信息 ===');
-      console.log('file.name:', file.name);
-      console.log('file.type:', file.type);
-      console.log('file.size:', file.size);
-      console.log('file.lastModified:', new Date(file.lastModified));
-      console.log('==================');
-      
+    try {      
       const text = await file.text();
 
       if (!text.trim()) {
@@ -134,14 +126,14 @@ const KnowledgeBaseManagement: React.FC = () => {
         return false;
       }
 
-      // 严格验证前几行（最多检查前5行）
+      // Strictly validate the first few lines (up to 5 lines)
       const linesToCheck = Math.min(5, lines.length);
       let validLines = 0;
       
       for (let i = 0; i < linesToCheck; i++) {
         const line = lines[i].trim();
         
-        // 检查是否为JSON格式
+        // Check if it is a JSON format
         if (!line.startsWith('{') || !line.endsWith('}')) {
           message.error(t('knowledge.formatError', { line: i + 1, error: t('knowledge.invalidJSON') }));
           return false;
@@ -150,13 +142,13 @@ const KnowledgeBaseManagement: React.FC = () => {
         try {
           const jsonObj = JSON.parse(line);
 
-          // 检查必需字段
+          // Check required fields
           if (!jsonObj.questionid || !jsonObj.question || !jsonObj.answer) {
             message.error(t('knowledge.missingFields', { line: i + 1 }));
             return false;
           }
 
-          // 检查字段类型
+          // Check field types
           if (typeof jsonObj.questionid !== 'string' ||
               typeof jsonObj.question !== 'string' ||
               typeof jsonObj.answer !== 'string') {
@@ -164,7 +156,7 @@ const KnowledgeBaseManagement: React.FC = () => {
             return false;
           }
 
-          // 检查内容不为空
+          // Check content is not empty
           if (!jsonObj.question.trim() || !jsonObj.answer.trim()) {
             message.error(t('knowledge.emptyContent', { line: i + 1 }));
             return false;
@@ -196,7 +188,7 @@ const KnowledgeBaseManagement: React.FC = () => {
         await knowledgeBaseApi.update(editingItem.id, values);
         message.success(t('common.updateSuccess'));
       } else {
-        // 创建知识库需要文件上传
+        // Creating a knowledge base requires file upload
         if (!values.file || values.file.length === 0) {
           message.error(t('knowledge.selectFile'));
           return;
@@ -204,23 +196,7 @@ const KnowledgeBaseManagement: React.FC = () => {
 
         const file = values.file[0].originFileObj;
         
-        // 额外调试信息 - 提交时的所有表单数据
-        console.log('=== 提交时完整表单调试信息 ===');
-        console.log('完整的 values:', values);
-        console.log('values.category:', values.category);
-        console.log('values.name:', values.name);
-        console.log('values.description:', values.description);
-        console.log('values.is_active:', values.is_active);
-        console.log('values.file:', values.file);
-        console.log('values.file[0]:', values.file[0]);
-        console.log('values.file[0].name:', values.file[0].name);
-        console.log('values.file[0].type:', values.file[0].type);
-        console.log('originFileObj:', file);
-        console.log('originFileObj.name:', file.name);
-        console.log('originFileObj.type:', file.type);
-        console.log('===============================');
-        
-        // 验证文件内容
+        // Validate file content
         const isValid = await validateTextFile(file);
         if (!isValid) {
           return;
@@ -233,14 +209,6 @@ const KnowledgeBaseManagement: React.FC = () => {
         formData.append('description', values.description || '');
         formData.append('is_active', values.is_active ? 'true' : 'false');
         formData.append('is_global', values.is_global ? 'true' : 'false');
-        
-        // 调试 FormData 内容
-        console.log('=== FormData 调试信息 ===');
-        console.log('FormData entries:');
-        for (const [key, value] of formData.entries()) {
-          console.log(`${key}:`, value);
-        }
-        console.log('=======================');
 
         setFileUploadLoading(true);
         await knowledgeBaseApi.create(formData);
@@ -282,15 +250,7 @@ const KnowledgeBaseManagement: React.FC = () => {
 
     const file = values.file[0].originFileObj;
     
-    // 额外调试信息 - 替换文件时的文件信息
-    console.log('=== 替换文件时调试信息 ===');
-    console.log('values.file[0].name:', values.file[0].name);
-    console.log('values.file[0].type:', values.file[0].type);
-    console.log('originFileObj.name:', file.name);
-    console.log('originFileObj.type:', file.type);
-    console.log('==========================');
-    
-    // 验证文件内容
+    // Validate file content
     const isValid = await validateTextFile(file);
     if (!isValid) {
       return;
@@ -345,10 +305,10 @@ const KnowledgeBaseManagement: React.FC = () => {
 
   const getFileName = (filePath: string) => {
     if (!filePath) return '-';
-    // 从文件路径中提取文件名
+    // Extract file name from file path
     const parts = filePath.split('/');
     const fileName = parts[parts.length - 1];
-    // 移除知识库ID前缀 (kb_123_filename.jsonl -> filename.jsonl)
+    // Remove knowledge base ID prefix (kb_123_filename.jsonl -> filename.jsonl)
     const match = fileName.match(/^kb_\d+_(.+)$/);
     return match ? match[1] : fileName;
   };
@@ -542,7 +502,7 @@ const KnowledgeBaseManagement: React.FC = () => {
         />
       </Card>
 
-      {/* 添加/编辑知识库弹窗 */}
+      {/* Add/edit knowledge base modal */}
       <Modal
         title={editingItem ? t('knowledge.editKnowledgeBase') : t('knowledge.addKnowledgeBase')}
         open={modalVisible}
@@ -610,19 +570,6 @@ const KnowledgeBaseManagement: React.FC = () => {
                   showRemoveIcon: true,
                   showDownloadIcon: false
                 }}
-                onChange={(info) => {
-                  console.log('=== Upload onChange 调试信息 ===');
-                  if (info.fileList.length > 0) {
-                    const file = info.fileList[0];
-                    console.log('Upload file.name:', file.name);
-                    console.log('Upload file.type:', file.type);
-                    if (file.originFileObj) {
-                      console.log('Upload originFileObj.name:', file.originFileObj.name);
-                      console.log('Upload originFileObj.type:', file.originFileObj.type);
-                    }
-                  }
-                  console.log('================================');
-                }}
               >
                 <Button icon={<UploadOutlined />}>{t('knowledge.chooseFile')}</Button>
               </Upload>
@@ -658,7 +605,7 @@ const KnowledgeBaseManagement: React.FC = () => {
         </Form>
       </Modal>
 
-      {/* 替换文件弹窗 */}
+      {/* Replace file modal */}
       <Modal
         title={t('knowledge.replaceFileTitle', { name: replacingKb?.name })}
         open={fileReplaceModalVisible}
@@ -701,19 +648,6 @@ const KnowledgeBaseManagement: React.FC = () => {
                 showRemoveIcon: true,
                 showDownloadIcon: false
               }}
-              onChange={(info) => {
-                console.log('=== Replace Upload onChange 调试信息 ===');
-                if (info.fileList.length > 0) {
-                  const file = info.fileList[0];
-                  console.log('Replace Upload file.name:', file.name);
-                  console.log('Replace Upload file.type:', file.type);
-                  if (file.originFileObj) {
-                    console.log('Replace Upload originFileObj.name:', file.originFileObj.name);
-                    console.log('Replace Upload originFileObj.type:', file.originFileObj.type);
-                  }
-                }
-                console.log('==========================================');
-              }}
             >
               <Button icon={<UploadOutlined />}>{t('knowledge.chooseFile')}</Button>
             </Upload>
@@ -721,7 +655,7 @@ const KnowledgeBaseManagement: React.FC = () => {
         </Form>
       </Modal>
 
-      {/* 搜索测试弹窗 */}
+      {/* Search test modal */}
       <Modal
         title={t('knowledge.searchTestTitle', { name: searchingKb?.name })}
         open={searchModalVisible}

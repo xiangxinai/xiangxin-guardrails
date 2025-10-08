@@ -100,7 +100,7 @@ class GuardrailService:
                 if isinstance(content, str):
                     messages_dict.append({"role": msg.role, "content": content})
                 elif isinstance(content, list):
-                    # 多模态内容
+                    # Multimodal content
                     content_parts = []
                     for part in content:
                         if hasattr(part, 'type'):
@@ -109,7 +109,7 @@ class GuardrailService:
                             elif part.type == 'image_url' and hasattr(part, 'image_url'):
                                 has_image = True
                                 original_url = part.image_url.url
-                                # 处理图片：保存并获取路径
+                                # Process image: save and get path
                                 processed_url, saved_path = image_utils.process_image_url(original_url, tenant_id)
                                 if saved_path:
                                     saved_image_paths.append(saved_path)
@@ -175,40 +175,40 @@ class GuardrailService:
             return await self._handle_error(request_id, user_content, str(e), tenant_id)
     
     def _extract_user_content(self, messages: List[Message]) -> str:
-        """提取完整对话内容"""
+        """Extract complete conversation content"""
         if len(messages) == 1 and messages[0].role == 'user':
-            # 单条用户消息（提示词检测）
+            # Single user message (prompt detection)
             content = messages[0].content
             if isinstance(content, str):
                 return content
             elif isinstance(content, list):
-                # 对于多模态内容，只提取文本部分用于日志
+                # For multimodal content, only extract text part for log
                 text_parts = []
                 for part in content:
                     if hasattr(part, 'type') and part.type == 'text' and hasattr(part, 'text'):
                         text_parts.append(part.text)
                     elif hasattr(part, 'type') and part.type == 'image_url':
-                        text_parts.append("[图片]")
-                return ' '.join(text_parts) if text_parts else "[多模态内容]"
+                        text_parts.append("[Image]")
+                return ' '.join(text_parts) if text_parts else "[Multimodal content]"
             else:
                 return str(content)
         else:
-            # 多条消息（对话检测），保存完整对话
+            # Multiple messages (conversation detection), save full conversation
             conversation_parts = []
             for msg in messages:
-                role_label = "用户" if msg.role == "user" else "助手" if msg.role == "assistant" else msg.role
+                role_label = "User" if msg.role == "user" else "Assistant" if msg.role == "assistant" else msg.role
                 content = msg.content
                 if isinstance(content, str):
                     conversation_parts.append(f"[{role_label}]: {content}")
                 elif isinstance(content, list):
-                    # 对于多模态内容，只提取文本部分
+                    # For multimodal content, only extract text part
                     text_parts = []
                     for part in content:
                         if hasattr(part, 'type') and part.type == 'text' and hasattr(part, 'text'):
                             text_parts.append(part.text)
                         elif hasattr(part, 'type') and part.type == 'image_url':
-                            text_parts.append("[图片]")
-                    content_str = ' '.join(text_parts) if text_parts else "[多模态内容]"
+                            text_parts.append("[Image]")
+                    content_str = ' '.join(text_parts) if text_parts else "[Multimodal content]"
                     conversation_parts.append(f"[{role_label}]: {content_str}")
                 else:
                     conversation_parts.append(f"[{role_label}]: {content}")
@@ -348,7 +348,7 @@ class GuardrailService:
             ),
             overall_risk_level="high_risk",
             suggest_action="reject",
-            suggest_answer=f"很抱歉，我不能提供涉及{list_name}的内容。"
+            suggest_answer=f"Sorry, I can't provide content involving {list_name}."
         )
     
     async def _handle_whitelist_hit(
@@ -356,9 +356,9 @@ class GuardrailService:
         keywords: List[str], ip_address: Optional[str], user_agent: Optional[str],
         tenant_id: Optional[str] = None
     ) -> GuardrailResponse:
-        """处理白名单命中"""
+        """Handle whitelist hit"""
         
-        # 异步记录到日志
+        # Asynchronously record to log
         detection_data = {
             "request_id": request_id,
             "tenant_id": tenant_id,
@@ -395,9 +395,9 @@ class GuardrailService:
         tenant_id: Optional[str] = None, has_image: bool = False,
         image_count: int = 0, image_paths: List[str] = None
     ):
-        """异步记录检测结果到日志"""
+        """Asynchronously record detection results to log"""
 
-        # 清理内容中的NUL字符
+        # Clean NUL characters in content
         from utils.validators import clean_null_characters
 
         detection_data = {
@@ -414,19 +414,19 @@ class GuardrailService:
             "compliance_risk_level": compliance_result.risk_level,
             "compliance_categories": compliance_result.categories,
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "hit_keywords": None,  # 只有黑白名单命中才有值
+            "hit_keywords": None,  # Only hit keywords for blacklist/whitelist
             "has_image": has_image,
             "image_count": image_count,
             "image_paths": image_paths or []
         }
 
-        # 只写日志文件，不写数据库（由管理服务的日志处理器负责写数据库）
+        # Only write log file, not write database (managed by admin service's log processor)
         await async_detection_logger.log_detection(detection_data)
     
     async def _handle_error(self, request_id: str, content: str, error: str, tenant_id: Optional[int] = None) -> GuardrailResponse:
-        """处理错误情况"""
+        """Handle error situation"""
         
-        # 异步记录错误检测结果
+        # Asynchronously record error detection results
         detection_data = {
             "request_id": request_id,
             "tenant_id": tenant_id,
@@ -451,7 +451,7 @@ class GuardrailService:
                 compliance=ComplianceResult(risk_level="no_risk", categories=[]),
                 security=SecurityResult(risk_level="no_risk", categories=[])
             ),
-            overall_risk_level="no_risk",  # 系统错误时按无风险通过处理
+            overall_risk_level="no_risk",  # When system error, treat as no risk
             suggest_action="pass",
             suggest_answer=None
         )

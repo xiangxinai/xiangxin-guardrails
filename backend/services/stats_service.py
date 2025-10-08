@@ -9,47 +9,47 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 class StatsService:
-    """统计分析服务"""
+    """Stats analysis service"""
     
     def __init__(self, db: Session):
         self.db = db
     
     def get_dashboard_stats(self, tenant_id: str = None) -> Dict[str, Any]:
-        """获取仪表板统计数据
+        """Get dashboard stats data
 
-        注意：参数名保持为 tenant_id 以向后兼容，但实际处理的是 tenant_id
+        Note: Parameter name remains tenant_id for backward compatibility, but tenant_id is actually processed
         """
         try:
-            # 构建基础查询，支持租户过滤
+            # Build base query, support tenant filter
             base_query = self.db.query(DetectionResult)
             if tenant_id is not None:
-                # 将传入的 tenant_id（实际是tenant_id）转换为 UUID 进行比较
+                # Convert incoming tenant_id (actually tenant_id) to UUID for comparison
                 try:
                     tenant_uuid = uuid.UUID(str(tenant_id))
                     base_query = base_query.filter(DetectionResult.tenant_id == tenant_uuid)
                 except ValueError:
-                    # 非法的 tenant_id，直接返回空统计
+                    # Invalid tenant_id, return empty stats
                     return self._get_empty_stats()
             
-            # 总请求数
+            # Total requests
             total_requests = base_query.count()
             
-            # 安全风险数（security_risk_level非no_risk）
+            # Security risks (security_risk_level non-no_risk)
             security_risks = base_query.filter(
                 DetectionResult.security_risk_level != "no_risk"
             ).count()
 
-            # 合规风险数（compliance_risk_level非no_risk）
+            # Compliance risks (compliance_risk_level non-no_risk)
             compliance_risks = base_query.filter(
                 DetectionResult.compliance_risk_level != "no_risk"
             ).count()
 
-            # 数据泄漏风险数（data_risk_level非no_risk）
+            # Data leak risks (data_risk_level non-no_risk)
             data_leaks = base_query.filter(
                 DetectionResult.data_risk_level != "no_risk"
             ).count()
 
-            # 综合统计各风险等级（取最高风险等级）
+            # Comprehensive statistics for each risk level (take highest risk level)
             results_query = self.db.query(
                 DetectionResult.security_risk_level,
                 DetectionResult.compliance_risk_level,
@@ -69,7 +69,7 @@ class StatsService:
             safe_count = 0
 
             for sec_risk, comp_risk, data_risk in results:
-                # 取三个风险等级中的最高值
+                # Take highest value from three risk levels
                 overall_risk = self._get_highest_risk_level(sec_risk, comp_risk, data_risk)
 
                 if overall_risk == "high_risk":
@@ -81,7 +81,7 @@ class StatsService:
                 else:
                     safe_count += 1
             
-            # 风险分布
+            # Risk distribution
             risk_distribution = {
                 "high_risk": high_risk_count,
                 "medium_risk": medium_risk_count,
@@ -89,7 +89,7 @@ class StatsService:
                 "no_risk": safe_count
             }
             
-            # 最近7天趋势
+            # Recent 7 days trends
             daily_trends = self._get_daily_trends(7, tenant_id)
             
             return {
@@ -110,7 +110,7 @@ class StatsService:
             return self._get_empty_stats()
     
     def _get_highest_risk_level(self, security_risk: str, compliance_risk: str, data_risk: str = "no_risk") -> str:
-        """获取三个风险等级中的最高级别"""
+        """Get highest risk level from three risk levels"""
         risk_priority = {
             "high_risk": 4,
             "medium_risk": 3,
@@ -130,15 +130,15 @@ class StatsService:
         return "no_risk"
     
     def _get_daily_trends(self, days: int, tenant_id: str = None) -> List[Dict[str, Any]]:
-        """获取每日趋势数据
+        """Get daily trends data
 
-        注意：参数名保持为 tenant_id 以向后兼容，但实际处理的是 tenant_id
+        Note: Parameter name remains tenant_id for backward compatibility, but tenant_id is actually processed
         """
         try:
             end_date = datetime.now().date()
             start_date = end_date - timedelta(days=days-1)
 
-            # 获取指定日期范围内的记录，支持租户过滤
+            # Get records within specified date range, support tenant filter
             query = self.db.query(
                 func.date(DetectionResult.created_at).label('date'),
                 DetectionResult.security_risk_level,
@@ -148,18 +148,18 @@ class StatsService:
                 func.date(DetectionResult.created_at) >= start_date
             )
 
-            # 如果提供了租户ID，则进行租户过滤
+            # If tenant ID is provided, perform tenant filter
             if tenant_id is not None:
                 try:
                     tenant_uuid = uuid.UUID(str(tenant_id))
                     query = query.filter(DetectionResult.tenant_id == tenant_uuid)
                 except ValueError:
-                    # 非法的 tenant_id，返回空数据
+                    # Invalid tenant_id, return empty data
                     return []
             
             daily_records = query.all()
             
-            # 按日期分组并统计风险等级
+            # Group by date and count risk levels
             daily_data = {}
             for record in daily_records:
                 date_str = str(record.date)
@@ -172,7 +172,7 @@ class StatsService:
                         'safe': 0
                     }
                 
-                # 取最高风险等级
+                # Take highest risk level
                 overall_risk = self._get_highest_risk_level(record.security_risk_level, record.compliance_risk_level, record.data_risk_level)
                 daily_data[date_str]['total'] += 1
                 
@@ -185,7 +185,7 @@ class StatsService:
                 else:
                     daily_data[date_str]['safe'] += 1
             
-            # 创建完整的日期范围
+            # Create complete date range
             trends = []
             for i in range(days):
                 current_date = start_date + timedelta(days=i)
@@ -217,12 +217,12 @@ class StatsService:
             return []
     
     def get_category_distribution(self, start_date: str = None, end_date: str = None, tenant_id: str = None) -> List[Dict[str, Any]]:
-        """获取风险类别分布统计
+        """Get risk category distribution statistics
 
-        注意：参数名保持为 tenant_id 以向后兼容，但实际处理的是 tenant_id
+        Note: Parameter name remains tenant_id for backward compatibility, but tenant_id is actually processed
         """
         try:
-            # 构建查询条件 - 查询有安全或合规风险的记录
+            # Build query conditions - query records with security or compliance risks
             query = self.db.query(DetectionResult).filter(
                 (DetectionResult.security_risk_level != "no_risk") |
                 (DetectionResult.compliance_risk_level != "no_risk")
@@ -239,18 +239,18 @@ class StatsService:
             if end_date:
                 query = query.filter(func.date(DetectionResult.created_at) <= end_date)
             
-            # 获取所有相关记录的categories字段
+            # Get categories field of all related records
             results = query.with_entities(
                 DetectionResult.security_categories,
                 DetectionResult.compliance_categories
             ).all()
             
-            # 统计类别分布
+            # Count category distribution
             category_count = {}
             import json
             
             for security_cats, compliance_cats in results:
-                # 处理安全类别
+                # Process security categories
                 if security_cats:
                     try:
                         if isinstance(security_cats, str):
@@ -264,7 +264,7 @@ class StatsService:
                     except (json.JSONDecodeError, TypeError):
                         pass
                 
-                # 处理合规类别
+                # Process compliance categories
                 if compliance_cats:
                     try:
                         if isinstance(compliance_cats, str):
@@ -278,14 +278,14 @@ class StatsService:
                     except (json.JSONDecodeError, TypeError):
                         pass
             
-            # 转换为前端需要的格式并排序
+            # Convert to frontend needed format and sort
             category_data = [
                 {"name": name, "value": value} 
                 for name, value in category_count.items()
             ]
             category_data.sort(key=lambda x: x['value'], reverse=True)
             
-            # 只返回前10个类别
+            # Only return top 10 categories
             return category_data[:10]
             
         except Exception as e:
@@ -293,7 +293,7 @@ class StatsService:
             return []
 
     def _get_empty_stats(self) -> Dict[str, Any]:
-        """获取空的统计数据"""
+        """Get empty stats data"""
         return {
             "total_requests": 0,
             "security_risks": 0,

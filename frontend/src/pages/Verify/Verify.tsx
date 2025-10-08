@@ -3,17 +3,13 @@ import { Form, Input, Button, Card, Typography, message, Space } from 'antd';
 import { MailOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import '../Register/Register.css'; // 使用相同的样式
+import '../Register/Register.css';
 
 const { Title, Text } = Typography;
 
 interface VerifyFormData {
   email: string;
   verificationCode: string;
-}
-
-interface ResendFormData {
-  email: string;
 }
 
 const Verify: React.FC = () => {
@@ -26,7 +22,7 @@ const Verify: React.FC = () => {
 
   const initialEmail = searchParams.get('email') || '';
 
-  // 倒计时处理
+  // Countdown processing
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (countdown > 0) {
@@ -89,7 +85,7 @@ const Verify: React.FC = () => {
         throw new Error(error.detail || t('verify.resendFailed'));
       }
 
-      setCountdown(60); // 设置60秒倒计时
+      setCountdown(60); // Set 60 seconds countdown
       message.success(t('verify.resendSuccess'));
     } catch (error: any) {
       message.error(error.message);

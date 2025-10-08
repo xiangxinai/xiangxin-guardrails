@@ -28,7 +28,7 @@ const Reports: React.FC = () => {
     try {
       setLoading(true);
       
-      // 并行获取统计数据和类别分布数据
+      // get stats and category distribution data in parallel
       const [statsData, categoryDistributionData] = await Promise.all([
         dashboardApi.getStats(),
         dashboardApi.getCategoryDistribution({
@@ -167,7 +167,7 @@ const Reports: React.FC = () => {
           value={dateRange}
           onChange={(dates) => {
             if (dates) {
-              setDateRange([dates[0], dates[1]]);
+              setDateRange([dates[0]!, dates[1]!]);
             }
           }}
           format="YYYY-MM-DD"

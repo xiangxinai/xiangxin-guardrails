@@ -8,28 +8,28 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """限速中间件"""
+    """Rate limit middleware"""
 
     def __init__(self, app):
         super().__init__(app)
-        self.protected_paths = ["/v1/guardrails"]  # 需要限速的路径
+        self.protected_paths = ["/v1/guardrails"]  # Protected paths
 
     async def dispatch(self, request: Request, call_next):
-        # 检查是否需要限速
+        # Check if rate limiting is needed
         if not any(request.url.path.startswith(path) for path in self.protected_paths):
             return await call_next(request)
 
-        # 获取租户ID
+        # Get tenant ID
         auth_context = getattr(request.state, 'auth_context', None)
         if not auth_context:
-            # 没有认证信息，跳过限速（让后续认证中间件处理）
+            # No authentication information, skip rate limiting (let subsequent authentication middleware handle)
             return await call_next(request)
 
         tenant_id = auth_context['data'].get('tenant_id')  
         if not tenant_id:
             return await call_next(request)
 
-        # 检查限速
+        # Check rate limiting
         db = get_db_session()
         try:
             if not await rate_limiter.is_allowed(str(tenant_id), db):
@@ -47,7 +47,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 )
         except Exception as e:
             logger.error(f"Rate limit check failed: {e}")
-            # 限速检查失败时允许请求通过，避免影响服务
+            # When rate limiting check fails, allow requests through to avoid affecting service
         finally:
             db.close()
         

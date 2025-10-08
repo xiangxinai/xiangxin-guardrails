@@ -1,6 +1,6 @@
 """
-图片处理工具类
-仅支持base64编码格式，确保安全性
+Image processing utility class
+Only supports base64 encoding format, ensuring security
 """
 import base64
 import uuid
@@ -13,26 +13,26 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 class ImageUtils:
-    """图片处理工具类 - 仅支持base64编码"""
+    """Image processing utility class - only supports base64 encoding"""
 
     @staticmethod
     def is_base64_image(url: str) -> bool:
         """
-        判断是否为base64编码的图片
-        格式: data:image/jpeg;base64,{base64_string}
+        Check if it is a base64 encoded image
+        Format: data:image/jpeg;base64,{base64_string}
         """
         return url.startswith("data:image/") and ";base64," in url
 
     @staticmethod
     def extract_base64_data(url: str) -> Tuple[Optional[str], Optional[bytes]]:
         """
-        从data URL中提取图片格式和base64数据
+        Extract image format and base64 data from data URL
 
         Returns:
-            (image_format, binary_data) - 例如 ('jpeg', b'...')
+            (image_format, binary_data) - e.g. ('jpeg', b'...')
         """
         try:
-            # 格式: data:image/jpeg;base64,/9j/4AAQSkZJRg...
+            # Format: data:image/jpeg;base64,/9j/4AAQSkZJRg...
             match = re.match(r'data:image/([^;]+);base64,(.+)', url)
             if not match:
                 logger.error(f"Invalid base64 image format: {url[:50]}...")
@@ -41,7 +41,7 @@ class ImageUtils:
             image_format = match.group(1)  # jpeg, png, etc.
             base64_data = match.group(2)
 
-            # 解码base64
+            # Decode base64
             image_bytes = base64.b64decode(base64_data)
 
             return image_format, image_bytes
@@ -53,31 +53,31 @@ class ImageUtils:
     @staticmethod
     def save_base64_image(url: str, tenant_id: str) -> Optional[str]:
         """
-        保存base64编码的图片到用户目录
+        Save base64 encoded image to user directory
 
         Args:
             url: base64 data URL
-            tenant_id: 用户UUID
+            tenant_id: User UUID
 
         Returns:
-            保存后的文件绝对路径，失败返回None
+            Saved file absolute path, return None if failed
         """
         try:
-            # 提取图片数据
+            # Extract image data
             image_format, image_bytes = ImageUtils.extract_base64_data(url)
             if not image_bytes:
                 return None
 
-            # 创建用户媒体目录
+            # Create user media directory
             user_media_dir = Path(settings.media_dir) / tenant_id
             user_media_dir.mkdir(parents=True, exist_ok=True)
 
-            # 生成唯一文件名
+            # Generate unique filename
             file_extension = f".{image_format}" if image_format else ".jpg"
             unique_filename = f"{uuid.uuid4().hex}{file_extension}"
             file_path = user_media_dir / unique_filename
 
-            # 保存图片
+            # Save image
             with open(file_path, "wb") as f:
                 f.write(image_bytes)
 
@@ -91,43 +91,43 @@ class ImageUtils:
     @staticmethod
     def process_image_url(url: str, tenant_id: Optional[str] = None) -> Tuple[str, Optional[str]]:
         """
-        处理图片URL - 仅支持base64编码格式
+        Process image URL - only supports base64 encoding format
 
         Args:
-            url: 图片URL（必须是base64格式）
-            tenant_id: 用户UUID（保存base64图片时需要）
+            url: Image URL (must be base64 format)
+            tenant_id: User UUID (required when saving base64 image)
 
         Returns:
             (processed_url, saved_file_path)
-            - processed_url: 原始base64 URL
-            - saved_file_path: 保存后的文件路径
+            - processed_url: Original base64 URL
+            - saved_file_path: Saved file path
 
         Raises:
-            ValueError: 如果不是base64格式
+            ValueError: If not base64 format
         """
-        # 只支持Base64图片
+        # Only supports Base64 image
         if ImageUtils.is_base64_image(url):
             saved_path = None
             if tenant_id:
                 saved_path = ImageUtils.save_base64_image(url, tenant_id)
-            return url, saved_path  # 返回原始base64 URL给模型使用
+            return url, saved_path  # Return original base64 URL to model
         else:
-            raise ValueError(f"仅支持base64编码格式的图片，格式应为: data:image/[jpeg|png|...];base64,{{base64_string}}")
+            raise ValueError(f"Only supports base64 encoded image, format should be: data:image/[jpeg|png|...];base64,{{base64_string}}")
 
     @staticmethod
     def encode_file_to_base64(file_bytes: bytes, image_format: str = 'jpeg') -> str:
         """
-        将文件字节编码为base64 data URL
+        Encode file bytes to base64 data URL
 
         Args:
-            file_bytes: 文件字节数据
-            image_format: 图片格式 (jpeg, png, gif, etc.)
+            file_bytes: File bytes data
+            image_format: Image format (jpeg, png, gif, etc.)
 
         Returns:
-            data:image/jpeg;base64,{base64_string} 格式的URL
+            data:image/jpeg;base64,{base64_string} format URL
         """
         try:
-            # 编码为base64
+            # Encode to base64
             base64_string = base64.b64encode(file_bytes).decode('utf-8')
             return f"data:image/{image_format};base64,{base64_string}"
         except Exception as e:
@@ -137,14 +137,14 @@ class ImageUtils:
     @staticmethod
     def validate_image_size(base64_url: str, max_size_mb: int = 10) -> bool:
         """
-        验证base64图片大小
+        Validate base64 image size
 
         Args:
-            base64_url: base64图片URL
-            max_size_mb: 最大允许大小（MB）
+            base64_url: base64 image URL
+            max_size_mb: Maximum allowed size (MB)
 
         Returns:
-            是否符合大小限制
+            Whether it meets the size limit
         """
         try:
             _, image_bytes = ImageUtils.extract_base64_data(base64_url)
@@ -156,5 +156,5 @@ class ImageUtils:
             logger.error(f"Failed to validate image size: {e}")
             return False
 
-# 创建全局实例
+# Create global instance
 image_utils = ImageUtils()
