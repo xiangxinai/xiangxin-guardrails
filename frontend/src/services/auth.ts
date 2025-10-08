@@ -93,6 +93,20 @@ class AuthService {
     return response.data;
   }
 
+  async updateLanguage(language: string): Promise<{ status: string; message: string; language: string }> {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+    const response = await axios.put<{ status: string; message: string; language: string }>(`${this.baseURL}/api/v1/users/language`, 
+      { language }, 
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response.data;
+  }
+
   async logout(): Promise<void> {
     const token = this.getToken();
     if (token) {

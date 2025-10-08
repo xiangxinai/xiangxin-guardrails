@@ -18,6 +18,7 @@ interface AuthContextType {
   switchToUser: (userId: string) => Promise<void>;
   exitSwitch: () => Promise<void>;
   refreshSwitchStatus: () => Promise<void>;
+  refreshUserInfo: () => Promise<void>;
   // User switch event listener
   onUserSwitch: (callback: () => void) => () => void; // Return function to cancel listener
 }
@@ -79,6 +80,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       // If not super admin or no switch permission, ignore error
       setSwitchInfo({ is_switched: false });
+    }
+  };
+
+  const refreshUserInfo = async () => {
+    try {
+      if (authService.isAuthenticated()) {
+        const userInfo = await authService.getCurrentUser();
+        setUser(userInfo);
+        
+        // Update language preference if changed
+        if (userInfo.language) {
+          localStorage.setItem('i18nextLng', userInfo.language);
+          // Trigger language change without page reload
+          const i18n = (await import('../i18n')).default;
+          await i18n.changeLanguage(userInfo.language);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh user info:', error);
     }
   };
 
@@ -172,6 +192,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     switchToUser,
     exitSwitch,
     refreshSwitchStatus,
+    refreshUserInfo,
     onUserSwitch,
   };
 

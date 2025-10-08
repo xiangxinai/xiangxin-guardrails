@@ -307,3 +307,33 @@ async def regenerate_user_api_key(
 async def logout_user():
     """Tenant logout (front-end handles token clearing)"""
     return {"message": "Successfully logged out"}
+
+class UpdateLanguageRequest(BaseModel):
+    language: str
+
+@router.put("/language", response_model=dict)
+async def update_user_language(
+    language_data: UpdateLanguageRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Update user language preference"""
+    # Validate language
+    if language_data.language not in ['en', 'zh']:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid language. Must be 'en' or 'zh'"
+        )
+    
+    # Get current user
+    tenant = get_current_user_from_token(credentials, db)
+    
+    # Update language
+    tenant.language = language_data.language
+    db.commit()
+    
+    return {
+        "status": "success",
+        "message": "Language updated successfully",
+        "language": language_data.language
+    }
