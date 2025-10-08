@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-运行用户重命名为租户的数据库迁移脚本
+Run users to tenants database migration script
 """
 import sys
 import os
 from pathlib import Path
 
-# 添加backend路径
+# Add backend path
 backend_path = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_path))
 
@@ -15,11 +15,11 @@ from config import settings
 import urllib.parse
 
 def run_migration():
-    """执行迁移"""
-    print("开始执行迁移：用户重命名为租户...")
+    """Run users to tenants database migration"""
+    print("Start execution: users renamed to tenants...")
     
     try:
-        # 解析数据库URL
+        # Parse database URL
         url = urllib.parse.urlparse(settings.database_url)
         conn = psycopg2.connect(
             host=url.hostname,
@@ -31,19 +31,19 @@ def run_migration():
         
         cur = conn.cursor()
         
-        # 检查当前数据库状态
-        print("📝 检查当前数据库状态...")
+        # Check current database status
+        print("📝 Check current database status...")
         
-        # 检查是否存在users表
+        # Check if users table exists
         cur.execute("""
             SELECT table_name 
             FROM information_schema.tables 
             WHERE table_name IN ('users', 'tenants');
         """)
         existing_tables = [row[0] for row in cur.fetchall()]
-        print(f"现有表: {existing_tables}")
+        print(f"Existing tables: {existing_tables}")
         
-        # 检查response_templates表的列
+        # Check response_templates table columns
         cur.execute("""
             SELECT column_name 
             FROM information_schema.columns 
@@ -51,75 +51,77 @@ def run_migration():
             AND column_name IN ('user_id', 'tenant_id');
         """)
         existing_columns = [row[0] for row in cur.fetchall()]
-        print(f"response_templates表的列: {existing_columns}")
+        print(f"response_templates table columns: {existing_columns}")
         
-        # 如果tenants表已存在且response_templates已有tenant_id列，说明迁移已完成
+        # If tenants table exists and response_templates has tenant_id column, migration is complete
         if 'tenants' in existing_tables and 'tenant_id' in existing_columns:
-            print("✅ 迁移已完成，跳过")
+            print("✅ Migration completed, skip")
             cur.close()
             conn.close()
             return True
         
-        # 如果users表不存在但tenants表存在，检查是否需要重命名列
+        # If users table does not exist but tenants table exists, check if columns need to be renamed
         if 'tenants' in existing_tables and 'user_id' in existing_columns:
-            print("📝 需要重命名列: user_id -> tenant_id")
-            # 读取迁移SQL文件
+            print("📝 Need to rename columns: user_id -> tenant_id")
+            # Read migration SQL file
             migration_file = backend_path / "database" / "migrations" / "rename_users_to_tenants.sql"
             
             with open(migration_file, 'r', encoding='utf-8') as f:
                 migration_sql = f.read()
             
-            print("🚀 执行迁移...")
-            # 分割SQL语句并逐个执行
+            print("🚀 Execute migration...")
+            # Split SQL statements and execute them one by one
             statements = [stmt.strip() for stmt in migration_sql.split(';') if stmt.strip() and not stmt.strip().startswith('--')]
             
             for statement in statements:
                 if statement and not statement.startswith('DO $$'):
-                    print(f"执行: {statement[:50]}...")
+                    print(f"Execute: {statement[:50]}...")
+                    # Execute SQL statement
                     try:
                         cur.execute(statement)
                     except psycopg2.Error as e:
                         if "does not exist" in str(e) or "already exists" in str(e):
-                            print(f"  跳过 (已存在或不存在): {e}")
+                            print(f"  Skip (already exists or does not exist): {e}")
+                            # Skip if column already exists or does not exist
                             continue
                         else:
                             raise
             
             conn.commit()
-            print("✅ 迁移完成")
+            print("✅ Migration completed")
             
         elif 'users' in existing_tables:
-            print("📝 需要完整迁移: users -> tenants")
-            # 读取迁移SQL文件
+            print("📝 Need to complete migration: users -> tenants")
+            # Read migration SQL file
             migration_file = backend_path / "database" / "migrations" / "rename_users_to_tenants.sql"
             
             with open(migration_file, 'r', encoding='utf-8') as f:
                 migration_sql = f.read()
             
-            print("🚀 执行迁移...")
-            # 分割SQL语句并逐个执行
+            print("🚀 Execute migration...")
+            # Split SQL statements and execute them one by one
             statements = [stmt.strip() for stmt in migration_sql.split(';') if stmt.strip() and not stmt.strip().startswith('--')]
             
             for statement in statements:
                 if statement and not statement.startswith('DO $$'):
-                    print(f"执行: {statement[:50]}...")
+                    print(f"Execute: {statement[:50]}...")
                     try:
                         cur.execute(statement)
                     except psycopg2.Error as e:
                         if "does not exist" in str(e) or "already exists" in str(e):
-                            print(f"  跳过 (已存在或不存在): {e}")
+                            print(f"  Skip (already exists or does not exist): {e}")
                             continue
                         else:
                             raise
             
             conn.commit()
-            print("✅ 迁移完成")
+            print("✅ Migration completed")
         else:
-            print("❌ 未找到users表或tenants表，请检查数据库状态")
+            print("❌ No users table or tenants table found, please check database status")
             return False
         
-        # 验证迁移结果
-        print("🔍 验证迁移结果...")
+        # Verify migration result
+        print("🔍 Verify migration result...")
         cur.execute("""
             SELECT column_name 
             FROM information_schema.columns 
@@ -127,9 +129,9 @@ def run_migration():
             AND column_name = 'tenant_id';
         """)
         if cur.fetchone():
-            print("✅ response_templates.tenant_id 列存在")
+            print("✅ response_templates.tenant_id column exists")
         else:
-            print("❌ response_templates.tenant_id 列不存在")
+            print("❌ response_templates.tenant_id column does not exist")
             return False
         
         cur.close()
@@ -137,14 +139,14 @@ def run_migration():
         return True
         
     except Exception as e:
-        print(f"❌ 迁移失败: {e}")
+        print(f"❌ Migration failed: {e}")
         return False
 
 if __name__ == "__main__":
     success = run_migration()
     if success:
-        print("🎉 迁移成功完成！")
+        print("🎉 Migration successfully completed!")
         sys.exit(0)
     else:
-        print("💥 迁移失败！")
+        print("💥 Migration failed!")
         sys.exit(1)
