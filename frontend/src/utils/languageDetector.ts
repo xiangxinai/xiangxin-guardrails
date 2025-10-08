@@ -59,12 +59,13 @@ export async function detectLanguageByIP(): Promise<string> {
 /**
  * Initialize language based on priority:
  * 1. URL query parameter (?lng=en or ?lng=zh)
- * 2. LocalStorage saved preference
- * 3. IP-based detection
- * 4. Browser language
- * 5. Default to English
+ * 2. User saved language preference (if logged in)
+ * 3. LocalStorage saved preference
+ * 4. IP-based detection
+ * 5. Browser language
+ * 6. Default to English
  */
-export async function initializeLanguage(): Promise<string> {
+export async function initializeLanguage(userLanguage?: string): Promise<string> {
   // 1. Check URL query parameter
   const urlParams = new URLSearchParams(window.location.search);
   const urlLang = urlParams.get('lng');
@@ -73,13 +74,19 @@ export async function initializeLanguage(): Promise<string> {
     return urlLang;
   }
 
-  // 2. Check localStorage
+  // 2. Check user saved language preference (highest priority for logged in users)
+  if (userLanguage && (userLanguage === 'en' || userLanguage === 'zh')) {
+    localStorage.setItem('i18nextLng', userLanguage);
+    return userLanguage;
+  }
+
+  // 3. Check localStorage
   const savedLang = localStorage.getItem('i18nextLng');
   if (savedLang === 'en' || savedLang === 'zh') {
     return savedLang;
   }
 
-  // 3. IP-based detection
+  // 4. IP-based detection
   try {
     const detectedLang = await detectLanguageByIP();
     localStorage.setItem('i18nextLng', detectedLang);
@@ -88,14 +95,14 @@ export async function initializeLanguage(): Promise<string> {
     console.error('IP-based language detection failed:', error);
   }
 
-  // 4. Browser language
+  // 5. Browser language
   const browserLang = navigator.language.toLowerCase();
   if (browserLang.startsWith('zh')) {
     localStorage.setItem('i18nextLng', 'zh');
     return 'zh';
   }
 
-  // 5. Default to English
+  // 6. Default to English
   localStorage.setItem('i18nextLng', 'en');
   return 'en';
 }

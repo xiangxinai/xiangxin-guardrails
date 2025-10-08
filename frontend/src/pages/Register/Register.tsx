@@ -3,6 +3,7 @@ import { Form, Input, Button, Card, Typography, message, Space, Steps } from 'an
 import { UserOutlined, LockOutlined, MailOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../../components/LanguageSwitcher/LanguageSwitcher';
 import './Register.css';
 
 const { Title, Text } = Typography;
@@ -279,6 +280,11 @@ const Register: React.FC = () => {
     <div className="register-container">
       <div className="register-content">
         <Card className="register-card">
+          {/* Language Switcher */}
+          <div style={{ position: 'absolute', top: '16px', right: '16px' }}>
+            <LanguageSwitcher />
+          </div>
+          
           <div className="register-header">
             <Title level={2} className="register-title">
               {t('register.title')}

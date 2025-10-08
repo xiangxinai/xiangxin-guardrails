@@ -13,7 +13,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   switchInfo: SwitchInfo;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, language?: string) => Promise<void>;
   logout: () => Promise<void>;
   switchToUser: (userId: string) => Promise<void>;
   exitSwitch: () => Promise<void>;
@@ -46,6 +46,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(userInfo);
         setIsAuthenticated(true);
         
+        // Set user language preference if available
+        if (userInfo.language) {
+          localStorage.setItem('i18nextLng', userInfo.language);
+          // Trigger language change without page reload
+          const i18n = (await import('../i18n')).default;
+          await i18n.changeLanguage(userInfo.language);
+        }
+        
         // Check user switch status
         await refreshSwitchStatus();
       } else {
@@ -74,14 +82,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, language?: string) => {
     try {
-      const response = await authService.login({ email, password });
+      const response = await authService.login({ email, password, language });
       authService.setToken(response.access_token);
       
       const userInfo = await authService.getCurrentUser();
       setUser(userInfo);
       setIsAuthenticated(true);
+      
+      // Set language preference after successful login
+      if (userInfo.language) {
+        localStorage.setItem('i18nextLng', userInfo.language);
+        // Trigger language change without page reload
+        const i18n = (await import('../i18n')).default;
+        await i18n.changeLanguage(userInfo.language);
+      }
+      
       // Refresh switch status after login, avoid 401 prompt due to concurrent requests on homepage
       try {
         await refreshSwitchStatus();

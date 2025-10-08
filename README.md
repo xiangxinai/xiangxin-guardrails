@@ -982,7 +982,7 @@ Xiangxin AI Guardrails v2.4.0 introduces **Data Leak Detection** capability to p
 - **Three Risk Levels**: Low, Medium, High risk classification
 - **Configurable Detection Direction**: Input/Output detection control
 - **Multiple Masking Methods**:
-  - **Replace**: Replace with placeholder tokens (e.g., `<PHONE_NUMBER>`)
+  - **Replace**: Replace with placeholder tokens (e.g., `<PHONE_NUMBER_SYS>`)
   - **Mask**: Partial masking (e.g., `139****5678`)
   - **Hash**: SHA256 hashing
   - **Encrypt**: Encryption processing
@@ -991,12 +991,12 @@ Xiangxin AI Guardrails v2.4.0 introduces **Data Leak Detection** capability to p
 
 ### 📋 Built-in Sensitive Data Types
 
-- **ID_CARD_NUMBER**: Chinese ID card numbers
-- **PHONE_NUMBER**: Mobile phone numbers
-- **EMAIL**: Email addresses
-- **BANK_CARD_NUMBER**: Bank card numbers
-- **PASSPORT_NUMBER**: Passport numbers
-- **IP_ADDRESS**: IP addresses
+- **ID_CARD_NUMBER_SYS**: Chinese ID card numbers
+- **PHONE_NUMBER_SYS**: Mobile phone numbers
+- **EMAIL_SYS**: Email addresses
+- **BANK_CARD_NUMBER_SYS**: Bank card numbers
+- **PASSPORT_NUMBER_SYS**: Passport numbers
+- **IP_ADDRESS_SYS**: IP addresses
 - **CREDIT_CARD**: Credit card numbers
 - **SSN**: Social Security Numbers
 
@@ -1017,22 +1017,22 @@ Prevents models from leaking sensitive data to users.
 ```json
 {
     "id": "guardrails-6048ed54e2bb482d894d6cb8c3842153",
-    "overall_risk_level": "高风险",
-    "suggest_action": "代答",
-    "suggest_answer": "我的电话号码是<PHONE_NUMBER>,银行卡号是<BANK_CARD_NUMBER>,身份证号是<ID_CARD_NUMBER>",
+    "overall_risk_level": "high_risk",
+    "suggest_action": "replace",
+    "suggest_answer": "My phone number is <PHONE_NUMBER_SYS>, bank card number is <BANK_CARD_NUMBER_SYS>, ID card number is <ID_CARD_NUMBER_SYS>",
     "score": 0.999998927117538,
     "result": {
         "compliance": {
-            "risk_level": "无风险",
+            "risk_level": "no_risk",
             "categories": []
         },
         "security": {
-            "risk_level": "无风险",
+            "risk_level": "no_risk",
             "categories": []
         },
         "data": {
-            "risk_level": "高风险",
-            "categories": ["BANK_CARD_NUMBER", "ID_CARD_NUMBER", "PHONE_NUMBER"]
+            "risk_level": "high_risk",
+            "categories": ["BANK_CARD_NUMBER_SYS", "ID_CARD_NUMBER_SYS", "PHONE_NUMBER_SYS"]
         }
     }
 }
@@ -1095,7 +1095,7 @@ response = requests.post(
     headers={"Authorization": "Bearer your-api-key"},
     json={
         "name": "High Risk Behavior Ban",
-        "risk_level": "高风险",
+        "risk_level": "high_risk",
         "trigger_count": 3,
         "time_window_minutes": 60,
         "ban_duration_minutes": 1440,

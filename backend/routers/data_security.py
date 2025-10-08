@@ -10,7 +10,7 @@ import uuid
 import logging
 
 from database.connection import get_db
-from database.models import Tenant, DataSecurityEntityType
+from database.models import Tenant, DataSecurityEntityType, TenantEntityTypeDisable
 from services.data_security_service import DataSecurityService
 from utils.auth import verify_token
 
@@ -67,7 +67,7 @@ async def create_entity_type(
     """Create sensitive data type configuration"""
     current_user = get_current_user(request, db)
 
-    # Check if the entity type already exists
+    # Check if the entity type already exists for this tenant
     existing = db.query(DataSecurityEntityType).filter(
         and_(
             DataSecurityEntityType.entity_type == entity_data.entity_type,
@@ -76,7 +76,7 @@ async def create_entity_type(
     ).first()
 
     if existing:
-        raise HTTPException(status_code=400, detail="The entity type already exists")
+        raise HTTPException(status_code=400, detail="The entity type already exists for this tenant")
 
     # Create service instance
     service = DataSecurityService(db)
@@ -360,4 +360,62 @@ async def create_global_entity_type(
         "is_global": entity_type.is_global,
         "created_at": entity_type.created_at.isoformat(),
         "updated_at": entity_type.updated_at.isoformat()
+    }
+
+@router.post("/entity-types/{entity_type}/disable")
+async def disable_entity_type_for_tenant(
+    entity_type: str,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Disable an entity type for the current tenant"""
+    current_user = get_current_user(request, db)
+    
+    # Create service instance
+    service = DataSecurityService(db)
+    
+    # Disable the entity type for this tenant
+    success = service.disable_entity_type_for_tenant(str(current_user.id), entity_type)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to disable entity type")
+    
+    return {"message": "Entity type disabled successfully"}
+
+@router.post("/entity-types/{entity_type}/enable")
+async def enable_entity_type_for_tenant(
+    entity_type: str,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Enable an entity type for the current tenant"""
+    current_user = get_current_user(request, db)
+    
+    # Create service instance
+    service = DataSecurityService(db)
+    
+    # Enable the entity type for this tenant
+    success = service.enable_entity_type_for_tenant(str(current_user.id), entity_type)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to enable entity type")
+    
+    return {"message": "Entity type enabled successfully"}
+
+@router.get("/disabled-entity-types")
+async def get_disabled_entity_types(
+    request: Request,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """Get list of disabled entity types for the current tenant"""
+    current_user = get_current_user(request, db)
+    
+    # Create service instance
+    service = DataSecurityService(db)
+    
+    # Get disabled entity types
+    disabled_types = service.get_tenant_disabled_entity_types(str(current_user.id))
+    
+    return {
+        "disabled_entity_types": disabled_types
     }

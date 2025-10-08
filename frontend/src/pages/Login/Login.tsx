@@ -4,6 +4,7 @@ import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../../components/LanguageSwitcher/LanguageSwitcher';
 import './Login.css';
 
 const { Title, Text } = Typography;
@@ -28,7 +29,9 @@ const Login: React.FC = () => {
     try {
       setLoading(true);
       setShowVerificationAlert(false);
-      await login(values.email, values.password);
+      // Get current language from localStorage
+      const currentLanguage = localStorage.getItem('i18nextLng') || 'en';
+      await login(values.email, values.password, currentLanguage);
       message.success(t('login.loginSuccess'));
       navigate(from, { replace: true });
     } catch (error: any) {
@@ -57,6 +60,11 @@ const Login: React.FC = () => {
     <div className="login-container">
       <div className="login-content">
         <Card className="login-card">
+          {/* Language Switcher */}
+          <div style={{ position: 'absolute', top: '16px', right: '16px' }}>
+            <LanguageSwitcher />
+          </div>
+          
           <div className="login-header">
             <Title level={2} className="login-title">
               {t('login.title')}

@@ -32,6 +32,7 @@ class ResendCodeRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    language: Optional[str] = None  # Optional language preference
 
 class LoginResponse(BaseModel):
     access_token: str
@@ -49,6 +50,7 @@ class UserInfo(BaseModel):
     is_verified: bool
     is_super_admin: bool
     rate_limit: int  # Speed limit (requests per second, 0 means unlimited, default is 1)
+    language: str  # User language preference
 
 class ApiKeyResponse(BaseModel):
     api_key: str
@@ -224,6 +226,11 @@ async def login_user(login_data: LoginRequest, request: Request, db: Session = D
             detail="Account not verified. Please check your email address and complete verification."
         )
 
+    # Update user language preference if provided
+    if login_data.language and login_data.language in ['en', 'zh']:
+        tenant.language = login_data.language
+        db.commit()
+
     # Record successful login
     record_login_attempt(db, login_data.email, client_ip, user_agent, True)
 
@@ -275,7 +282,8 @@ async def get_current_user_info(
         is_active=tenant.is_active,
         is_verified=tenant.is_verified,
         is_super_admin=admin_service.is_super_admin(tenant),
-        rate_limit=rate_limit
+        rate_limit=rate_limit,
+        language=tenant.language
     )
 
 @router.post("/regenerate-api-key", response_model=ApiKeyResponse)

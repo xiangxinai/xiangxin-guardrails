@@ -341,7 +341,7 @@ const EntityTypeManagement: React.FC = () => {
             label="Entity type code"
             rules={[{ required: true, message: 'Please enter entity type code' }]}
           >
-            <Input placeholder="E.g. ID_CARD_NUMBER, PHONE_NUMBER, EMAIL" disabled={!!editingEntity} />
+            <Input placeholder="E.g. ID_CARD_NUMBER_SYS, PHONE_NUMBER_SYS, EMAIL_SYS" disabled={!!editingEntity} />
           </Form.Item>
 
           <Form.Item
@@ -402,7 +402,7 @@ const EntityTypeManagement: React.FC = () => {
               <Text strong style={{ fontSize: 12 }}>Anonymization method config description:</Text>
               <ul style={{ margin: '8px 0', paddingLeft: 20, fontSize: 11 }}>
                 <li><Text code>replace</Text> - Replace with placeholder
-                  <br /><Text type="secondary">{"{"}"replacement": "&lt;PHONE_NUMBER&gt;"{"}"}  → 13912345678 变为 &lt;PHONE_NUMBER&gt;</Text>
+                  <br /><Text type="secondary">{"{"}"replacement": "&lt;PHONE_NUMBER_SYS&gt;"{"}"}  → 13912345678 变为 &lt;PHONE_NUMBER_SYS&gt;</Text>
                 </li>
                 <li><Text code>mask</Text> - Partial masking display
                   <br /><Text type="secondary">{"{"}"mask_char": "*", "keep_prefix": 3, "keep_suffix": 4{"}"}</Text>

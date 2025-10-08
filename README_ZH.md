@@ -995,7 +995,7 @@ def chat_with_openai(prompt, model="Xiangxin-Guardrails-Text"):
 - **三级风险等级**：低、中、高风险分类
 - **可配置检测方向**：输入/输出检测控制
 - **多种脱敏方法**：
-  - **替换(Replace)**：替换为占位符标记（如：`<PHONE_NUMBER>`）
+  - **替换(Replace)**：替换为占位符标记（如：`<PHONE_NUMBER_SYS>`）
   - **掩码(Mask)**：部分掩码显示（如：`139****5678`）
   - **哈希(Hash)**：SHA256哈希加密
   - **加密(Encrypt)**：加密处理
@@ -1004,12 +1004,12 @@ def chat_with_openai(prompt, model="Xiangxin-Guardrails-Text"):
 
 ### 📋 内置敏感数据类型
 
-- **ID_CARD_NUMBER**：身份证号
-- **PHONE_NUMBER**：手机号
-- **EMAIL**：邮箱地址
-- **BANK_CARD_NUMBER**：银行卡号
-- **PASSPORT_NUMBER**：护照号
-- **IP_ADDRESS**：IP地址
+- **ID_CARD_NUMBER_SYS**：身份证号
+- **PHONE_NUMBER_SYS**：手机号
+- **EMAIL_SYS**：邮箱地址
+- **BANK_CARD_NUMBER_SYS**：银行卡号
+- **PASSPORT_NUMBER_SYS**：护照号
+- **IP_ADDRESS_SYS**：IP地址
 - **CREDIT_CARD**：信用卡号
 - **SSN**：社会保障号
 
@@ -1030,22 +1030,22 @@ def chat_with_openai(prompt, model="Xiangxin-Guardrails-Text"):
 ```json
 {
     "id": "guardrails-6048ed54e2bb482d894d6cb8c3842153",
-    "overall_risk_level": "高风险",
-    "suggest_action": "代答",
-    "suggest_answer": "我的电话号码是<PHONE_NUMBER>,银行卡号是<BANK_CARD_NUMBER>,身份证号是<ID_CARD_NUMBER>",
+    "overall_risk_level": "high_risk",
+    "suggest_action": "replace",
+    "suggest_answer": "My phone number is <PHONE_NUMBER_SYS>, bank card number is <BANK_CARD_NUMBER_SYS>, ID card number is <ID_CARD_NUMBER_SYS>",
     "score": 0.999998927117538,
     "result": {
         "compliance": {
-            "risk_level": "无风险",
+            "risk_level": "no_risk",
             "categories": []
         },
         "security": {
-            "risk_level": "无风险",
+            "risk_level": "no_risk",
             "categories": []
         },
         "data": {
-            "risk_level": "高风险",
-            "categories": ["BANK_CARD_NUMBER", "ID_CARD_NUMBER", "PHONE_NUMBER"]
+            "risk_level": "no_risk",
+            "categories": ["BANK_CARD_NUMBER_SYS", "ID_CARD_NUMBER_SYS", "PHONE_NUMBER_SYS"]
         }
     }
 }
@@ -1108,7 +1108,7 @@ response = requests.post(
     headers={"Authorization": "Bearer your-api-key"},
     json={
         "name": "高风险行为封禁",
-        "risk_level": "高风险",
+        "risk_level": "no_risk",
         "trigger_count": 3,
         "time_window_minutes": 60,
         "ban_duration_minutes": 1440,

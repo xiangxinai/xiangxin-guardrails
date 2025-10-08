@@ -10,7 +10,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from datetime import datetime
-from database.models import DataSecurityEntityType
+from database.models import DataSecurityEntityType, TenantEntityTypeDisable
 from utils.logger import setup_logger
 
 logger = setup_logger()
@@ -89,6 +89,14 @@ class DataSecurityService:
         """
         tenant_id = tenant_id  # For backward compatibility, internally use tenant_id
         try:
+            # Get disabled entity types for this tenant
+            disabled_entity_types = set()
+            disabled_query = self.db.query(TenantEntityTypeDisable).filter(
+                TenantEntityTypeDisable.tenant_id == tenant_id
+            )
+            for disabled in disabled_query.all():
+                disabled_entity_types.add(disabled.entity_type)
+
             # Get global config and tenant custom config
             query = self.db.query(DataSecurityEntityType).filter(
                 and_(
@@ -102,6 +110,10 @@ class DataSecurityService:
             entity_types = []
 
             for et in entity_types_orm:
+                # Skip if this entity type is disabled by the tenant
+                if et.entity_type in disabled_entity_types:
+                    continue
+
                 # Check if the corresponding direction detection is enabled
                 recognition_config = et.recognition_config or {}
                 if direction == "input" and not recognition_config.get('check_input', True):
@@ -384,6 +396,63 @@ class DataSecurityService:
 
         return query.order_by(DataSecurityEntityType.created_at.desc()).all()
 
+    def disable_entity_type_for_tenant(self, tenant_id: str, entity_type: str) -> bool:
+        """Disable an entity type for a specific tenant"""
+        try:
+            # Check if already disabled
+            existing = self.db.query(TenantEntityTypeDisable).filter(
+                and_(
+                    TenantEntityTypeDisable.tenant_id == tenant_id,
+                    TenantEntityTypeDisable.entity_type == entity_type
+                )
+            ).first()
+
+            if existing:
+                return True  # Already disabled
+
+            # Create disable record
+            disable_record = TenantEntityTypeDisable(
+                tenant_id=tenant_id,
+                entity_type=entity_type
+            )
+            self.db.add(disable_record)
+            self.db.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Error disabling entity type {entity_type} for tenant {tenant_id}: {e}")
+            self.db.rollback()
+            return False
+
+    def enable_entity_type_for_tenant(self, tenant_id: str, entity_type: str) -> bool:
+        """Enable an entity type for a specific tenant (remove disable record)"""
+        try:
+            disable_record = self.db.query(TenantEntityTypeDisable).filter(
+                and_(
+                    TenantEntityTypeDisable.tenant_id == tenant_id,
+                    TenantEntityTypeDisable.entity_type == entity_type
+                )
+            ).first()
+
+            if disable_record:
+                self.db.delete(disable_record)
+                self.db.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Error enabling entity type {entity_type} for tenant {tenant_id}: {e}")
+            self.db.rollback()
+            return False
+
+    def get_tenant_disabled_entity_types(self, tenant_id: str) -> List[str]:
+        """Get list of disabled entity types for a tenant"""
+        try:
+            disabled_records = self.db.query(TenantEntityTypeDisable).filter(
+                TenantEntityTypeDisable.tenant_id == tenant_id
+            ).all()
+            return [record.entity_type for record in disabled_records]
+        except Exception as e:
+            logger.error(f"Error getting disabled entity types for tenant {tenant_id}: {e}")
+            return []
+
 
 def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
     """Create default entity type configuration for new tenant
@@ -396,7 +465,7 @@ def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
     # Define default entity types
     default_entity_types = [
         {
-            'entity_type': 'ID_CARD_NUMBER',
+            'entity_type': 'ID_CARD_NUMBER_SYS',
             'display_name': 'ID Card Number',
             'risk_level': 'high',
             'pattern': r'[1-8]\d{5}(19|20)\d{2}((0[1-9])|(1[0-2]))((0[1-9])|([12]\d)|(3[01]))\d{3}[\dxX]',
@@ -406,7 +475,7 @@ def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
             'check_output': True
         },
         {
-            'entity_type': 'PHONE_NUMBER',
+            'entity_type': 'PHONE_NUMBER_SYS',
             'display_name': 'Phone Number',
             'risk_level': 'medium',
             'pattern': r'1[3-9]\d{9}',
@@ -416,7 +485,7 @@ def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
             'check_output': True
         },
         {
-            'entity_type': 'EMAIL',
+            'entity_type': 'EMAIL_SYS',
             'display_name': 'Email',
             'risk_level': 'low',
             'pattern': r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
@@ -426,7 +495,7 @@ def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
             'check_output': True
         },
         {
-            'entity_type': 'BANK_CARD_NUMBER',
+            'entity_type': 'BANK_CARD_NUMBER_SYS',
             'display_name': 'Bank Card Number',
             'risk_level': 'high',
             'pattern': r'\d{16,19}',
@@ -436,7 +505,7 @@ def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
             'check_output': True
         },
         {
-            'entity_type': 'PASSPORT_NUMBER',
+            'entity_type': 'PASSPORT_NUMBER_SYS',
             'display_name': 'Passport Number',
             'risk_level': 'high',
             'pattern': r'[EGP]\d{8}',
@@ -446,7 +515,7 @@ def create_user_default_entity_types(db: Session, tenant_id: str) -> int:
             'check_output': True
         },
         {
-            'entity_type': 'IP_ADDRESS',
+            'entity_type': 'IP_ADDRESS_SYS',
             'display_name': 'IP Address',
             'risk_level': 'low',
             'pattern': r'(?:\d{1,3}\.){3}\d{1,3}',

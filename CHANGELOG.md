@@ -159,7 +159,7 @@ curl -X POST "http://localhost:5001/v1/guardrails" \
   * Three risk levels: low, medium, high
   * Six masking methods: replace, mask, hash, encrypt, shuffle, random
   * Configurable input/output direction detection
-  * Built-in types: ID_CARD_NUMBER, PHONE_NUMBER, EMAIL, BANK_CARD_NUMBER, PASSPORT_NUMBER, IP_ADDRESS
+  * Built-in types: ID_CARD_NUMBER_SYS, PHONE_NUMBER_SYS, EMAIL_SYS, BANK_CARD_NUMBER_SYS, PASSPORT_NUMBER_SYS, IP_ADDRESS_SYS
 
 * 📊 **Enhanced Detection Results**
 
@@ -199,9 +199,9 @@ curl -X POST "http://localhost:5001/v1/guardrails" \
       "result": {
         "compliance": {"risk_level": "Safe", "categories": []},
         "security": {"risk_level": "Safe", "categories": []},
-        "data": {"risk_level": "High", "categories": ["PHONE_NUMBER", "ID_CARD_NUMBER"]}
+        "data": {"risk_level": "High", "categories": ["PHONE_NUMBER_SYS", "ID_CARD_NUMBER_SYS"]}
       },
-      "suggest_answer": "My phone is <PHONE_NUMBER>, ID is <ID_CARD_NUMBER>"
+      "suggest_answer": "My phone is <PHONE_NUMBER_SYS>, ID is <ID_CARD_NUMBER_SYS>"
     }
     ```
 

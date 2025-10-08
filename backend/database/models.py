@@ -16,6 +16,7 @@ class Tenant(Base):
     is_verified = Column(Boolean, default=False)  # Whether the email has been verified
     is_super_admin = Column(Boolean, default=False)  # Whether to be a super admin
     api_key = Column(String(64), unique=True, nullable=False, index=True)
+    language = Column(String(10), default='en', nullable=False)  # User language preference
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -355,3 +356,22 @@ class DataSecurityEntityType(Base):
 
     # Association relationships
     tenant = relationship("Tenant")
+
+class TenantEntityTypeDisable(Base):
+    """Tenant entity type disable table"""
+    __tablename__ = "tenant_entity_type_disables"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    entity_type = Column(String(100), nullable=False, index=True)  # Entity type code, such as ID_CARD_NUMBER_SYS
+    disabled_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Association relationships
+    tenant = relationship("Tenant")
+
+    # Unique constraint
+    __table_args__ = (
+        UniqueConstraint('tenant_id', 'entity_type', name='_tenant_entity_type_disable_uc'),
+    )

@@ -3,6 +3,7 @@ import axios from 'axios';
 export interface LoginRequest {
   email: string;
   password: string;
+  language?: string;
 }
 
 export interface RegisterRequest {
@@ -32,6 +33,7 @@ export interface UserInfo {
   is_verified: boolean;
   is_super_admin: boolean;
   rate_limit: number;  // Tenant speed limit (requests per second, 0 means unlimited, default is 1)
+  language: string;  // User language preference
 }
 
 // Get base URL auxiliary function, consistent with api.ts
