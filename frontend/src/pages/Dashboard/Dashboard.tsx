@@ -59,10 +59,10 @@ const Dashboard: React.FC = () => {
           type: 'pie',
           radius: '50%',
           data: [
-            { value: stats.risk_distribution['高风险'], name: t('dashboard.highRisk'), itemStyle: { color: '#ff4d4f' } },
-            { value: stats.risk_distribution['中风险'], name: t('dashboard.mediumRisk'), itemStyle: { color: '#faad14' } },
-            { value: stats.risk_distribution['低风险'], name: t('dashboard.lowRisk'), itemStyle: { color: '#fadb14' } },
-            { value: stats.risk_distribution['无风险'], name: t('dashboard.noRisk'), itemStyle: { color: '#52c41a' } },
+            { value: stats.risk_distribution['high_risk'] || 0, name: t('dashboard.highRisk'), itemStyle: { color: '#ff4d4f' } },
+            { value: stats.risk_distribution['medium_risk'] || 0, name: t('dashboard.mediumRisk'), itemStyle: { color: '#faad14' } },
+            { value: stats.risk_distribution['low_risk'] || 0, name: t('dashboard.lowRisk'), itemStyle: { color: '#fadb14' } },
+            { value: stats.risk_distribution['no_risk'] || 0, name: t('dashboard.noRisk'), itemStyle: { color: '#52c41a' } },
           ],
           emphasis: {
             itemStyle: {

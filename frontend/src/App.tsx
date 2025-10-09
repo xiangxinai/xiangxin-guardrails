@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Layout from './components/Layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import Login from './pages/Login/Login';
@@ -14,6 +15,12 @@ import Account from './pages/Account/Account';
 import OnlineTest from './pages/OnlineTest/OnlineTest';
 
 function App() {
+  const { t, i18n } = useTranslation();
+
+  // Update document title based on current language
+  useEffect(() => {
+    document.title = t('common.appName');
+  }, [t, i18n.language]);
   return (
     <Routes>
       <Route path="/login" element={<Login />} />

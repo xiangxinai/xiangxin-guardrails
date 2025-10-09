@@ -44,9 +44,9 @@ const EntityTypeManagement: React.FC = () => {
   const { t } = useTranslation();
   
   const RISK_LEVELS = [
-    { value: '低', label: t('entityType.lowRisk'), color: 'green' },
-    { value: '中', label: t('entityType.mediumRisk'), color: 'orange' },
-    { value: '高', label: t('entityType.highRisk'), color: 'red' },
+    { value: 'low', label: t('entityType.lowRisk'), color: 'green' },
+    { value: 'medium', label: t('entityType.mediumRisk'), color: 'orange' },
+    { value: 'high', label: t('entityType.highRisk'), color: 'red' },
   ];
 
   const ANONYMIZATION_METHODS = [
@@ -338,22 +338,22 @@ const EntityTypeManagement: React.FC = () => {
         <Form form={form} layout="vertical">
           <Form.Item
             name="entity_type"
-            label="Entity type code"
-            rules={[{ required: true, message: 'Please enter entity type code' }]}
+            label={t('entityType.entityTypeCode')}
+            rules={[{ required: true, message: t('entityType.entityTypeCodeRequired') }]}
           >
-            <Input placeholder="E.g. ID_CARD_NUMBER_SYS, PHONE_NUMBER_SYS, EMAIL_SYS" disabled={!!editingEntity} />
+            <Input placeholder={t('entityType.entityTypeCodePlaceholder')} disabled={!!editingEntity} />
           </Form.Item>
 
           <Form.Item
             name="display_name"
-            label="Display name"
-            rules={[{ required: true, message: 'Please enter display name' }]}
+            label={t('entityType.displayNameLabel')}
+            rules={[{ required: true, message: t('entityType.displayNameRequired') }]}
           >
-            <Input placeholder="E.g. ID Card Number, Phone Number, Email" />
+            <Input placeholder={t('entityType.displayNamePlaceholder')} />
           </Form.Item>
 
-          <Form.Item name="risk_level" label="Risk level" rules={[{ required: true, message: 'Please select risk level' }]}>
-            <Select placeholder="Please select risk level">
+          <Form.Item name="risk_level" label={t('entityType.riskLevelLabel')} rules={[{ required: true, message: t('entityType.riskLevelRequired') }]}>
+            <Select placeholder={t('entityType.riskLevelPlaceholder')}>
               {RISK_LEVELS.map((level) => (
                 <Option key={level.value} value={level.value}>
                   {level.label}
@@ -364,23 +364,23 @@ const EntityTypeManagement: React.FC = () => {
 
           <Form.Item
             name="pattern"
-            label="Recognition rule (regex)"
-            rules={[{ required: true, message: 'Please enter regex' }]}
-            tooltip="Use regex to define the recognition rule for sensitive data"
+            label={t('entityType.recognitionRuleLabel')}
+            rules={[{ required: true, message: t('entityType.recognitionRuleRequired') }]}
+            tooltip={t('entityType.recognitionRuleTooltip')}
           >
             <TextArea
               rows={3}
-              placeholder='E.g. 1[3-9]\d{9} (Phone Number)'
+              placeholder={t('entityType.recognitionRulePlaceholder')}
               style={{ fontFamily: 'monospace' }}
             />
           </Form.Item>
 
           <Form.Item
             name="anonymization_method"
-            label="Anonymization method"
-            rules={[{ required: true, message: 'Please select anonymization method' }]}
+            label={t('entityType.anonymizationMethodLabel')}
+            rules={[{ required: true, message: t('entityType.anonymizationMethodRequired') }]}
           >
-            <Select placeholder="Please select anonymization method">
+            <Select placeholder={t('entityType.anonymizationMethodPlaceholder')}>
               {ANONYMIZATION_METHODS.map((method) => (
                 <Option key={method.value} value={method.value}>
                   {method.label}
@@ -391,51 +391,51 @@ const EntityTypeManagement: React.FC = () => {
 
           <Form.Item
             name="anonymization_config_text"
-            label="Anonymization config (JSON)"
+            label={t('entityType.anonymizationConfigLabel')}
           >
             <TextArea
               rows={4}
-              placeholder='E.g. {"mask_char": "*", "keep_prefix": 3, "keep_suffix": 4}'
+              placeholder={t('entityType.anonymizationConfigPlaceholder')}
               style={{ fontFamily: 'monospace' }}
             />
             <Card size="small" style={{ marginTop: 8, backgroundColor: '#f5f5f5' }}>
-              <Text strong style={{ fontSize: 12 }}>Anonymization method config description:</Text>
+              <Text strong style={{ fontSize: 12 }}>{t('entityType.anonymizationMethodConfigDesc')}</Text>
               <ul style={{ margin: '8px 0', paddingLeft: 20, fontSize: 11 }}>
-                <li><Text code>replace</Text> - Replace with placeholder
-                  <br /><Text type="secondary">{"{"}"replacement": "&lt;PHONE_NUMBER_SYS&gt;"{"}"}  → 13912345678 变为 &lt;PHONE_NUMBER_SYS&gt;</Text>
+                <li><Text code>replace</Text> - {t('entityType.replaceDesc')}
+                  <br /><Text type="secondary">{t('entityType.replaceExample')}</Text>
                 </li>
-                <li><Text code>mask</Text> - Partial masking display
-                  <br /><Text type="secondary">{"{"}"mask_char": "*", "keep_prefix": 3, "keep_suffix": 4{"}"}</Text>
-                  <br /><Text type="secondary">→ 13912345678 becomes 139****5678</Text>
+                <li><Text code>mask</Text> - {t('entityType.maskDesc')}
+                  <br /><Text type="secondary">{t('entityType.maskExample')}</Text>
+                  <br /><Text type="secondary">{t('entityType.maskExample2')}</Text>
                 </li>
-                <li><Text code>hash</Text> - SHA256 hash (no config)
-                  <br /><Text type="secondary">{"{}"} → 13912345678 becomes sha256_abc123...</Text>
+                <li><Text code>hash</Text> - {t('entityType.hashDesc')}
+                  <br /><Text type="secondary">{t('entityType.hashExample')}</Text>
                 </li>
-                <li><Text code>encrypt</Text> - Encryption (no config)
-                  <br /><Text type="secondary">{"{}"} → 13912345678 becomes &lt;ENCRYPTED_a1b2c3d4&gt;</Text>
+                <li><Text code>encrypt</Text> - {t('entityType.encryptDesc')}
+                  <br /><Text type="secondary">{t('entityType.encryptExample')}</Text>
                 </li>
-                <li><Text code>shuffle</Text> - Character reordering (no config)
-                  <br /><Text type="secondary">{"{}"} → 13912345678 becomes 87654321913</Text>
+                <li><Text code>shuffle</Text> - {t('entityType.shuffleDesc')}
+                  <br /><Text type="secondary">{t('entityType.shuffleExample')}</Text>
                 </li>
-                <li><Text code>random</Text> - Random character replacement (no config)
-                  <br /><Text type="secondary">{"{}"} → 13912345678 becomes 48273569102</Text>
+                <li><Text code>random</Text> - {t('entityType.randomDesc')}
+                  <br /><Text type="secondary">{t('entityType.randomExample')}</Text>
                 </li>
               </ul>
             </Card>
           </Form.Item>
 
-          <Form.Item label="Detection scope">
+          <Form.Item label={t('entityType.detectionScopeLabel')}>
             <Space>
               <Form.Item name="check_input" valuePropName="checked" noStyle>
-                <Switch checkedChildren="Input" unCheckedChildren="Input" />
+                <Switch checkedChildren={t('entityType.inputSwitch')} unCheckedChildren={t('entityType.inputSwitch')} />
               </Form.Item>
               <Form.Item name="check_output" valuePropName="checked" noStyle>
-                <Switch checkedChildren="Output" unCheckedChildren="Output" />
+                <Switch checkedChildren={t('entityType.outputSwitch')} unCheckedChildren={t('entityType.outputSwitch')} />
               </Form.Item>
             </Space>
           </Form.Item>
 
-          <Form.Item name="is_active" label="Enable status" valuePropName="checked">
+          <Form.Item name="is_active" label={t('entityType.enableStatusLabel')} valuePropName="checked">
             <Switch />
           </Form.Item>
 
@@ -444,8 +444,8 @@ const EntityTypeManagement: React.FC = () => {
               name="is_global"
               label={
                 <span>
-                  System configuration
-                  <Tooltip title="System configuration will take effect for all users, only administrators can set and modify">
+                  {t('entityType.systemConfigLabel')}
+                  <Tooltip title={t('entityType.systemConfigTooltip')}>
                     <InfoCircleOutlined style={{ marginLeft: 4 }} />
                   </Tooltip>
                 </span>
