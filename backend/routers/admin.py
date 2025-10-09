@@ -5,7 +5,12 @@ from sqlalchemy import func
 
 from database.connection import get_db
 import uuid
-from database.models import Tenant, DetectionResult
+from database.models import (
+    Tenant, DetectionResult, TenantRateLimitCounter, TenantRateLimit,
+    TestModelConfig, Blacklist, Whitelist, ResponseTemplate, RiskTypeConfig,
+    ProxyModelConfig, ProxyRequestLog, KnowledgeBase, OnlineTestModelSelection,
+    DataSecurityEntityType, TenantSwitch
+)
 from services.admin_service import admin_service
 from utils.logger import setup_logger
 
@@ -506,7 +511,53 @@ async def delete_user(
         if tenant.id == current_tenant.id:
             raise HTTPException(status_code=400, detail="Cannot delete your own account")
 
-        # Delete tenant
+        # Delete related records first to avoid foreign key constraint violations
+        # Delete tenant rate limit counters
+        db.query(TenantRateLimitCounter).filter(TenantRateLimitCounter.tenant_id == tenant_uuid).delete()
+        
+        # Delete tenant rate limits
+        db.query(TenantRateLimit).filter(TenantRateLimit.tenant_id == tenant_uuid).delete()
+        
+        # Delete detection results
+        db.query(DetectionResult).filter(DetectionResult.tenant_id == tenant_uuid).delete()
+        
+        # Delete test model configs
+        db.query(TestModelConfig).filter(TestModelConfig.tenant_id == tenant_uuid).delete()
+        
+        # Delete blacklists
+        db.query(Blacklist).filter(Blacklist.tenant_id == tenant_uuid).delete()
+        
+        # Delete whitelists
+        db.query(Whitelist).filter(Whitelist.tenant_id == tenant_uuid).delete()
+        
+        # Delete response templates
+        db.query(ResponseTemplate).filter(ResponseTemplate.tenant_id == tenant_uuid).delete()
+        
+        # Delete risk type config
+        db.query(RiskTypeConfig).filter(RiskTypeConfig.tenant_id == tenant_uuid).delete()
+        
+        # Delete proxy model configs
+        db.query(ProxyModelConfig).filter(ProxyModelConfig.tenant_id == tenant_uuid).delete()
+        
+        # Delete proxy request logs
+        db.query(ProxyRequestLog).filter(ProxyRequestLog.tenant_id == tenant_uuid).delete()
+        
+        # Delete knowledge bases
+        db.query(KnowledgeBase).filter(KnowledgeBase.tenant_id == tenant_uuid).delete()
+        
+        # Delete online test model selections
+        db.query(OnlineTestModelSelection).filter(OnlineTestModelSelection.tenant_id == tenant_uuid).delete()
+        
+        # Delete data security entity types
+        db.query(DataSecurityEntityType).filter(DataSecurityEntityType.tenant_id == tenant_uuid).delete()
+        
+        # Delete tenant switches where this tenant is admin or target
+        db.query(TenantSwitch).filter(
+            (TenantSwitch.admin_tenant_id == tenant_uuid) | 
+            (TenantSwitch.target_tenant_id == tenant_uuid)
+        ).delete()
+        
+        # Finally delete the tenant
         db.delete(tenant)
         db.commit()
 

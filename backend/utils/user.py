@@ -63,6 +63,11 @@ def verify_user_email(db: Session, email: str, verification_code: str) -> bool:
         tenant.is_active = True
         tenant.is_verified = True
 
+    # First commit the user activation to ensure it's saved
+    db.commit()
+
+    # Then try to create default configurations (these are not critical for user activation)
+    if tenant:
         # Create default reply templates for new tenant
         try:
             from services.template_service import create_user_default_templates
@@ -81,7 +86,6 @@ def verify_user_email(db: Session, email: str, verification_code: str) -> bool:
             print(f"Failed to create default entity type configurations for tenant {tenant.email}: {e}")
             # Not affect tenant activation process, just record error
 
-    db.commit()
     return True
 
 def regenerate_api_key(db: Session, tenant_id: Union[str, uuid.UUID]) -> Optional[str]:
