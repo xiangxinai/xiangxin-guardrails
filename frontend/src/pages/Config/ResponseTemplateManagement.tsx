@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, message, Tag, Select } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, message, Tag, Select, Alert, Card, Space } from 'antd';
+import { EditOutlined, FilterOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { configApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { ResponseTemplate } from '../../types';
+import ConfigSetSelector from '../../components/ConfigSetSelector';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -15,6 +16,7 @@ const ResponseTemplateManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<ResponseTemplate | null>(null);
+  const [selectedConfigSet, setSelectedConfigSet] = useState<number | undefined>();
   const [form] = Form.useForm();
   const { onUserSwitch } = useAuth();
 
@@ -48,6 +50,12 @@ const ResponseTemplateManagement: React.FC = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (selectedConfigSet) {
+      fetchData();
+    }
+  }, [selectedConfigSet]);
+
   // Listen to user switch event, automatically refresh data
   useEffect(() => {
     const unsubscribe = onUserSwitch(() => {
@@ -59,7 +67,9 @@ const ResponseTemplateManagement: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const result = await configApi.responses.list();
+      // Filter by selected config set if one is selected
+      const params = selectedConfigSet ? { template_id: selectedConfigSet } : {};
+      const result = await configApi.responses.list(params);
       
       // Ensure each category has one reject record, if not, create a default one
       const existingCategories = result.map((item: ResponseTemplate) => item.category);
@@ -75,15 +85,16 @@ const ResponseTemplateManagement: React.FC = () => {
             risk_level: category.riskLevel,
             template_content: defaultContent,
             is_default: true,
-            is_active: true
+            is_active: true,
+            template_id: selectedConfigSet || null
           });
         } catch (error) {
           console.error(`Failed to create default template for ${category.value}:`, error);
         }
       }
-      
-      // Re-fetch data
-      const updatedResult = await configApi.responses.list();
+
+      // Re-fetch data with same filter
+      const updatedResult = await configApi.responses.list(params);
       setData(updatedResult);
     } catch (error) {
       console.error('Error fetching response templates:', error);
@@ -98,6 +109,10 @@ const ResponseTemplateManagement: React.FC = () => {
       category: record.category,
       template_content: record.template_content
     });
+    // Pre-fill template_id with currently selected config set
+    if (selectedConfigSet) {
+      form.setFieldsValue({ template_id: selectedConfigSet });
+    }
     setModalVisible(true);
   };
 
@@ -188,6 +203,31 @@ const ResponseTemplateManagement: React.FC = () => {
 
   return (
     <div>
+      {/* Config Set Filter */}
+      <Card style={{ marginBottom: 16 }}>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Alert
+            message={t('configSet.filterInfo') || 'Select a config set to view and manage its response templates'}
+            description={
+              t('configSet.filterDescription') ||
+              'You can filter response templates by config set. Only templates belonging to the selected config set will be displayed.'
+            }
+            type="info"
+            showIcon
+            icon={<FilterOutlined />}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ minWidth: 120 }}>{t('configSet.selectConfigSet') || 'Config Set:'}</span>
+            <ConfigSetSelector
+              value={selectedConfigSet}
+              onChange={setSelectedConfigSet}
+              allowCreate={true}
+              style={{ flex: 1 }}
+            />
+          </div>
+        </Space>
+      </Card>
+
       <div style={{ marginBottom: 16 }}>
         <h3>{t('template.rejectAnswerLibrary')}</h3>
         <p style={{ color: '#666', marginBottom: 16 }}>
@@ -215,6 +255,13 @@ const ResponseTemplateManagement: React.FC = () => {
           layout="vertical"
           onFinish={handleSubmit}
         >
+          <Form.Item
+            name="template_id"
+            hidden
+          >
+            <Input type="hidden" />
+          </Form.Item>
+
           <Form.Item
             name="category"
             label={t('template.riskCategory')}

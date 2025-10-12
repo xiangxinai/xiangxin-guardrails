@@ -105,6 +105,91 @@ class RiskConfigResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class RiskConfigListItem(BaseModel):
+    """Risk config list item for selection"""
+    id: int
+    name: str
+    tenant_id: str
+    is_default: bool
+
+    class Config:
+        from_attributes = True
+
+class CreateRiskConfigRequest(BaseModel):
+    """Request to create a new risk config"""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str = Field(None, max_length=500)
+    is_default: bool = False
+    s1_enabled: bool = True
+    s2_enabled: bool = True
+    s3_enabled: bool = True
+    s4_enabled: bool = True
+    s5_enabled: bool = True
+    s6_enabled: bool = True
+    s7_enabled: bool = True
+    s8_enabled: bool = True
+    s9_enabled: bool = True
+    s10_enabled: bool = True
+    s11_enabled: bool = True
+    s12_enabled: bool = True
+    high_sensitivity_threshold: float = Field(0.40, ge=0.0, le=1.0)
+    medium_sensitivity_threshold: float = Field(0.60, ge=0.0, le=1.0)
+    low_sensitivity_threshold: float = Field(0.95, ge=0.0, le=1.0)
+    sensitivity_trigger_level: str = Field("medium", pattern="^(low|medium|high)$")
+
+class UpdateRiskConfigRequest(BaseModel):
+    """Request to update a risk config"""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str = Field(None, max_length=500)
+    is_default: bool = False
+    s1_enabled: bool = True
+    s2_enabled: bool = True
+    s3_enabled: bool = True
+    s4_enabled: bool = True
+    s5_enabled: bool = True
+    s6_enabled: bool = True
+    s7_enabled: bool = True
+    s8_enabled: bool = True
+    s9_enabled: bool = True
+    s10_enabled: bool = True
+    s11_enabled: bool = True
+    s12_enabled: bool = True
+    high_sensitivity_threshold: float = Field(0.40, ge=0.0, le=1.0)
+    medium_sensitivity_threshold: float = Field(0.60, ge=0.0, le=1.0)
+    low_sensitivity_threshold: float = Field(0.95, ge=0.0, le=1.0)
+    sensitivity_trigger_level: str = Field("medium", pattern="^(low|medium|high)$")
+
+class CloneConfigRequest(BaseModel):
+    """Request to clone a config"""
+    new_name: str = Field(..., min_length=1, max_length=100)
+
+class RiskConfigDetailResponse(BaseModel):
+    """Detailed risk config response"""
+    id: int
+    name: str
+    description: str = None
+    tenant_id: str
+    is_default: bool
+    s1_enabled: bool
+    s2_enabled: bool
+    s3_enabled: bool
+    s4_enabled: bool
+    s5_enabled: bool
+    s6_enabled: bool
+    s7_enabled: bool
+    s8_enabled: bool
+    s9_enabled: bool
+    s10_enabled: bool
+    s11_enabled: bool
+    s12_enabled: bool
+    high_sensitivity_threshold: float
+    medium_sensitivity_threshold: float
+    low_sensitivity_threshold: float
+    sensitivity_trigger_level: str
+
+    class Config:
+        from_attributes = True
+
 class SensitivityThresholdRequest(BaseModel):
     high_sensitivity_threshold: float = Field(..., ge=0.0, le=1.0)
     medium_sensitivity_threshold: float = Field(..., ge=0.0, le=1.0)
@@ -120,12 +205,276 @@ class SensitivityThresholdResponse(BaseModel):
     class Config:
         from_attributes = True
 
+@router.get("/risk-configs", response_model=list[RiskConfigDetailResponse])
+async def list_risk_configs(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """List all risk configurations for the current tenant with full details"""
+    try:
+        current_user = get_current_user_from_request(request, db)
+        risk_service = RiskConfigService(db)
+        configs = risk_service.list_user_risk_configs(str(current_user.id))
+        return [
+            RiskConfigDetailResponse(
+                id=config.id,
+                name=config.name,
+                description=config.description,
+                tenant_id=str(config.tenant_id),
+                is_default=config.is_default,
+                s1_enabled=config.s1_enabled,
+                s2_enabled=config.s2_enabled,
+                s3_enabled=config.s3_enabled,
+                s4_enabled=config.s4_enabled,
+                s5_enabled=config.s5_enabled,
+                s6_enabled=config.s6_enabled,
+                s7_enabled=config.s7_enabled,
+                s8_enabled=config.s8_enabled,
+                s9_enabled=config.s9_enabled,
+                s10_enabled=config.s10_enabled,
+                s11_enabled=config.s11_enabled,
+                s12_enabled=config.s12_enabled,
+                high_sensitivity_threshold=config.high_sensitivity_threshold,
+                medium_sensitivity_threshold=config.medium_sensitivity_threshold,
+                low_sensitivity_threshold=config.low_sensitivity_threshold,
+                sensitivity_trigger_level=config.sensitivity_trigger_level
+            )
+            for config in configs
+        ]
+    except Exception as e:
+        logger.error(f"Failed to list risk configs: {e}")
+        raise HTTPException(status_code=500, detail="Failed to list risk configs")
+
+@router.post("/risk-configs", response_model=RiskConfigDetailResponse, status_code=201)
+async def create_risk_config(
+    config_request: CreateRiskConfigRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Create a new risk configuration template"""
+    try:
+        current_user = get_current_user_from_request(request, db)
+        risk_service = RiskConfigService(db)
+
+        config_data = config_request.dict()
+        name = config_data.pop('name')
+
+        config = risk_service.create_risk_config(str(current_user.id), name, config_data)
+
+        return RiskConfigDetailResponse(
+            id=config.id,
+            name=config.name,
+            tenant_id=str(config.tenant_id),
+            is_default=config.is_default,
+            s1_enabled=config.s1_enabled,
+            s2_enabled=config.s2_enabled,
+            s3_enabled=config.s3_enabled,
+            s4_enabled=config.s4_enabled,
+            s5_enabled=config.s5_enabled,
+            s6_enabled=config.s6_enabled,
+            s7_enabled=config.s7_enabled,
+            s8_enabled=config.s8_enabled,
+            s9_enabled=config.s9_enabled,
+            s10_enabled=config.s10_enabled,
+            s11_enabled=config.s11_enabled,
+            s12_enabled=config.s12_enabled,
+            high_sensitivity_threshold=config.high_sensitivity_threshold,
+            medium_sensitivity_threshold=config.medium_sensitivity_threshold,
+            low_sensitivity_threshold=config.low_sensitivity_threshold,
+            sensitivity_trigger_level=config.sensitivity_trigger_level
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to create risk config: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create risk config")
+
+@router.get("/risk-configs/{config_id}", response_model=RiskConfigDetailResponse)
+async def get_risk_config_detail(
+    config_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Get detailed risk configuration"""
+    try:
+        current_user = get_current_user_from_request(request, db)
+        risk_service = RiskConfigService(db)
+
+        config = risk_service.get_risk_config_by_id(config_id, str(current_user.id))
+        if not config:
+            raise HTTPException(status_code=404, detail="Risk config not found")
+
+        return RiskConfigDetailResponse(
+            id=config.id,
+            name=config.name,
+            tenant_id=str(config.tenant_id),
+            is_default=config.is_default,
+            s1_enabled=config.s1_enabled,
+            s2_enabled=config.s2_enabled,
+            s3_enabled=config.s3_enabled,
+            s4_enabled=config.s4_enabled,
+            s5_enabled=config.s5_enabled,
+            s6_enabled=config.s6_enabled,
+            s7_enabled=config.s7_enabled,
+            s8_enabled=config.s8_enabled,
+            s9_enabled=config.s9_enabled,
+            s10_enabled=config.s10_enabled,
+            s11_enabled=config.s11_enabled,
+            s12_enabled=config.s12_enabled,
+            high_sensitivity_threshold=config.high_sensitivity_threshold,
+            medium_sensitivity_threshold=config.medium_sensitivity_threshold,
+            low_sensitivity_threshold=config.low_sensitivity_threshold,
+            sensitivity_trigger_level=config.sensitivity_trigger_level
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get risk config: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get risk config")
+
+@router.put("/risk-configs/{config_id}", response_model=RiskConfigDetailResponse)
+async def update_risk_config_detail(
+    config_id: int,
+    config_request: UpdateRiskConfigRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Update a risk configuration template"""
+    try:
+        current_user = get_current_user_from_request(request, db)
+        risk_service = RiskConfigService(db)
+
+        config_data = config_request.dict()
+        name = config_data.pop('name')
+
+        config = risk_service.update_risk_config_by_id(config_id, str(current_user.id), name, config_data)
+
+        # Clear cache
+        await risk_config_cache.invalidate_user_cache(str(current_user.id))
+
+        return RiskConfigDetailResponse(
+            id=config.id,
+            name=config.name,
+            tenant_id=str(config.tenant_id),
+            is_default=config.is_default,
+            s1_enabled=config.s1_enabled,
+            s2_enabled=config.s2_enabled,
+            s3_enabled=config.s3_enabled,
+            s4_enabled=config.s4_enabled,
+            s5_enabled=config.s5_enabled,
+            s6_enabled=config.s6_enabled,
+            s7_enabled=config.s7_enabled,
+            s8_enabled=config.s8_enabled,
+            s9_enabled=config.s9_enabled,
+            s10_enabled=config.s10_enabled,
+            s11_enabled=config.s11_enabled,
+            s12_enabled=config.s12_enabled,
+            high_sensitivity_threshold=config.high_sensitivity_threshold,
+            medium_sensitivity_threshold=config.medium_sensitivity_threshold,
+            low_sensitivity_threshold=config.low_sensitivity_threshold,
+            sensitivity_trigger_level=config.sensitivity_trigger_level
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to update risk config: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update risk config")
+
+@router.delete("/risk-configs/{config_id}", status_code=204)
+async def delete_risk_config_template(
+    config_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Delete a risk configuration template"""
+    try:
+        current_user = get_current_user_from_request(request, db)
+        risk_service = RiskConfigService(db)
+
+        risk_service.delete_risk_config(config_id, str(current_user.id))
+
+        # Clear cache
+        await risk_config_cache.invalidate_user_cache(str(current_user.id))
+
+        return None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to delete risk config: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete risk config")
+
+@router.post("/risk-configs/{config_id}/clone", response_model=RiskConfigDetailResponse, status_code=201)
+async def clone_risk_config(
+    config_id: int,
+    clone_request: CloneConfigRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Clone an existing config set with a new name"""
+    try:
+        current_user = get_current_user_from_request(request, db)
+        risk_service = RiskConfigService(db)
+
+        cloned_config = risk_service.clone_risk_config(
+            config_id=config_id,
+            tenant_id=str(current_user.id),
+            new_name=clone_request.new_name
+        )
+
+        return RiskConfigDetailResponse(
+            id=cloned_config.id,
+            name=cloned_config.name,
+            description=cloned_config.description,
+            tenant_id=str(cloned_config.tenant_id),
+            is_default=cloned_config.is_default,
+            s1_enabled=cloned_config.s1_enabled,
+            s2_enabled=cloned_config.s2_enabled,
+            s3_enabled=cloned_config.s3_enabled,
+            s4_enabled=cloned_config.s4_enabled,
+            s5_enabled=cloned_config.s5_enabled,
+            s6_enabled=cloned_config.s6_enabled,
+            s7_enabled=cloned_config.s7_enabled,
+            s8_enabled=cloned_config.s8_enabled,
+            s9_enabled=cloned_config.s9_enabled,
+            s10_enabled=cloned_config.s10_enabled,
+            s11_enabled=cloned_config.s11_enabled,
+            s12_enabled=cloned_config.s12_enabled,
+            high_sensitivity_threshold=cloned_config.high_sensitivity_threshold,
+            medium_sensitivity_threshold=cloned_config.medium_sensitivity_threshold,
+            low_sensitivity_threshold=cloned_config.low_sensitivity_threshold,
+            sensitivity_trigger_level=cloned_config.sensitivity_trigger_level
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to clone risk config: {e}")
+        raise HTTPException(status_code=500, detail="Failed to clone risk config")
+
+@router.get("/risk-configs/{config_id}/associations")
+async def get_config_associations(
+    config_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Get all associated configurations for a config set"""
+    try:
+        current_user = get_current_user_from_request(request, db)
+        risk_service = RiskConfigService(db)
+
+        associations = risk_service.get_config_associations(config_id, str(current_user.id))
+        return associations
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to get config associations: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get config associations")
+
 @router.get("/risk-types", response_model=RiskConfigResponse)
 async def get_risk_config(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """Get user risk type configuration"""
+    """Get user default risk type configuration"""
     try:
         current_user = get_current_user_from_request(request, db)
         risk_service = RiskConfigService(db)

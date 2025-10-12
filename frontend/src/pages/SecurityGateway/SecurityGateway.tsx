@@ -31,7 +31,7 @@ interface ProxyModelFormData {
   stream_chunk_size?: number;
 }
 
-const ProxyModelManagement: React.FC = () => {
+const SecurityGateway: React.FC = () => {
   const { t } = useTranslation();
   const [models, setModels] = useState<ProxyModel[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,7 +42,7 @@ const ProxyModelManagement: React.FC = () => {
   const [formKey, setFormKey] = useState(0); // For forcing form re-rendering
   const [form] = Form.useForm();
   const { onUserSwitch } = useAuth();
-  
+
   // Directly manage switch states (minimal configuration)
   const [switchStates, setSwitchStates] = useState({
     enabled: true,
@@ -57,7 +57,7 @@ const ProxyModelManagement: React.FC = () => {
     setLoading(true);
     try {
       const response = await proxyModelsApi.list();
-      
+
       if (response.success) {
         setModels(response.data);
       } else {
@@ -87,7 +87,7 @@ const ProxyModelManagement: React.FC = () => {
   const fetchModelDetail = async (modelId: string) => {
     try {
       const response = await proxyModelsApi.get(modelId);
-      
+
       if (response.success) {
         return response.data;
       } else {
@@ -104,7 +104,7 @@ const ProxyModelManagement: React.FC = () => {
   // Show create/edit modal
   const showModal = async (model?: ProxyModel) => {
     setEditingModel(model || null);
-    
+
     if (model) {
       // Editing mode: first get complete data, then show modal
       const modelDetail = await fetchModelDetail(model.id);
@@ -114,14 +114,14 @@ const ProxyModelManagement: React.FC = () => {
         console.log('block_on_input_risk:', modelDetail.block_on_input_risk, typeof modelDetail.block_on_input_risk);
         console.log('block_on_output_risk:', modelDetail.block_on_output_risk, typeof modelDetail.block_on_output_risk);
         console.log('enable_reasoning_detection:', modelDetail.enable_reasoning_detection, typeof modelDetail.enable_reasoning_detection);
-        
+
         // Sync set form values and switch states (minimal configuration)
         const formValues = {
           config_name: modelDetail.config_name,
           api_base_url: modelDetail.api_base_url,
           model_name: modelDetail.model_name,
         };
-        
+
         const switchValues = {
           enabled: modelDetail.enabled,
           block_on_input_risk: modelDetail.block_on_input_risk,
@@ -129,12 +129,12 @@ const ProxyModelManagement: React.FC = () => {
           enable_reasoning_detection: modelDetail.enable_reasoning_detection !== false,
           stream_chunk_size: modelDetail.stream_chunk_size || 50,
         };
-        
+
         // Reset form and set values
         form.resetFields();
         form.setFieldsValue(formValues);
         setSwitchStates(switchValues);
-        
+
         // Update form key and show modal
         setFormKey(prev => prev + 1);
         setIsModalVisible(true);
@@ -144,7 +144,7 @@ const ProxyModelManagement: React.FC = () => {
     } else {
       // Create mode: directly set default values and show modal
       console.log('=== Create mode - set default values ===');
-      
+
       // Reset form and switch states
       form.resetFields();
       setSwitchStates({
@@ -154,7 +154,7 @@ const ProxyModelManagement: React.FC = () => {
         enable_reasoning_detection: true, // Default enable
         stream_chunk_size: 50, // Default check every 50 chunks
       });
-      
+
       // Update form key and show modal
       setFormKey(prev => prev + 1);
       setIsModalVisible(true);
@@ -193,8 +193,8 @@ const ProxyModelManagement: React.FC = () => {
 
   // Check if proxy model name is duplicate
   const checkConfigNameDuplicate = (configName: string): boolean => {
-    return models.some(model => 
-      model.config_name === configName && 
+    return models.some(model =>
+      model.config_name === configName &&
       (!editingModel || model.id !== editingModel.id)
     );
   };
@@ -217,7 +217,7 @@ const ProxyModelManagement: React.FC = () => {
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
-      
+
       // Construct submit data (minimal configuration)
       const formData: ProxyModelFormData = {
         config_name: values.config_name,
@@ -250,7 +250,7 @@ const ProxyModelManagement: React.FC = () => {
       fetchModels();
     } catch (error: any) {
       console.error('Save failed:', error);
-      
+
       // Handle different types of errors
       if (error.response) {
         // Server returned error
@@ -279,7 +279,7 @@ const ProxyModelManagement: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       const response = await proxyModelsApi.delete(id);
-      
+
       if (response.success) {
         message.success(t('proxy.modelConfigDeleted'));
         fetchModels();
@@ -289,7 +289,7 @@ const ProxyModelManagement: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Delete failed:', error);
-      
+
       // Handle different types of errors
       if (error.response) {
         const errorMessage = error.response.data?.error || error.response.data?.message || t('proxy.deleteFailed');
@@ -347,16 +347,16 @@ const ProxyModelManagement: React.FC = () => {
       key: 'action',
       render: (_: any, record: ProxyModel) => (
         <Space>
-          <Button 
-            type="link" 
-            icon={<EyeOutlined />} 
+          <Button
+            type="link"
+            icon={<EyeOutlined />}
             onClick={() => showViewModal(record)}
           >
             {t('proxy.view')}
           </Button>
-          <Button 
-            type="link" 
-            icon={<EditOutlined />} 
+          <Button
+            type="link"
+            icon={<EditOutlined />}
             onClick={() => showModal(record)}
           >
             {t('proxy.edit')}
@@ -368,9 +368,9 @@ const ProxyModelManagement: React.FC = () => {
             okText={t('common.confirm')}
             cancelText={t('common.cancel')}
           >
-            <Button 
-              type="link" 
-              danger 
+            <Button
+              type="link"
+              danger
               icon={<DeleteOutlined />}
             >
               {t('proxy.delete')}
@@ -383,7 +383,9 @@ const ProxyModelManagement: React.FC = () => {
 
   return (
     <div>
-      <Card 
+      <h2 style={{ marginBottom: 24 }}>{t('nav.securityGateway')}</h2>
+
+      <Card
         title={
           <Space>
             <ApiOutlined />
@@ -391,9 +393,9 @@ const ProxyModelManagement: React.FC = () => {
           </Space>
         }
         extra={
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
             onClick={() => showModal()}
           >
             {t('proxy.addModel')}
@@ -414,8 +416,8 @@ const ProxyModelManagement: React.FC = () => {
       </Card>
 
       {/* Usage instructions */}
-      <Card 
-        title={t('proxy.accessXiangxinGateway')} 
+      <Card
+        title={t('proxy.accessXiangxinGateway')}
         style={{ marginTop: 16 }}
       >
         <Alert
@@ -423,15 +425,15 @@ const ProxyModelManagement: React.FC = () => {
           type="info"
           style={{ marginBottom: 16 }}
         />
-        
+
         <Typography>
           <Paragraph>
             <Text strong>{t('proxy.pythonOpenaiExample')}</Text>
           </Paragraph>
           <Paragraph>
-            <pre style={{ 
-              backgroundColor: '#f5f5f5', 
-              padding: '12px', 
+            <pre style={{
+              backgroundColor: '#f5f5f5',
+              padding: '12px',
               borderRadius: '6px',
               overflow: 'auto'
             }}>
@@ -448,7 +450,7 @@ completion = openai_client.chat.completions.create(
 `}
             </pre>
           </Paragraph>
-          
+
           <Paragraph>
             <Text strong>{t('proxy.privateDeploymentConfig')}</Text>
           </Paragraph>
@@ -456,7 +458,7 @@ completion = openai_client.chat.completions.create(
             <li><Text code>{t('proxy.dockerDeployment')}</Text></li>
             <li><Text code>{t('proxy.customDeployment')}</Text></li>
           </ul>
-          
+
         </Typography>
       </Card>
 
@@ -501,11 +503,11 @@ completion = openai_client.chat.completions.create(
           </Form.Item>
 
           {/* Hidden username field, prevent browser from recognizing API Key as password */}
-          <input 
-            type="text" 
-            name="username" 
-            autoComplete="username" 
-            style={{ position: 'absolute', left: '-9999px', opacity: 0 }} 
+          <input
+            type="text"
+            name="username"
+            autoComplete="username"
+            style={{ position: 'absolute', left: '-9999px', opacity: 0 }}
             tabIndex={-1}
             readOnly
           />
@@ -516,8 +518,8 @@ completion = openai_client.chat.completions.create(
             rules={[{ required: !editingModel, message: t('proxy.upstreamApiKeyRequired') }]}
             tooltip={editingModel ? t('proxy.upstreamApiKeyTooltipEdit') : t('proxy.upstreamApiKeyTooltipAdd')}
           >
-            <Input.Password 
-              placeholder={editingModel ? t('proxy.upstreamApiKeyPlaceholderEdit') : t('proxy.upstreamApiKeyPlaceholderAdd')} 
+            <Input.Password
+              placeholder={editingModel ? t('proxy.upstreamApiKeyPlaceholderEdit') : t('proxy.upstreamApiKeyPlaceholderAdd')}
               autoComplete="new-password"
               data-lpignore="true"
               data-form-type="other"
@@ -535,7 +537,7 @@ completion = openai_client.chat.completions.create(
           </Form.Item>
 
           <Form.Item label={t('proxy.enableConfigLabel')}>
-            <Switch 
+            <Switch
               checked={switchStates.enabled}
               onChange={(checked) => setSwitchStates(prev => ({ ...prev, enabled: checked }))}
             />
@@ -547,19 +549,19 @@ completion = openai_client.chat.completions.create(
               {t('proxy.securityConfigDesc')}
             </div>
             <div style={{ marginBottom: 12 }}>
-              <Switch 
+              <Switch
                 checked={switchStates.enable_reasoning_detection}
                 onChange={(checked) => setSwitchStates(prev => ({ ...prev, enable_reasoning_detection: checked }))}
               /> {t('proxy.enableReasoningDetection')}
             </div>
             <div style={{ marginBottom: 12 }}>
-              <Switch 
+              <Switch
                 checked={switchStates.block_on_input_risk}
                 onChange={(checked) => setSwitchStates(prev => ({ ...prev, block_on_input_risk: checked }))}
               /> {t('proxy.blockOnInputRisk')}
             </div>
             <div style={{ marginBottom: 12 }}>
-              <Switch 
+              <Switch
                 checked={switchStates.block_on_output_risk}
                 onChange={(checked) => setSwitchStates(prev => ({ ...prev, block_on_output_risk: checked }))}
               /> {t('proxy.blockOnOutputRisk')}
@@ -601,8 +603,8 @@ completion = openai_client.chat.completions.create(
             <Descriptions.Item label={t('proxy.upstreamApiModelName')}>{viewingModel.model_name}</Descriptions.Item>
             <Descriptions.Item label={t('proxy.status')}>
               <Space>
-                {viewingModel.enabled ? 
-                  <Tag color="green">{t('proxy.enabled')}</Tag> : 
+                {viewingModel.enabled ?
+                  <Tag color="green">{t('proxy.enabled')}</Tag> :
                   <Tag color="red">{t('proxy.disabled')}</Tag>
                 }
               </Space>
@@ -624,4 +626,4 @@ completion = openai_client.chat.completions.create(
   );
 };
 
-export default ProxyModelManagement;
+export default SecurityGateway;

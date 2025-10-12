@@ -62,25 +62,77 @@ class GuardrailService:
         request: GuardrailRequest,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
-        tenant_id: Optional[str] = None  # tenant_id for backward compatibility
+        tenant_id: Optional[str] = None,  # tenant_id for backward compatibility
+        api_key: Optional[str] = None  # API key for config lookup
     ) -> GuardrailResponse:
-        """Execute guardrail detection"""
+        """Execute guardrail detection
+
+        Args:
+            request: Guardrail request containing messages to check
+            ip_address: Client IP address
+            user_agent: Client user agent
+            tenant_id: Tenant ID for backward compatibility
+            api_key: API key used for authentication (to load key-specific configs)
+
+        Returns:
+            GuardrailResponse with detection results
+        """
 
         # Generate request ID
         request_id = f"guardrails-{uuid.uuid4().hex}"
 
+        # Get API-key-specific configurations if api_key is provided
+        from utils.user import get_tenant_api_key_by_key
+        tenant_api_key = None
+        template_id = None  # Config set ID from API key
+
+        if api_key:
+            tenant_api_key = get_tenant_api_key_by_key(self.db, api_key)
+            # Update last_used_at timestamp
+            if tenant_api_key:
+                from services.api_key_service import ApiKeyService
+                try:
+                    ApiKeyService.update_last_used(self.db, api_key)
+                except Exception as e:
+                    logger.warning(f"Failed to update last_used_at for API key: {e}")
+
+                # Get template_id (config set) from API key
+                template_id = tenant_api_key.template_id
+                if template_id:
+                    logger.info(f"Using config set {template_id} for API key {api_key[:10]}...")
+                else:
+                    logger.info(f"API key has no config set, will use tenant default")
+
+        # If no template_id from API key, use tenant's default config set
+        if not template_id and tenant_id:
+            default_config = self.risk_config_service.get_risk_config(tenant_id)
+            if default_config:
+                template_id = default_config.id
+                logger.info(f"Using tenant default config set {template_id}")
+
         # Extract user content
         user_content = self._extract_user_content(request.messages)
         try:
-            # 1. Blacklist/whitelist pre-check (using high-performance memory cache, isolated by tenant)
-            blacklist_hit, blacklist_name, blacklist_keywords = await keyword_cache.check_blacklist(user_content, tenant_id)
+            # 1. Blacklist/whitelist pre-check (using high-performance memory cache, isolated by tenant or config set)
+            # Use template_id to filter blacklists/whitelists for this specific config set
+            check_tenant_id = tenant_id
+            check_template_id = template_id  # Use config set ID for filtering
+
+            # Pass template_id to cache for config-set-specific filtering
+            blacklist_hit, blacklist_name, blacklist_keywords = await keyword_cache.check_blacklist(
+                user_content, check_tenant_id,
+                api_key_id=str(tenant_api_key.id) if tenant_api_key else None,
+                template_id=check_template_id
+            )
             if blacklist_hit:
                 return await self._handle_blacklist_hit(
                     request_id, user_content, blacklist_name, blacklist_keywords,
                     ip_address, user_agent, tenant_id
                 )
 
-            whitelist_hit, whitelist_name, whitelist_keywords = await keyword_cache.check_whitelist(user_content, tenant_id)
+            whitelist_hit, whitelist_name, whitelist_keywords = await keyword_cache.check_whitelist(
+                user_content, check_tenant_id, template_id=check_template_id
+            )
             if whitelist_hit:
                 return await self._handle_whitelist_hit(
                     request_id, user_content, whitelist_name, whitelist_keywords,
@@ -123,15 +175,20 @@ class GuardrailService:
             model_response = await model_service.check_messages(messages_dict, use_vl_model=use_vl_model)
 
             # 3. Parse model response and apply risk type filtering
-            compliance_result, security_result = self._parse_model_response(model_response, tenant_id)
+            # Use config set ID (template_id) for risk config filtering
+            compliance_result, security_result = self._parse_model_response(
+                model_response, tenant_id, template_id
+            )
 
             # 3.5. Data leak detection (detect input content)
+            # Pass template_id to filter data security rules by config set
             data_security_service = DataSecurityService(self.db)
-            logger.info(f"Starting data leak detection for tenant {tenant_id}")
+            logger.info(f"Starting data leak detection for tenant {tenant_id}, config set {template_id}")
             data_detection_result = await data_security_service.detect_sensitive_data(
                 text=user_content,
                 tenant_id=tenant_id,
-                direction='input'  # Detect input
+                direction='input',  # Detect input
+                template_id=template_id  # Filter by config set
             )
             logger.info(f"Data leak detection result: {data_detection_result}")
 
@@ -141,9 +198,11 @@ class GuardrailService:
                 categories=data_detection_result.get('categories', [])
             )
 
-            # 4. Determine suggested action and answer (pass tenant_id to select answer template by tenant, pass user query to support knowledge base search)
+            # 4. Determine suggested action and answer
+            # Pass template_id to filter response templates and knowledge bases by config set
             overall_risk_level, suggest_action, suggest_answer = await self._determine_action(
-                compliance_result, security_result, tenant_id, user_content, data_result
+                compliance_result, security_result, tenant_id, user_content, data_result,
+                template_id=template_id
             )
 
             # 5. Asynchronously log detection results
@@ -214,10 +273,21 @@ class GuardrailService:
                     conversation_parts.append(f"[{role_label}]: {content}")
             return '\n'.join(conversation_parts)
     
-    def _parse_model_response(self, response: str, tenant_id: Optional[str] = None) -> Tuple[ComplianceResult, SecurityResult]:
+    def _parse_model_response(
+        self,
+        response: str,
+        tenant_id: Optional[str] = None,
+        template_id: Optional[int] = None
+    ) -> Tuple[ComplianceResult, SecurityResult]:
         """Parse model response and apply risk type filtering
 
-        Note: Parameter name kept as tenant_id for backward compatibility
+        Args:
+            response: Model response string
+            tenant_id: Tenant ID for backward compatibility
+            template_id: Config set ID (template_id from API key or tenant default)
+
+        Returns:
+            Tuple of ComplianceResult and SecurityResult
         """
         response = response.strip()
 
@@ -230,9 +300,9 @@ class GuardrailService:
         if response.startswith("unsafe\n"):
             category = response.split('\n')[1] if '\n' in response else ""
 
-            # Check if tenant has disabled this risk type
-            if tenant_id and not self.risk_config_service.is_risk_type_enabled(tenant_id, category):
-                logger.info(f"Risk type {category} is disabled for tenant {tenant_id}, treating as safe")
+            # Check if this risk type is enabled using config set (template_id)
+            if tenant_id and not self.risk_config_service.is_risk_type_enabled(tenant_id, category, template_id):
+                logger.info(f"Risk type {category} is disabled for config set {template_id}, treating as safe")
                 return (
                     ComplianceResult(risk_level="no_risk", categories=[]),
                     SecurityResult(risk_level="no_risk", categories=[])
@@ -262,11 +332,21 @@ class GuardrailService:
         self,
         compliance_result: ComplianceResult,
         security_result: SecurityResult,
-        tenant_id: Optional[str] = None,  # tenant_id for backward compatibility
+        tenant_id: Optional[str] = None,
         user_query: Optional[str] = None,
-        data_result: Optional[DataSecurityResult] = None
+        data_result: Optional[DataSecurityResult] = None,
+        template_id: Optional[int] = None
     ) -> Tuple[str, str, Optional[str]]:
-        """Determine suggested action and answer"""
+        """Determine suggested action and answer
+
+        Args:
+            compliance_result: Compliance detection result
+            security_result: Security detection result
+            tenant_id: Tenant ID
+            user_query: User query for knowledge base search
+            data_result: Data security detection result
+            template_id: Config set ID for filtering response templates and knowledge bases
+        """
 
         # Define risk level priority (higher value = higher priority)
         risk_priority = {
@@ -298,21 +378,33 @@ class GuardrailService:
         if overall_risk_level == "no_risk":
             return overall_risk_level, "pass", None
         elif overall_risk_level == "high_risk":
-            suggest_answer = await self._get_suggest_answer(risk_categories, tenant_id, user_query)
+            suggest_answer = await self._get_suggest_answer(risk_categories, tenant_id, user_query, template_id)
             return overall_risk_level, "reject", suggest_answer
         elif overall_risk_level == "medium_risk":
-            suggest_answer = await self._get_suggest_answer(risk_categories, tenant_id, user_query)
+            suggest_answer = await self._get_suggest_answer(risk_categories, tenant_id, user_query, template_id)
             return overall_risk_level, "replace", suggest_answer
         else:  # low_risk
-            suggest_answer = await self._get_suggest_answer(risk_categories, tenant_id, user_query)
+            suggest_answer = await self._get_suggest_answer(risk_categories, tenant_id, user_query, template_id)
             return overall_risk_level, "replace", suggest_answer
-    
-    async def _get_suggest_answer(self, categories: List[str], tenant_id: Optional[str] = None, user_query: Optional[str] = None) -> str:
+
+    async def _get_suggest_answer(
+        self,
+        categories: List[str],
+        tenant_id: Optional[str] = None,
+        user_query: Optional[str] = None,
+        template_id: Optional[int] = None
+    ) -> str:
         """Get suggested answer (using enhanced template service, supports knowledge base search)
 
-        Note: Parameter name kept as tenant_id for backward compatibility
+        Args:
+            categories: Risk categories
+            tenant_id: Tenant ID
+            user_query: User query for knowledge base search
+            template_id: Config set ID for filtering response templates and knowledge bases
         """
-        return await enhanced_template_service.get_suggest_answer(categories, tenant_id, user_query)
+        return await enhanced_template_service.get_suggest_answer(
+            categories, tenant_id, user_query, template_id
+        )
     
     async def _handle_blacklist_hit(
         self, request_id: str, content: str, list_name: str,

@@ -14,11 +14,13 @@ import {
   Tooltip,
   Card,
   Typography,
+  Alert,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, GlobalOutlined, UserOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, GlobalOutlined, UserOutlined, InfoCircleOutlined, FilterOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { dataSecurityApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import ConfigSetSelector from '../../components/ConfigSetSelector';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -63,6 +65,7 @@ const EntityTypeManagement: React.FC = () => {
   const [editingEntity, setEditingEntity] = useState<EntityType | null>(null);
   const [searchText, setSearchText] = useState('');
   const [riskLevelFilter, setRiskLevelFilter] = useState<string | undefined>(undefined);
+  const [selectedConfigSet, setSelectedConfigSet] = useState<number | undefined>();
   const [form] = Form.useForm();
   const { user } = useAuth();
 
@@ -70,10 +73,18 @@ const EntityTypeManagement: React.FC = () => {
     loadEntityTypes();
   }, []);
 
+  useEffect(() => {
+    if (selectedConfigSet) {
+      loadEntityTypes();
+    }
+  }, [selectedConfigSet]);
+
   const loadEntityTypes = async () => {
     setLoading(true);
     try {
-      const response = await dataSecurityApi.getEntityTypes();
+      // Filter by selected config set if one is selected
+      const params = selectedConfigSet ? { template_id: selectedConfigSet } : {};
+      const response = await dataSecurityApi.getEntityTypes(params);
       setEntityTypes(response.items || []);
     } catch (error) {
       message.error(t('entityType.loadEntityTypesFailed'));
@@ -92,6 +103,10 @@ const EntityTypeManagement: React.FC = () => {
       anonymization_method: 'replace',
       is_global: false, // Default to custom configuration
     });
+    // Pre-fill template_id with currently selected config set
+    if (selectedConfigSet) {
+      form.setFieldsValue({ template_id: selectedConfigSet });
+    }
     setModalVisible(true);
   };
 
@@ -282,15 +297,53 @@ const EntityTypeManagement: React.FC = () => {
 
   return (
     <div>
+      {/* Config Set Filter */}
+      <Card style={{ marginBottom: 16 }}>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Alert
+            message={t('configSet.filterInfo') || 'Select a config set to view and manage its entity types'}
+            description={
+              t('configSet.filterDescription') ||
+              'You can filter entity types by config set. Only entity types belonging to the selected config set will be displayed.'
+            }
+            type="info"
+            showIcon
+            icon={<FilterOutlined />}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ minWidth: 120 }}>{t('configSet.selectConfigSet') || 'Config Set:'}  </span>
+            <ConfigSetSelector
+              value={selectedConfigSet}
+              onChange={setSelectedConfigSet}
+              allowCreate={true}
+              style={{ flex: 1 }}
+            />
+          </div>
+        </Space>
+      </Card>
+
       <Card
         title={t('entityType.entityTypeConfig')}
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleCreate}
+            disabled={!selectedConfigSet}
+          >
             {t('entityType.addEntityTypeConfig')}
           </Button>
         }
         bordered={false}
       >
+        {!selectedConfigSet && (
+          <Alert
+            message={t('configSet.pleaseSelectFirst') || 'Please select a config set first'}
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        )}
         <Space style={{ marginBottom: 16, width: '100%' }} direction="vertical">
           <Space>
             <Input.Search
@@ -336,6 +389,13 @@ const EntityTypeManagement: React.FC = () => {
         cancelText={t('common.cancel')}
       >
         <Form form={form} layout="vertical">
+          <Form.Item
+            name="template_id"
+            hidden
+          >
+            <Input type="hidden" />
+          </Form.Item>
+
           <Form.Item
             name="entity_type"
             label={t('entityType.entityTypeCode')}

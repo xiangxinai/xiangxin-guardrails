@@ -13,6 +13,8 @@ import Config from './pages/Config/Config';
 import AdminPanel from './pages/Admin/AdminPanel';
 import Account from './pages/Account/Account';
 import OnlineTest from './pages/OnlineTest/OnlineTest';
+import SecurityGateway from './pages/SecurityGateway/SecurityGateway';
+import ApiKeys from './pages/Config/ApiKeys';
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -35,7 +37,9 @@ function App() {
               <Route path="/online-test" element={<OnlineTest />} />
               <Route path="/results" element={<Results />} />
               <Route path="/reports" element={<Reports />} />
-              <Route path="/config/*" element={<Config />} />
+              <Route path="/security-gateway" element={<SecurityGateway />} />
+              <Route path="/config" element={<Config />} />
+              <Route path="/api-keys" element={<ApiKeys />} />
               <Route path="/admin/*" element={<AdminPanel />} />
               <Route path="/account" element={<Account />} />
             </Routes>

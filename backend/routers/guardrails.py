@@ -47,11 +47,13 @@ async def check_guardrails(
         ip_address = request.client.host if request.client else None
         user_agent = request.headers.get("user-agent")
 
-        # Get tenant context
+        # Get tenant context and API key
         auth_context = getattr(request.state, 'auth_context', None)
         tenant_id = None
+        api_key = None
         if auth_context:
             tenant_id = str(auth_context['data'].get('tenant_id') or auth_context['data'].get('tenant_id'))
+            api_key = auth_context['data'].get('api_key')  # Get the actual API key used for authentication
 
         if not tenant_id:
             raise HTTPException(status_code=401, detail="Tenant ID not found in auth context")
@@ -71,12 +73,13 @@ async def check_guardrails(
         # Create guardrail service
         guardrail_service = GuardrailService(db)
 
-        # Execute detection (pass tenant_id to implement tenant-isolated blacklist and fallback)
+        # Execute detection (pass api_key to use API-key-specific configurations)
         result = await guardrail_service.check_guardrails(
             request_data,
             ip_address=ip_address,
             user_agent=user_agent,
-            tenant_id=tenant_id
+            tenant_id=tenant_id,
+            api_key=api_key  # Pass API key for config lookup
         )
 
         # Check and apply ban policy

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, Switch, Space, message, Tag } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Switch, Space, message, Tag, Alert, Card } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, FilterOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { configApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Whitelist } from '../../types';
+import ConfigSetSelector from '../../components/ConfigSetSelector';
 
 const { TextArea } = Input;
 
@@ -14,12 +15,19 @@ const WhitelistManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<Whitelist | null>(null);
+  const [selectedConfigSet, setSelectedConfigSet] = useState<number | undefined>();
   const [form] = Form.useForm();
   const { onUserSwitch } = useAuth();
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (selectedConfigSet) {
+      fetchData();
+    }
+  }, [selectedConfigSet]);
 
   // Listen to user switch event, automatically refresh data
   useEffect(() => {
@@ -32,7 +40,9 @@ const WhitelistManagement: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const result = await configApi.whitelist.list();
+      // Filter by selected config set if one is selected
+      const params = selectedConfigSet ? { template_id: selectedConfigSet } : {};
+      const result = await configApi.whitelist.list(params);
       setData(result);
     } catch (error) {
       console.error('Error fetching whitelist:', error);
@@ -44,6 +54,10 @@ const WhitelistManagement: React.FC = () => {
   const handleAdd = () => {
     setEditingItem(null);
     form.resetFields();
+    // Pre-fill template_id with currently selected config set
+    if (selectedConfigSet) {
+      form.setFieldsValue({ template_id: selectedConfigSet });
+    }
     setModalVisible(true);
   };
 
@@ -180,14 +194,45 @@ const WhitelistManagement: React.FC = () => {
 
   return (
     <div>
+      {/* Config Set Filter */}
+      <Card style={{ marginBottom: 16 }}>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Alert
+            message={t('configSet.filterInfo') || 'Select a config set to view and manage its whitelists'}
+            description={
+              t('configSet.filterDescription') ||
+              'You can filter whitelists by config set. Only whitelists belonging to the selected config set will be displayed.'
+            }
+            type="info"
+            showIcon
+            icon={<FilterOutlined />}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ minWidth: 120 }}>{t('configSet.selectConfigSet') || 'Config Set:'}</span>
+            <ConfigSetSelector
+              value={selectedConfigSet}
+              onChange={setSelectedConfigSet}
+              allowCreate={true}
+              style={{ flex: 1 }}
+            />
+          </div>
+        </Space>
+      </Card>
+
       <div style={{ marginBottom: 16 }}>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleAdd}
+          disabled={!selectedConfigSet}
         >
           {t('whitelist.addWhitelist')}
         </Button>
+        {!selectedConfigSet && (
+          <span style={{ marginLeft: 8, color: '#999' }}>
+            {t('configSet.pleaseSelectFirst') || 'Please select a config set first'}
+          </span>
+        )}
       </div>
 
       <Table
@@ -209,6 +254,13 @@ const WhitelistManagement: React.FC = () => {
           layout="vertical"
           onFinish={handleSubmit}
         >
+          <Form.Item
+            name="template_id"
+            hidden
+          >
+            <Input type="hidden" />
+          </Form.Item>
+
           <Form.Item
             name="name"
             label={t('whitelist.name')}

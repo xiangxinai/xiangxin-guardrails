@@ -1,12 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, Switch, Space, message, Tag } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Switch, Space, message, Tag, Select, Alert, Card } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, FilterOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { configApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Blacklist } from '../../types';
+import api from '../../services/api';
+import ConfigSetSelector from '../../components/ConfigSetSelector';
 
 const { TextArea } = Input;
+const { Option } = Select;
+
+interface ConfigTemplate {
+  id: number;
+  name: string;
+  is_default: boolean;
+}
 
 const BlacklistManagement: React.FC = () => {
   const { t } = useTranslation();
@@ -14,12 +23,21 @@ const BlacklistManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<Blacklist | null>(null);
+  const [configTemplates, setConfigTemplates] = useState<ConfigTemplate[]>([]);
+  const [selectedConfigSet, setSelectedConfigSet] = useState<number | undefined>();
   const [form] = Form.useForm();
   const { onUserSwitch } = useAuth();
 
   useEffect(() => {
     fetchData();
+    fetchConfigTemplates();
   }, []);
+
+  useEffect(() => {
+    if (selectedConfigSet) {
+      fetchData();
+    }
+  }, [selectedConfigSet]);
 
   // Listen to user switch event, automatically refresh data
   useEffect(() => {
@@ -32,7 +50,9 @@ const BlacklistManagement: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const result = await configApi.blacklist.list();
+      // Filter by selected config set if one is selected
+      const params = selectedConfigSet ? { template_id: selectedConfigSet } : {};
+      const result = await configApi.blacklist.list(params);
       setData(result);
     } catch (error) {
       console.error('Error fetching blacklist:', error);
@@ -41,9 +61,22 @@ const BlacklistManagement: React.FC = () => {
     }
   };
 
+  const fetchConfigTemplates = async () => {
+    try {
+      const response = await api.get('/api/v1/config/risk-configs');
+      setConfigTemplates(response.data || []);
+    } catch (error) {
+      console.error('Error fetching config templates:', error);
+    }
+  };
+
   const handleAdd = () => {
     setEditingItem(null);
     form.resetFields();
+    // Pre-fill template_id with currently selected config set
+    if (selectedConfigSet) {
+      form.setFieldsValue({ template_id: selectedConfigSet });
+    }
     setModalVisible(true);
   };
 
@@ -113,11 +146,27 @@ const BlacklistManagement: React.FC = () => {
     }
   };
 
+  const getTemplateName = (templateId: number | null) => {
+    if (!templateId) return t('common.none');
+    const template = configTemplates.find(t => t.id === templateId);
+    return template ? template.name : t('common.none');
+  };
+
   const columns = [
     {
       title: t('blacklist.name'),
       dataIndex: 'name',
       key: 'name',
+    },
+    {
+      title: t('blacklist.configTemplate'),
+      dataIndex: 'template_id',
+      key: 'template_id',
+      render: (templateId: number | null) => (
+        <Tag color={templateId ? 'blue' : 'default'}>
+          {getTemplateName(templateId)}
+        </Tag>
+      ),
     },
     {
       title: t('blacklist.keywordCount'),
@@ -183,14 +232,45 @@ const BlacklistManagement: React.FC = () => {
 
   return (
     <div>
+      {/* Config Set Filter */}
+      <Card style={{ marginBottom: 16 }}>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Alert
+            message={t('configSet.filterInfo') || 'Select a config set to view and manage its blacklists'}
+            description={
+              t('configSet.filterDescription') ||
+              'You can filter blacklists by config set. Only blacklists belonging to the selected config set will be displayed.'
+            }
+            type="info"
+            showIcon
+            icon={<FilterOutlined />}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ minWidth: 120 }}>{t('configSet.selectConfigSet') || 'Config Set:'}  </span>
+            <ConfigSetSelector
+              value={selectedConfigSet}
+              onChange={setSelectedConfigSet}
+              allowCreate={true}
+              style={{ flex: 1 }}
+            />
+          </div>
+        </Space>
+      </Card>
+
       <div style={{ marginBottom: 16 }}>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleAdd}
+          disabled={!selectedConfigSet}
         >
           {t('blacklist.addBlacklist')}
         </Button>
+        {!selectedConfigSet && (
+          <span style={{ marginLeft: 8, color: '#999' }}>
+            {t('configSet.pleaseSelectFirst') || 'Please select a config set first'}
+          </span>
+        )}
       </div>
 
       <Table
@@ -218,6 +298,24 @@ const BlacklistManagement: React.FC = () => {
             rules={[{ required: true, message: t('blacklist.nameRequired') }]}
           >
             <Input placeholder={t('blacklist.namePlaceholder')} />
+          </Form.Item>
+
+          <Form.Item
+            name="template_id"
+            label={t('blacklist.configTemplate')}
+            extra={t('blacklist.configTemplateExtra')}
+          >
+            <Select
+              placeholder={t('blacklist.selectConfigTemplate')}
+              allowClear
+            >
+              {configTemplates.map(template => (
+                <Option key={template.id} value={template.id}>
+                  {template.name}
+                  {template.is_default && <Tag color="blue" style={{ marginLeft: 8 }}>{t('protectionTemplate.default')}</Tag>}
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
 
           <Form.Item

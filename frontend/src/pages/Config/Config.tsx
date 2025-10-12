@@ -1,97 +1,117 @@
 import React from 'react';
 import { Tabs } from 'antd';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import {
+  SafetyCertificateOutlined,
+  DashboardOutlined,
+  StopOutlined,
+  CheckCircleOutlined,
+  BookOutlined,
+  MessageOutlined,
+  UserDeleteOutlined,
+  SecurityScanOutlined,
+} from '@ant-design/icons';
+import RiskTypeManagement from './RiskTypeManagement';
+import SensitivityThresholdManagement from './SensitivityThresholdManagement';
 import BlacklistManagement from './BlacklistManagement';
 import WhitelistManagement from './WhitelistManagement';
-import ResponseTemplateManagement from './ResponseTemplateManagement';
 import KnowledgeBaseManagement from './KnowledgeBaseManagement';
-import RiskTypeManagement from './RiskTypeManagement';
-import ProxyModelManagement from './ProxyModelManagement';
-import SensitivityThresholdManagement from './SensitivityThresholdManagement';
-import DataSecurity from '../DataSecurity';
+import ResponseTemplateManagement from './ResponseTemplateManagement';
 import BanPolicy from './BanPolicy';
+import EntityTypeManagement from '../DataSecurity/EntityTypeManagement';
 
+/**
+ * Config Center - All configuration options in tabs
+ *
+ * This page displays all configuration options as tabs, allowing users to
+ * easily navigate between different configuration sections.
+ */
 const Config: React.FC = () => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const getActiveKey = () => {
-    const path = location.pathname;
-    if (path.includes('/blacklist')) return 'blacklist';
-    if (path.includes('/whitelist')) return 'whitelist';
-    if (path.includes('/responses')) return 'responses';
-    if (path.includes('/knowledge-bases')) return 'knowledge-bases';
-    if (path.includes('/risk-types')) return 'risk-types';
-    if (path.includes('/sensitivity-thresholds')) return 'sensitivity-thresholds';
-    if (path.includes('/proxy-models')) return 'proxy-models';
-    if (path.includes('/data-security')) return 'data-security';
-    if (path.includes('/ban-policy')) return 'ban-policy';
-    return 'risk-types';
-  };
-
-  const handleTabChange = (key: string) => {
-    // Ensure navigation under base path with /platform prefix, avoid losing platform prefix after refresh
-    navigate(`/config/${key}`);
-  };
 
   const items = [
     {
       key: 'risk-types',
-      label: t('config.riskType'),
+      label: (
+        <span>
+          <SafetyCertificateOutlined /> {t('config.riskTypes') || 'Risk Types'}
+        </span>
+      ),
       children: <RiskTypeManagement />,
     },
     {
-      key: 'sensitivity-thresholds',
-      label: t('config.sensitivity'),
+      key: 'sensitivity',
+      label: (
+        <span>
+          <DashboardOutlined /> {t('config.sensitivity') || 'Sensitivity Thresholds'}
+        </span>
+      ),
       children: <SensitivityThresholdManagement />,
     },
     {
-      key: 'data-security',
-      label: t('config.dataSecurity'),
-      children: <DataSecurity />,
-    },
-    {
-      key: 'ban-policy',
-      label: t('config.banPolicy'),
-      children: <BanPolicy />,
-    },
-    {
       key: 'blacklist',
-      label: t('config.blacklist'),
+      label: (
+        <span>
+          <StopOutlined /> {t('config.blacklist') || 'Blacklist'}
+        </span>
+      ),
       children: <BlacklistManagement />,
     },
     {
       key: 'whitelist',
-      label: t('config.whitelist'),
+      label: (
+        <span>
+          <CheckCircleOutlined /> {t('config.whitelist') || 'Whitelist'}
+        </span>
+      ),
       children: <WhitelistManagement />,
     },
     {
-      key: 'responses',
-      label: t('config.rejectAnswers'),
-      children: <ResponseTemplateManagement />,
-    },
-    {
-      key: 'knowledge-bases',
-      label: t('config.knowledge'),
+      key: 'knowledge-base',
+      label: (
+        <span>
+          <BookOutlined /> {t('config.knowledgeBase') || 'Knowledge Base'}
+        </span>
+      ),
       children: <KnowledgeBaseManagement />,
     },
     {
-      key: 'proxy-models',
-      label: t('config.proxy'),
-      children: <ProxyModelManagement />,
+      key: 'response-templates',
+      label: (
+        <span>
+          <MessageOutlined /> {t('config.responseTemplates') || 'Response Templates'}
+        </span>
+      ),
+      children: <ResponseTemplateManagement />,
+    },
+    {
+      key: 'data-security',
+      label: (
+        <span>
+          <SecurityScanOutlined /> {t('config.dataSecurity') || 'Data Security'}
+        </span>
+      ),
+      children: <EntityTypeManagement />,
+    },
+    {
+      key: 'ban-policy',
+      label: (
+        <span>
+          <UserDeleteOutlined /> {t('config.banPolicy') || 'Ban Policy'}
+        </span>
+      ),
+      children: <BanPolicy />,
     },
   ];
 
   return (
     <div>
-      <h2 style={{ marginBottom: 24 }}>{t('config.title')}</h2>
-      
+      <h2 style={{ marginBottom: 16 }}>{t('config.title') || 'Configuration Center'}</h2>
       <Tabs
-        activeKey={getActiveKey()}
+        defaultActiveKey="risk-types"
         items={items}
-        onChange={handleTabChange}
+        tabPosition="top"
+        size="large"
       />
     </div>
   );

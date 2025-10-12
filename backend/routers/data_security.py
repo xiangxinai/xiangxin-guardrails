@@ -30,6 +30,7 @@ class EntityTypeCreate(BaseModel):
     check_input: bool = Field(default=True, description="Whether to check input")
     check_output: bool = Field(default=True, description="Whether to check output")
     is_active: bool = Field(default=True, description="Whether to activate")
+    template_id: Optional[int] = Field(None, description="Config set (protection template) ID")
 
 class EntityTypeUpdate(BaseModel):
     """Update entity type configuration"""
@@ -41,6 +42,7 @@ class EntityTypeUpdate(BaseModel):
     check_input: Optional[bool] = None
     check_output: Optional[bool] = None
     is_active: Optional[bool] = None
+    template_id: Optional[int] = None
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Tenant:
     """Get current user"""
@@ -92,7 +94,8 @@ async def create_entity_type(
         anonymization_config=entity_data.anonymization_config,
         check_input=entity_data.check_input,
         check_output=entity_data.check_output,
-        is_global=False
+        is_global=False,
+        template_id=entity_data.template_id
     )
 
     recognition_config = entity_type.recognition_config or {}
@@ -116,10 +119,11 @@ async def create_entity_type(
 @router.get("/entity-types")
 async def list_entity_types(
     risk_level: Optional[str] = None,
+    template_id: Optional[int] = None,
     request: Request = None,
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
-    """Get sensitive data type configuration list (including global and user's own)"""
+    """Get sensitive data type configuration list (including global and user's own), optionally filtered by config set (template_id)"""
     current_user = get_current_user(request, db)
 
     # Create service instance
@@ -128,7 +132,8 @@ async def list_entity_types(
     # Get entity type list
     entity_types = service.get_entity_types(
         tenant_id=str(current_user.id),
-        risk_level=risk_level
+        risk_level=risk_level,
+        template_id=template_id
     )
 
     items = []
@@ -239,6 +244,8 @@ async def update_entity_type(
         update_kwargs['check_output'] = update_data.check_output
     if update_data.is_active is not None:
         update_kwargs['is_active'] = update_data.is_active
+    if update_data.template_id is not None:
+        update_kwargs['template_id'] = update_data.template_id
 
     # Update
     updated_entity = service.update_entity_type(

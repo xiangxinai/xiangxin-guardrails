@@ -401,6 +401,10 @@ app.include_router(test_models.router, prefix="/api/v1", dependencies=[Depends(v
 app.include_router(data_security.router, dependencies=[Depends(verify_user_auth)])  # data_security已在路由内定义prefix
 app.include_router(media.router, prefix="/api/v1")  # media路由的认证在各个接口中单独控制
 
+# API key management routes
+from routers import api_keys
+app.include_router(api_keys.router, dependencies=[Depends(verify_user_auth)])
+
 # Global exception handling
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):

@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from database.connection import Base
 
 class Tenant(Base):
-    """租户表 (原用户表)"""
+    """Tenant table"""
     __tablename__ = "tenants"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
@@ -15,12 +15,13 @@ class Tenant(Base):
     is_active = Column(Boolean, default=False)  # After email verification, activate
     is_verified = Column(Boolean, default=False)  # Whether the email has been verified
     is_super_admin = Column(Boolean, default=False)  # Whether to be a super admin
-    api_key = Column(String(64), unique=True, nullable=False, index=True)
+    api_key = Column(String(64), unique=True, nullable=False, index=True)  # Deprecated: kept for backward compatibility
     language = Column(String(10), default='en', nullable=False)  # User language preference
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Association relationships
+    api_keys = relationship("TenantApiKey", back_populates="tenant", cascade="all, delete-orphan")
     detection_results = relationship("DetectionResult", back_populates="tenant")
     test_models = relationship("TestModelConfig", back_populates="tenant")
     blacklists = relationship("Blacklist", back_populates="tenant")
@@ -28,10 +29,39 @@ class Tenant(Base):
     response_templates = relationship("ResponseTemplate", back_populates="tenant")
     risk_config = relationship("RiskTypeConfig", back_populates="tenant", uselist=False)
 
+class TenantApiKey(Base):
+    """Tenant API key table - supports multiple API keys per tenant"""
+    __tablename__ = "tenant_api_keys"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    api_key = Column(String(64), unique=True, nullable=False, index=True)
+    name = Column(String(100), nullable=False)  # Key name/description (e.g., "Production App", "Test Environment")
+    is_active = Column(Boolean, default=True, index=True)  # Whether the key is active
+    is_default = Column(Boolean, default=False)  # Whether this is the default key (used for platform operations)
+
+    # Configuration references - each API key can have different configs
+    template_id = Column(Integer, ForeignKey("risk_type_config.id"), nullable=True)  # Protection config template ID
+
+    # Metadata
+    last_used_at = Column(DateTime(timezone=True), nullable=True)  # Last time this key was used
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Association relationships
+    tenant = relationship("Tenant", back_populates="api_keys")
+    protection_template = relationship("RiskTypeConfig", foreign_keys=[template_id])
+    blacklist_associations = relationship("ApiKeyBlacklistAssociation", back_populates="api_key", cascade="all, delete-orphan")
+
+    # Ensure only one default key per tenant
+    __table_args__ = (
+        UniqueConstraint('tenant_id', 'name', name='_tenant_api_key_name_uc'),
+    )
+
 class EmailVerification(Base):
     """Email verification table"""
     __tablename__ = "email_verifications"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), nullable=False, index=True)
     verification_code = Column(String(6), nullable=False)
@@ -76,6 +106,7 @@ class Blacklist(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)  # Associated tenant
+    template_id = Column(Integer, ForeignKey("risk_type_config.id"), nullable=True, index=True)  # Config set (protection template) ID
     name = Column(String(100), nullable=False)  # Blacklist library name
     keywords = Column(JSON, nullable=False)  # Keywords list
     description = Column(Text)  # Description
@@ -85,6 +116,26 @@ class Blacklist(Base):
 
     # Association relationships
     tenant = relationship("Tenant", back_populates="blacklists")
+    protection_template = relationship("RiskTypeConfig", foreign_keys=[template_id])
+    api_key_associations = relationship("ApiKeyBlacklistAssociation", back_populates="blacklist", cascade="all, delete-orphan")
+
+class ApiKeyBlacklistAssociation(Base):
+    """Association table between API keys and blacklists"""
+    __tablename__ = "api_key_blacklist_associations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    api_key_id = Column(UUID(as_uuid=True), ForeignKey("tenant_api_keys.id"), nullable=False, index=True)
+    blacklist_id = Column(Integer, ForeignKey("blacklist.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Association relationships
+    api_key = relationship("TenantApiKey", back_populates="blacklist_associations")
+    blacklist = relationship("Blacklist", back_populates="api_key_associations")
+
+    # Unique constraint: one API key can only associate with each blacklist once
+    __table_args__ = (
+        UniqueConstraint('api_key_id', 'blacklist_id', name='_api_key_blacklist_uc'),
+    )
 
 class Whitelist(Base):
     """Whitelist table"""
@@ -92,6 +143,7 @@ class Whitelist(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)  # Associated tenant
+    template_id = Column(Integer, ForeignKey("risk_type_config.id"), nullable=True, index=True)  # Protection template ID
     name = Column(String(100), nullable=False)  # Whitelist library name
     keywords = Column(JSON, nullable=False)  # Keywords list
     description = Column(Text)  # Description
@@ -101,6 +153,7 @@ class Whitelist(Base):
 
     # Association relationships
     tenant = relationship("Tenant", back_populates="whitelists")
+    protection_template = relationship("RiskTypeConfig", foreign_keys=[template_id])
 
 class ResponseTemplate(Base):
     """Response template table"""
@@ -109,6 +162,7 @@ class ResponseTemplate(Base):
     id = Column(Integer, primary_key=True, index=True)
     # Allow null: When it is a system-level default template, tenant_id is null
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True, index=True)  # Associated tenant (can be null for global templates)
+    template_id = Column(Integer, ForeignKey("risk_type_config.id"), nullable=True, index=True)  # Protection template ID
     category = Column(String(50), nullable=False, index=True)  # Risk category (S1-S12, default)
     risk_level = Column(String(10), nullable=False)  # Risk level
     template_content = Column(Text, nullable=False)  # Response template content
@@ -119,6 +173,7 @@ class ResponseTemplate(Base):
 
     # Association relationships
     tenant = relationship("Tenant", back_populates="response_templates")
+    protection_template = relationship("RiskTypeConfig", foreign_keys=[template_id])
 
 class TenantSwitch(Base):
     """Tenant switch record table (for super admin to switch tenant perspective)"""
@@ -155,13 +210,29 @@ class LoginAttempt(Base):
     attempted_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 class RiskTypeConfig(Base):
-    """Risk type switch config table"""
+    """Configuration Set (ConfigSet) - Contains all protection configurations
+
+    This table serves as a Configuration Set that groups together:
+    - Risk type switches (S1-S12)
+    - Sensitivity thresholds
+    - Associated blacklists (via template_id)
+    - Associated whitelists (via template_id)
+    - Associated response templates (via template_id)
+    - Associated knowledge bases (via template_id)
+    - Associated data security settings (via template_id)
+    - Associated ban policies (via template_id)
+
+    API Keys bind to a ConfigSet via template_id to use a specific protection configuration.
+    """
     __tablename__ = "risk_type_config"
 
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True, unique=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)  # Config set name (e.g., "Production Config", "Test Config")
+    description = Column(Text)  # Config set description
+    is_default = Column(Boolean, default=False)  # Whether this is the default config for the tenant
 
-    # S1-S12风险类型开关配置
+    # Risk type switch configuration (S1-S12)
     s1_enabled = Column(Boolean, default=True)  # General political topics
     s2_enabled = Column(Boolean, default=True)  # Sensitive political topics
     s3_enabled = Column(Boolean, default=True)  # Damage to national image
@@ -188,6 +259,11 @@ class RiskTypeConfig(Base):
 
     # Association relationships
     tenant = relationship("Tenant", back_populates="risk_config")
+
+    # Unique constraint: config name must be unique per tenant
+    __table_args__ = (
+        UniqueConstraint('tenant_id', 'name', name='_tenant_risk_config_name_uc'),
+    )
 
 class TenantRateLimit(Base):
     """Tenant rate limit config table"""
@@ -298,6 +374,7 @@ class KnowledgeBase(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    template_id = Column(Integer, ForeignKey("risk_type_config.id"), nullable=True, index=True)  # Protection template ID
     category = Column(String(50), nullable=False, index=True)  # Risk category (S1-S12)
     name = Column(String(255), nullable=False)  # Knowledge base name
     description = Column(Text)  # Description
@@ -311,6 +388,7 @@ class KnowledgeBase(Base):
 
     # Association relationships
     tenant = relationship("Tenant")
+    protection_template = relationship("RiskTypeConfig", foreign_keys=[template_id])
 
 class OnlineTestModelSelection(Base):
     """Online test model selection table - record the proxy model selected by the tenant in online test"""
@@ -339,6 +417,7 @@ class DataSecurityEntityType(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    template_id = Column(Integer, ForeignKey("risk_type_config.id"), nullable=True, index=True)  # Protection template ID
     entity_type = Column(String(100), nullable=False, index=True)  # Entity type code, such as ID_CARD_NUMBER
     display_name = Column(String(200), nullable=False)  # Display name, such as "ID Card Number"
     category = Column(String(50), nullable=False, index=True)  # Risk level: low, medium, high
@@ -353,6 +432,7 @@ class DataSecurityEntityType(Base):
 
     # Association relationships
     tenant = relationship("Tenant")
+    protection_template = relationship("RiskTypeConfig", foreign_keys=[template_id])
 
 class TenantEntityTypeDisable(Base):
     """Tenant entity type disable table"""
@@ -372,3 +452,22 @@ class TenantEntityTypeDisable(Base):
     __table_args__ = (
         UniqueConstraint('tenant_id', 'entity_type', name='_tenant_entity_type_disable_uc'),
     )
+
+class BanPolicy(Base):
+    """Ban policy config table"""
+    __tablename__ = "ban_policies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    template_id = Column(Integer, ForeignKey("risk_type_config.id"), nullable=True, index=True)  # Protection template ID
+    enabled = Column(Boolean, default=False, nullable=False)  # Whether ban policy is enabled
+    risk_level = Column(String(20), default='high_risk', nullable=False)  # Risk level to trigger ban
+    trigger_count = Column(Integer, default=3, nullable=False)  # Number of triggers before ban
+    time_window_minutes = Column(Integer, default=10, nullable=False)  # Time window in minutes
+    ban_duration_minutes = Column(Integer, default=60, nullable=False)  # Ban duration in minutes
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Association relationships
+    tenant = relationship("Tenant")
+    protection_template = relationship("RiskTypeConfig", foreign_keys=[template_id])

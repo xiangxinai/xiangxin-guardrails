@@ -12,6 +12,8 @@ import {
   SwapOutlined,
   ReloadOutlined,
   ExperimentOutlined,
+  KeyOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { adminApi, configApi } from '../../services/api';
@@ -86,52 +88,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: t('nav.reports'),
     },
     {
+      key: '/security-gateway',
+      icon: <SafetyOutlined />,
+      label: t('nav.securityGateway'),
+    },
+    {
       key: '/config',
       icon: <SettingOutlined />,
       label: t('nav.config'),
-      children: [
-        {
-          key: '/config/risk-types',
-          label: t('config.riskType'),
-        },
-        {
-          key: '/config/sensitivity-thresholds',
-          label: t('config.sensitivity'),
-        },
-        {
-          key: '/config/data-security',
-          label: t('config.dataSecurity'),
-        },
-        {
-          key: '/config/ban-policy',
-          label: t('config.banPolicy'),
-        },
-        {
-          key: '/config/blacklist',
-          label: t('config.blacklist'),
-        },
-        {
-          key: '/config/whitelist',
-          label: t('config.whitelist'),
-        },
-        {
-          key: '/config/responses',
-          label: t('config.template'),
-        },
-        {
-          key: '/config/knowledge-bases',
-          label: t('config.knowledge'),
-        },
-        {
-          key: '/config/proxy-models',
-          label: t('config.proxy'),
-        },
-      ],
+    },
+    {
+      key: '/api-keys',
+      icon: <KeyOutlined />,
+      label: t('nav.apiKeys'),
     },
     // Only super admins can see tenant management
     ...(user?.is_super_admin ? [{
       key: '/admin',
-      icon: <SettingOutlined />,
+      icon: <UserOutlined />,
       label: t('nav.admin'),
       children: [
         {

@@ -86,11 +86,18 @@ def get_current_user_from_request(request: Request, db: Session) -> Tenant:
 
 # 黑名单管理
 @router.get("/config/blacklist", response_model=List[BlacklistResponse])
-async def get_blacklist(request: Request, db: Session = Depends(get_db)):
-    """Get blacklist configuration"""
+async def get_blacklist(
+    request: Request,
+    template_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """Get blacklist configuration, optionally filtered by config set (template_id)"""
     try:
         current_user = get_current_user_from_request(request, db)
-        blacklists = db.query(Blacklist).filter(Blacklist.tenant_id == current_user.id).order_by(Blacklist.created_at.desc()).all()
+        query = db.query(Blacklist).filter(Blacklist.tenant_id == current_user.id)
+        if template_id is not None:
+            query = query.filter(Blacklist.template_id == template_id)
+        blacklists = query.order_by(Blacklist.created_at.desc()).all()
         return [BlacklistResponse(
             id=bl.id,
             name=bl.name,
@@ -116,14 +123,15 @@ async def create_blacklist(blacklist_request: BlacklistRequest, request: Request
             name=blacklist_request.name,
             keywords=blacklist_request.keywords,
             description=blacklist_request.description,
-            is_active=blacklist_request.is_active
+            is_active=blacklist_request.is_active,
+            template_id=blacklist_request.template_id
         )
         db.add(blacklist)
         db.commit()
-        
+
         # Invalidate keyword cache immediately
         await keyword_cache.invalidate_cache()
-        
+
         logger.info(f"Blacklist created: {blacklist_request.name} for user: {current_user.email}")
         return ApiResponse(success=True, message="Blacklist created successfully")
     except HTTPException:
@@ -140,17 +148,18 @@ async def update_blacklist(blacklist_id: int, blacklist_request: BlacklistReques
         blacklist = db.query(Blacklist).filter_by(id=blacklist_id, tenant_id=current_user.id).first()
         if not blacklist:
             raise HTTPException(status_code=404, detail="Blacklist not found")
-        
+
         blacklist.name = blacklist_request.name
         blacklist.keywords = blacklist_request.keywords
         blacklist.description = blacklist_request.description
         blacklist.is_active = blacklist_request.is_active
-        
+        blacklist.template_id = blacklist_request.template_id
+
         db.commit()
-        
+
         # Invalidate keyword cache immediately
         await keyword_cache.invalidate_cache()
-        
+
         logger.info(f"Blacklist updated: {blacklist_id} for user: {current_user.email}")
         return ApiResponse(success=True, message="Blacklist updated successfully")
     except HTTPException:
@@ -184,13 +193,20 @@ async def delete_blacklist(blacklist_id: int, request: Request, db: Session = De
 
 # 白名单管理
 @router.get("/config/whitelist", response_model=List[WhitelistResponse])
-async def get_whitelist(request: Request, db: Session = Depends(get_db)):
-    """Get whitelist configuration"""
+async def get_whitelist(
+    request: Request,
+    template_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """Get whitelist configuration, optionally filtered by config set (template_id)"""
     try:
         current_user = get_current_user_from_request(request, db)
         # If column is missing (pre-upgrade database), try without tenant_id filter, fallback support
         try:
-            whitelists = db.query(Whitelist).filter(Whitelist.tenant_id == current_user.id).order_by(Whitelist.created_at.desc()).all()
+            query = db.query(Whitelist).filter(Whitelist.tenant_id == current_user.id)
+            if template_id is not None:
+                query = query.filter(Whitelist.template_id == template_id)
+            whitelists = query.order_by(Whitelist.created_at.desc()).all()
         except Exception as e:
             logger.warning(f"Whitelist query failed with tenant_id filter, falling back: {e}")
             whitelists = db.query(Whitelist).order_by(Whitelist.created_at.desc()).all()
@@ -219,14 +235,15 @@ async def create_whitelist(whitelist_request: WhitelistRequest, request: Request
             name=whitelist_request.name,
             keywords=whitelist_request.keywords,
             description=whitelist_request.description,
-            is_active=whitelist_request.is_active
+            is_active=whitelist_request.is_active,
+            template_id=whitelist_request.template_id
         )
         db.add(whitelist)
         db.commit()
-        
+
         # Invalidate keyword cache immediately
         await keyword_cache.invalidate_cache()
-        
+
         logger.info(f"Whitelist created: {whitelist_request.name} for user: {current_user.email}")
         return ApiResponse(success=True, message="Whitelist created successfully")
     except HTTPException:
@@ -243,17 +260,18 @@ async def update_whitelist(whitelist_id: int, whitelist_request: WhitelistReques
         whitelist = db.query(Whitelist).filter_by(id=whitelist_id, tenant_id=current_user.id).first()
         if not whitelist:
             raise HTTPException(status_code=404, detail="Whitelist not found")
-        
+
         whitelist.name = whitelist_request.name
         whitelist.keywords = whitelist_request.keywords
         whitelist.description = whitelist_request.description
         whitelist.is_active = whitelist_request.is_active
-        
+        whitelist.template_id = whitelist_request.template_id
+
         db.commit()
-        
+
         # Invalidate keyword cache immediately
         await keyword_cache.invalidate_cache()
-        
+
         logger.info(f"Whitelist updated: {whitelist_id} for user: {current_user.email}")
         return ApiResponse(success=True, message="Whitelist updated successfully")
     except HTTPException:
@@ -287,13 +305,20 @@ async def delete_whitelist(whitelist_id: int, request: Request, db: Session = De
 
 # Response template management
 @router.get("/config/responses", response_model=List[ResponseTemplateResponse])
-async def get_response_templates(request: Request, db: Session = Depends(get_db)):
-    """Get response template configuration"""
+async def get_response_templates(
+    request: Request,
+    template_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """Get response template configuration, optionally filtered by config set (template_id)"""
     try:
         current_user = get_current_user_from_request(request, db)
         # If column is missing (pre-upgrade database), try global template fallback
         try:
-            templates = db.query(ResponseTemplate).filter(ResponseTemplate.tenant_id == current_user.id).order_by(ResponseTemplate.created_at.desc()).all()
+            query = db.query(ResponseTemplate).filter(ResponseTemplate.tenant_id == current_user.id)
+            if template_id is not None:
+                query = query.filter(ResponseTemplate.template_id == template_id)
+            templates = query.order_by(ResponseTemplate.created_at.desc()).all()
         except Exception as e:
             logger.warning(f"ResponseTemplate query failed with tenant_id filter, falling back: {e}")
             templates = db.query(ResponseTemplate).order_by(ResponseTemplate.created_at.desc()).all()
@@ -324,15 +349,16 @@ async def create_response_template(template_request: ResponseTemplateRequest, re
             risk_level=template_request.risk_level,
             template_content=template_request.template_content,
             is_default=template_request.is_default,
-            is_active=template_request.is_active
+            is_active=template_request.is_active,
+            template_id=template_request.template_id
         )
         db.add(template)
         db.commit()
-        
+
         # 立即失效模板缓存
         await template_cache.invalidate_cache()
         await enhanced_template_service.invalidate_cache()
-        
+
         logger.info(f"Response template created: {template_request.category} for user: {current_user.email}")
         return ApiResponse(success=True, message="Response template created successfully")
     except HTTPException:
@@ -349,19 +375,20 @@ async def update_response_template(template_id: int, template_request: ResponseT
         template = db.query(ResponseTemplate).filter_by(id=template_id, tenant_id=current_user.id).first()
         if not template:
             raise HTTPException(status_code=404, detail="Response template not found")
-        
+
         template.category = template_request.category
         template.risk_level = template_request.risk_level
         template.template_content = template_request.template_content
         template.is_default = template_request.is_default
         template.is_active = template_request.is_active
-        
+        template.template_id = template_request.template_id
+
         db.commit()
-        
+
         # Invalidate template cache immediately
         await template_cache.invalidate_cache()
         await enhanced_template_service.invalidate_cache()
-        
+
         logger.info(f"Response template updated: {template_id} for user: {current_user.email}")
         return ApiResponse(success=True, message="Response template updated successfully")
     except HTTPException:
@@ -453,10 +480,11 @@ async def refresh_cache():
 @router.get("/config/knowledge-bases", response_model=List[KnowledgeBaseResponse])
 async def get_knowledge_bases(
     category: Optional[str] = None,
+    template_id: Optional[int] = None,
     request: Request = None,
     db: Session = Depends(get_db)
 ):
-    """Get knowledge base list"""
+    """Get knowledge base list, optionally filtered by category and/or config set (template_id)"""
     try:
         current_user = get_current_user_from_request(request, db)
 
@@ -467,6 +495,9 @@ async def get_knowledge_bases(
 
         if category:
             query = query.filter(KnowledgeBase.category == category)
+
+        if template_id is not None:
+            query = query.filter(KnowledgeBase.template_id == template_id)
 
         knowledge_bases = query.order_by(KnowledgeBase.created_at.desc()).all()
 
@@ -550,7 +581,8 @@ async def create_knowledge_base(
             file_path="",  # Will be set below
             total_qa_pairs=len(qa_pairs),
             is_active=is_active,
-            is_global=is_global
+            is_global=is_global,
+            template_id=None  # Will be set via update endpoint if needed
         )
 
         db.add(knowledge_base)
@@ -622,6 +654,7 @@ async def update_knowledge_base(
         knowledge_base.description = kb_request.description
         knowledge_base.is_active = kb_request.is_active
         knowledge_base.is_global = kb_request.is_global
+        knowledge_base.template_id = kb_request.template_id
 
         db.commit()
 

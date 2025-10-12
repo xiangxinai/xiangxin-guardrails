@@ -63,7 +63,8 @@ class BlacklistRequest(BaseModel):
     keywords: List[str] = Field(..., description="Keyword list")
     description: Optional[str] = Field(None, description="Description")
     is_active: bool = Field(True, description="Whether enabled")
-    
+    template_id: Optional[int] = Field(None, description="Config set (protection template) ID")
+
     @validator('keywords')
     def validate_keywords(cls, v):
         if not v:
@@ -76,7 +77,8 @@ class WhitelistRequest(BaseModel):
     keywords: List[str] = Field(..., description="Keyword list")
     description: Optional[str] = Field(None, description="Description")
     is_active: bool = Field(True, description="Whether enabled")
-    
+    template_id: Optional[int] = Field(None, description="Config set (protection template) ID")
+
     @validator('keywords')
     def validate_keywords(cls, v):
         if not v:
@@ -90,14 +92,15 @@ class ResponseTemplateRequest(BaseModel):
     template_content: str = Field(..., description="Response template content")
     is_default: bool = Field(False, description="Whether it is a default template")
     is_active: bool = Field(True, description="Whether enabled")
-    
+    template_id: Optional[int] = Field(None, description="Config set (protection template) ID")
+
     @validator('category')
     def validate_category(cls, v):
         valid_categories = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'default']
         if v not in valid_categories:
             raise ValueError(f'category must be one of: {valid_categories}')
         return v
-    
+
     @validator('risk_level')
     def validate_risk_level(cls, v):
         if v not in ['no risk', 'low risk', 'medium risk', 'high risk']:
@@ -185,6 +188,7 @@ class KnowledgeBaseRequest(BaseModel):
     description: Optional[str] = Field(None, description="Description")
     is_active: bool = Field(True, description="Whether enabled")
     is_global: Optional[bool] = Field(False, description="Whether it is a global knowledge base (only admin can set)")
+    template_id: Optional[int] = Field(None, description="Config set (protection template) ID")
 
     @validator('category')
     def validate_category(cls, v):

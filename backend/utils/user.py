@@ -86,6 +86,15 @@ def verify_user_email(db: Session, email: str, verification_code: str) -> bool:
             print(f"Failed to create default entity type configurations for tenant {tenant.email}: {e}")
             # Not affect tenant activation process, just record error
 
+        # Create default risk config (config set) for new tenant
+        try:
+            from services.risk_config_service import create_user_default_risk_config
+            config_count = create_user_default_risk_config(db, str(tenant.id))
+            print(f"Created {config_count} default risk config for tenant {tenant.email}")
+        except Exception as e:
+            print(f"Failed to create default risk config for tenant {tenant.email}: {e}")
+            # Not affect tenant activation process, just record error
+
     return True
 
 def regenerate_api_key(db: Session, tenant_id: Union[str, uuid.UUID]) -> Optional[str]:
@@ -112,11 +121,45 @@ def regenerate_api_key(db: Session, tenant_id: Union[str, uuid.UUID]) -> Optiona
     return new_api_key
 
 def get_user_by_api_key(db: Session, api_key: str) -> Optional[Tenant]:
-    """Get tenant by API key (only return verified tenant)"""
+    """Get tenant by API key (only return verified tenant)
+
+    This function supports both old (Tenant.api_key) and new (TenantApiKey.api_key) formats
+    for backward compatibility.
+    """
+    from database.models import TenantApiKey
+
+    # First try new API key table
+    tenant_api_key = db.query(TenantApiKey).filter(
+        TenantApiKey.api_key == api_key,
+        TenantApiKey.is_active == True
+    ).first()
+
+    if tenant_api_key:
+        tenant = db.query(Tenant).filter(
+            Tenant.id == tenant_api_key.tenant_id,
+            Tenant.is_verified == True,
+            Tenant.is_active == True
+        ).first()
+        return tenant
+
+    # Fallback to old api_key column for backward compatibility
     return db.query(Tenant).filter(
         Tenant.api_key == api_key,
         Tenant.is_verified == True,
         Tenant.is_active == True
+    ).first()
+
+def get_tenant_api_key_by_key(db: Session, api_key: str):
+    """Get TenantApiKey object by API key string
+
+    Returns the TenantApiKey object which contains config references.
+    Returns None if not found or if using legacy api_key.
+    """
+    from database.models import TenantApiKey
+
+    return db.query(TenantApiKey).filter(
+        TenantApiKey.api_key == api_key,
+        TenantApiKey.is_active == True
     ).first()
 
 def get_user_by_email(db: Session, email: str) -> Optional[Tenant]:

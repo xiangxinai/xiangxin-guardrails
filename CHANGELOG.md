@@ -578,7 +578,7 @@ Added **sensitivity threshold configuration** – allows customizing detection s
   * `backend/services/proxy_service.py` – Proxy core logic
   * `backend/routers/proxy_api.py` – Proxy API routes
   * `backend/routers/proxy_management.py` – Proxy management routes
-  * `frontend/src/pages/Config/ProxyModelManagement.tsx` – Upstream model UI
+  * `frontend/src/pages/SecurityGateway.tsx` – Upstream model UI
   * `examples/proxy_usage_demo.py` – Proxy usage example
 
 * 🔌 **Private Deployment Integration** 🆕

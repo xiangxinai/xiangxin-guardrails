@@ -329,6 +329,10 @@ app.include_router(data_security.router, dependencies=[Depends(verify_user_auth)
 # Import and register ban policy routes
 from routers import ban_policy_api
 app.include_router(ban_policy_api.router, dependencies=[Depends(verify_user_auth)])
+
+# Import and register API key management routes
+from routers import api_keys
+app.include_router(api_keys.router, dependencies=[Depends(verify_user_auth)])
 # Media router: image upload/delete needs authentication, but image access does not need authentication
 # First register image access routes that do not need authentication
 from fastapi import APIRouter
