@@ -29,6 +29,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { knowledgeBaseApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useConfigContext } from './Config';
 import type { KnowledgeBase, SimilarQuestionResult } from '../../types';
 
 const { TextArea } = Input;
@@ -36,6 +37,7 @@ const { Option } = Select;
 
 const KnowledgeBaseManagement: React.FC = () => {
   const { t } = useTranslation();
+  const { selectedApplicationId } = useConfigContext();
   const [data, setData] = useState<KnowledgeBase[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -68,18 +70,24 @@ const KnowledgeBaseManagement: React.FC = () => {
   ];
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (selectedApplicationId) {
+      fetchData();
+    }
+  }, [selectedApplicationId]);
 
   // Listen to user switch event, automatically refresh data
   useEffect(() => {
     const unsubscribe = onUserSwitch(() => {
-      fetchData();
+      if (selectedApplicationId) {
+        fetchData();
+      }
     });
     return unsubscribe;
-  }, [onUserSwitch]);
+  }, [onUserSwitch, selectedApplicationId]);
 
   const fetchData = async () => {
+    if (!selectedApplicationId) return;
+
     try {
       setLoading(true);
       const result = await knowledgeBaseApi.list();
@@ -450,6 +458,18 @@ const KnowledgeBaseManagement: React.FC = () => {
       ),
     },
   ];
+
+  // Show empty state if no application is selected
+  if (!selectedApplicationId) {
+    return (
+      <Alert
+        message={t('applicationSelector.noApplications')}
+        description={t('applicationSelector.noApplicationsDesc')}
+        type="info"
+        showIcon
+      />
+    );
+  }
 
   return (
     <div>

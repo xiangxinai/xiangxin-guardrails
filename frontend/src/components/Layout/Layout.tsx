@@ -12,6 +12,8 @@ import {
   SwapOutlined,
   ReloadOutlined,
   ExperimentOutlined,
+  FileTextOutlined,
+  AppstoreOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { adminApi, configApi } from '../../services/api';
@@ -86,6 +88,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: t('nav.reports'),
     },
     {
+      key: '/applications',
+      icon: <AppstoreOutlined />,
+      label: t('nav.applications'),
+    },
+    {
+      key: '/proxy-models',
+      icon: <SettingOutlined />,
+      label: t('nav.securityGateway'),
+    },
+    {
       key: '/config',
       icon: <SettingOutlined />,
       label: t('nav.config'),
@@ -122,10 +134,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           key: '/config/knowledge-bases',
           label: t('config.knowledge'),
         },
-        {
-          key: '/config/proxy-models',
-          label: t('config.proxy'),
-        },
       ],
     },
     // Only super admins can see tenant management
@@ -157,6 +165,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const getSelectedKeys = () => {
     const path = location.pathname;
+    // Handle proxy-models route
+    if (path.startsWith('/proxy-models')) {
+      return ['/proxy-models'];
+    }
+    // Handle applications route
+    if (path.startsWith('/applications')) {
+      return ['/applications'];
+    }
     if (path.startsWith('/config') || path.startsWith('/admin')) {
       return [path];
     }
@@ -290,6 +306,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {t('common.appName')}
           </div>
           <Space>
+            {/* Documentation Link */}
+            <Button
+              type="link"
+              icon={<FileTextOutlined />}
+              onClick={() => navigate('/documentation')}
+              size="small"
+            >
+              {t('nav.documentation')}
+            </Button>
+
             {/* Language Switcher */}
             <LanguageSwitcher />
 

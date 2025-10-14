@@ -53,61 +53,100 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         """Get authentication context (proxy service专用 - support API key verification)"""
         from utils.auth_cache import auth_cache
         from utils.auth import verify_token
-        
+
         # Check cache
         cached_auth = auth_cache.get(token)
         if cached_auth:
             return cached_auth
-        
+
         auth_context = None
-        
+
         try:
             # First try JWT verification
             user_data = verify_token(token)
             raw_tenant_id = user_data.get('tenant_id') or user_data.get('sub')
-            
+
             if isinstance(raw_tenant_id, str):
                 try:
+                    from database.connection import get_admin_db_session
+                    from database.models import Application, Tenant
+
                     tenant_uuid = uuid.UUID(raw_tenant_id)
-                    auth_context = {
-                        "type": "jwt", 
-                        "data": {
-                            "tenant_id": raw_tenant_id,
-                            "email": user_data.get('email', 'unknown')
-                        }
-                    }
+
+                    # Get first active application for JWT
+                    db = get_admin_db_session()
+                    try:
+                        user = db.query(Tenant).filter(Tenant.id == tenant_uuid).first()
+                        if user:
+                            default_app = db.query(Application).filter(
+                                Application.tenant_id == user.id,
+                                Application.is_active == True
+                            ).order_by(Application.created_at).first()
+
+                            auth_context = {
+                                "type": "jwt",
+                                "data": {
+                                    "tenant_id": raw_tenant_id,
+                                    "application_id": str(default_app.id) if default_app else None,
+                                    "email": user_data.get('email', user.email)
+                                }
+                            }
+                    finally:
+                        db.close()
                 except ValueError:
                     pass
         except:
             # JWT verification failed, try API key verification
             try:
                 from database.connection import get_admin_db_session
-                from utils.user import get_user_by_api_key
-                
+                from utils.api_key import verify_api_key, update_api_key_last_used
+
                 db = get_admin_db_session()
                 try:
-                    user = get_user_by_api_key(db, token)
-                    if user:
+                    # Try new API key verification (from APIKey table)
+                    api_key_context = verify_api_key(db, token)
+                    if api_key_context:
                         auth_context = {
-                            "type": "api_key", 
-                            "data": {
-                                "tenant_id": str(user.id),
-                                "email": user.email,
-                                "api_key": user.api_key
-                            }
+                            "type": "api_key",
+                            "data": api_key_context  # Contains tenant_id, application_id, api_key_id, tenant_email
                         }
+
+                        # Update last used timestamp asynchronously
+                        asyncio.create_task(update_api_key_last_used(db, api_key_context['api_key_id']))
+                    else:
+                        # Fallback: try legacy API key from Tenant table (for backward compatibility)
+                        from utils.user import get_user_by_api_key
+                        from database.models import Application
+
+                        user = get_user_by_api_key(db, token)
+                        if user:
+                            # Legacy API key, use first active application
+                            default_app = db.query(Application).filter(
+                                Application.tenant_id == user.id,
+                                Application.is_active == True
+                            ).order_by(Application.created_at).first()
+
+                            auth_context = {
+                                "type": "api_key_legacy",
+                                "data": {
+                                    "tenant_id": str(user.id),
+                                    "application_id": str(default_app.id) if default_app else None,
+                                    "email": user.email,
+                                    "api_key": user.api_key
+                                }
+                            }
                 finally:
                     db.close()
             except Exception as e:
                 logger.error(f"API key verification failed: {e}")
-        
+
         # If all verification fails, do not create anonymous user context
         # This will trigger a 401 error, which is expected behavior for the API
-        
+
         # Cache authentication result
         if auth_context:
             auth_cache.set(token, auth_context)
-        
+
         return auth_context
 
 # Create FastAPI application

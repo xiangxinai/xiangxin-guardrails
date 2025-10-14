@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Switch, message, Spin, Typography, Divider, Space, Row, Col } from 'antd';
+import { Card, Switch, message, Spin, Typography, Divider, Space, Row, Col, Alert } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { getRiskConfig, updateRiskConfig } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useConfigContext } from './Config';
 
 const { Title, Text } = Typography;
 
@@ -24,6 +25,7 @@ interface RiskTypeConfig {
 
 const RiskTypeManagement: React.FC = () => {
   const { t } = useTranslation();
+  const { selectedApplicationId } = useConfigContext();
   const [config, setConfig] = useState<RiskTypeConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,22 +50,29 @@ const RiskTypeManagement: React.FC = () => {
     { key: 's12_enabled', code: 'S12', name: t('config.riskTypes.s12'), level: t('risk.level.low_risk'), color: '#52c41a', priority: 3 },
   ];
 
+  // Load config when selected application changes
   useEffect(() => {
-    loadRiskConfig();
-  }, []);
+    if (selectedApplicationId) {
+      loadRiskConfig();
+    }
+  }, [selectedApplicationId]);
 
   // 监听用户切换事件，自动刷新配置
   useEffect(() => {
     const unsubscribe = onUserSwitch(() => {
-      loadRiskConfig();
+      if (selectedApplicationId) {
+        loadRiskConfig();
+      }
     });
     return unsubscribe;
-  }, [onUserSwitch]);
+  }, [onUserSwitch, selectedApplicationId]);
 
   const loadRiskConfig = async () => {
+    if (!selectedApplicationId) return;
+
     try {
       setLoading(true);
-      const data = await getRiskConfig();
+      const data = await getRiskConfig(selectedApplicationId);
       setConfig(data);
     } catch (error) {
       message.error(t('riskType.loadFailed'));
@@ -74,13 +83,13 @@ const RiskTypeManagement: React.FC = () => {
   };
 
   const handleToggle = async (key: keyof RiskTypeConfig, checked: boolean) => {
-    if (!config) return;
+    if (!config || !selectedApplicationId) return;
 
     try {
       setSaving(true);
       const newConfig = { ...config, [key]: checked };
 
-      await updateRiskConfig(newConfig);
+      await updateRiskConfig(newConfig, selectedApplicationId);
       setConfig(newConfig);
 
       const riskType = RISK_TYPES.find(type => type.key === key);
@@ -93,6 +102,18 @@ const RiskTypeManagement: React.FC = () => {
       setSaving(false);
     }
   };
+
+  // Show empty state if no application is selected
+  if (!selectedApplicationId) {
+    return (
+      <Alert
+        message={t('applicationSelector.noApplications')}
+        description={t('applicationSelector.noApplicationsDesc')}
+        type="info"
+        showIcon
+      />
+    );
+  }
 
   if (loading) {
     return (

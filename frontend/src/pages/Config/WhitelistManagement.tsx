@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, Switch, Space, message, Tag } from 'antd';
+import { Table, Button, Modal, Form, Input, Switch, Space, message, Tag, Alert } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { configApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useConfigContext } from './Config';
 import type { Whitelist } from '../../types';
 
 const { TextArea } = Input;
 
 const WhitelistManagement: React.FC = () => {
   const { t } = useTranslation();
+  const { selectedApplicationId } = useConfigContext();
   const [data, setData] = useState<Whitelist[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -18,21 +20,27 @@ const WhitelistManagement: React.FC = () => {
   const { onUserSwitch } = useAuth();
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (selectedApplicationId) {
+      fetchData();
+    }
+  }, [selectedApplicationId]);
 
   // Listen to user switch event, automatically refresh data
   useEffect(() => {
     const unsubscribe = onUserSwitch(() => {
-      fetchData();
+      if (selectedApplicationId) {
+        fetchData();
+      }
     });
     return unsubscribe;
-  }, [onUserSwitch]);
+  }, [onUserSwitch, selectedApplicationId]);
 
   const fetchData = async () => {
+    if (!selectedApplicationId) return;
+
     try {
       setLoading(true);
-      const result = await configApi.whitelist.list();
+      const result = await configApi.whitelist.list(selectedApplicationId);
       setData(result);
     } catch (error) {
       console.error('Error fetching whitelist:', error);
@@ -40,6 +48,7 @@ const WhitelistManagement: React.FC = () => {
       setLoading(false);
     }
   };
+
 
   const handleAdd = () => {
     setEditingItem(null);
@@ -57,9 +66,15 @@ const WhitelistManagement: React.FC = () => {
   };
 
   const handleSubmit = async (values: any) => {
+    if (!selectedApplicationId) {
+      message.error(t('applicationSelector.noApplications'));
+      return;
+    }
+
     try {
       const submitData = {
         ...values,
+        application_id: selectedApplicationId,
         keywords: values.keywords.split('\n').filter((k: string) => k.trim()),
       };
 
@@ -177,6 +192,18 @@ const WhitelistManagement: React.FC = () => {
       ),
     },
   ];
+
+  // Show empty state if no application is selected
+  if (!selectedApplicationId) {
+    return (
+      <Alert
+        message={t('applicationSelector.noApplications')}
+        description={t('applicationSelector.noApplicationsDesc')}
+        type="info"
+        showIcon
+      />
+    );
+  }
 
   return (
     <div>

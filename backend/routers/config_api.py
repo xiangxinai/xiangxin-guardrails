@@ -287,16 +287,30 @@ async def delete_whitelist(whitelist_id: int, request: Request, db: Session = De
 
 # Response template management
 @router.get("/config/responses", response_model=List[ResponseTemplateResponse])
-async def get_response_templates(request: Request, db: Session = Depends(get_db)):
-    """Get response template configuration"""
+async def get_response_templates(
+    request: Request,
+    application_id: str = None,
+    db: Session = Depends(get_db)
+):
+    """Get response template configuration (application-scoped or tenant-scoped for backward compatibility)"""
     try:
         current_user = get_current_user_from_request(request, db)
-        # If column is missing (pre-upgrade database), try global template fallback
-        try:
-            templates = db.query(ResponseTemplate).filter(ResponseTemplate.tenant_id == current_user.id).order_by(ResponseTemplate.created_at.desc()).all()
-        except Exception as e:
-            logger.warning(f"ResponseTemplate query failed with tenant_id filter, falling back: {e}")
-            templates = db.query(ResponseTemplate).order_by(ResponseTemplate.created_at.desc()).all()
+
+        if application_id:
+            # Application-scoped: get templates for specific application
+            templates = db.query(ResponseTemplate).filter(
+                ResponseTemplate.application_id == application_id
+            ).order_by(ResponseTemplate.created_at.desc()).all()
+        else:
+            # Legacy: tenant-scoped configuration for backward compatibility
+            try:
+                templates = db.query(ResponseTemplate).filter(
+                    ResponseTemplate.tenant_id == current_user.id
+                ).order_by(ResponseTemplate.created_at.desc()).all()
+            except Exception as e:
+                logger.warning(f"ResponseTemplate query failed with tenant_id filter, falling back: {e}")
+                templates = db.query(ResponseTemplate).order_by(ResponseTemplate.created_at.desc()).all()
+
         return [ResponseTemplateResponse(
             id=rt.id,
             category=rt.category,
@@ -314,26 +328,46 @@ async def get_response_templates(request: Request, db: Session = Depends(get_db)
         raise HTTPException(status_code=500, detail="Failed to get response templates")
 
 @router.post("/config/responses", response_model=ApiResponse)
-async def create_response_template(template_request: ResponseTemplateRequest, request: Request, db: Session = Depends(get_db)):
-    """创建代答模板"""
+async def create_response_template(
+    template_request: ResponseTemplateRequest,
+    request: Request,
+    application_id: str = None,
+    db: Session = Depends(get_db)
+):
+    """Create response template (application-scoped or tenant-scoped for backward compatibility)"""
     try:
         current_user = get_current_user_from_request(request, db)
-        template = ResponseTemplate(
-            tenant_id=current_user.id,
-            category=template_request.category,
-            risk_level=template_request.risk_level,
-            template_content=template_request.template_content,
-            is_default=template_request.is_default,
-            is_active=template_request.is_active
-        )
+
+        if application_id:
+            # Application-scoped template
+            template = ResponseTemplate(
+                tenant_id=current_user.id,
+                application_id=application_id,
+                category=template_request.category,
+                risk_level=template_request.risk_level,
+                template_content=template_request.template_content,
+                is_default=template_request.is_default,
+                is_active=template_request.is_active
+            )
+        else:
+            # Legacy: tenant-scoped template
+            template = ResponseTemplate(
+                tenant_id=current_user.id,
+                category=template_request.category,
+                risk_level=template_request.risk_level,
+                template_content=template_request.template_content,
+                is_default=template_request.is_default,
+                is_active=template_request.is_active
+            )
+
         db.add(template)
         db.commit()
-        
-        # 立即失效模板缓存
+
+        # Invalidate template cache immediately
         await template_cache.invalidate_cache()
         await enhanced_template_service.invalidate_cache()
-        
-        logger.info(f"Response template created: {template_request.category} for user: {current_user.email}")
+
+        logger.info(f"Response template created: {template_request.category} for user: {current_user.email}, application_id: {application_id}")
         return ApiResponse(success=True, message="Response template created successfully")
     except HTTPException:
         raise
@@ -342,27 +376,46 @@ async def create_response_template(template_request: ResponseTemplateRequest, re
         raise HTTPException(status_code=500, detail="Failed to create response template")
 
 @router.put("/config/responses/{template_id}", response_model=ApiResponse)
-async def update_response_template(template_id: int, template_request: ResponseTemplateRequest, request: Request, db: Session = Depends(get_db)):
-    """更新代答模板"""
+async def update_response_template(
+    template_id: int,
+    template_request: ResponseTemplateRequest,
+    request: Request,
+    application_id: str = None,
+    db: Session = Depends(get_db)
+):
+    """Update response template (application-scoped or tenant-scoped for backward compatibility)"""
     try:
         current_user = get_current_user_from_request(request, db)
-        template = db.query(ResponseTemplate).filter_by(id=template_id, tenant_id=current_user.id).first()
+
+        if application_id:
+            # Application-scoped: find template by application_id
+            template = db.query(ResponseTemplate).filter_by(
+                id=template_id,
+                application_id=application_id
+            ).first()
+        else:
+            # Legacy: tenant-scoped
+            template = db.query(ResponseTemplate).filter_by(
+                id=template_id,
+                tenant_id=current_user.id
+            ).first()
+
         if not template:
             raise HTTPException(status_code=404, detail="Response template not found")
-        
+
         template.category = template_request.category
         template.risk_level = template_request.risk_level
         template.template_content = template_request.template_content
         template.is_default = template_request.is_default
         template.is_active = template_request.is_active
-        
+
         db.commit()
-        
+
         # Invalidate template cache immediately
         await template_cache.invalidate_cache()
         await enhanced_template_service.invalidate_cache()
-        
-        logger.info(f"Response template updated: {template_id} for user: {current_user.email}")
+
+        logger.info(f"Response template updated: {template_id} for user: {current_user.email}, application_id: {application_id}")
         return ApiResponse(success=True, message="Response template updated successfully")
     except HTTPException:
         raise
@@ -371,22 +424,40 @@ async def update_response_template(template_id: int, template_request: ResponseT
         raise HTTPException(status_code=500, detail="Failed to update response template")
 
 @router.delete("/config/responses/{template_id}", response_model=ApiResponse)
-async def delete_response_template(template_id: int, request: Request, db: Session = Depends(get_db)):
-    """Delete response template"""
+async def delete_response_template(
+    template_id: int,
+    request: Request,
+    application_id: str = None,
+    db: Session = Depends(get_db)
+):
+    """Delete response template (application-scoped or tenant-scoped for backward compatibility)"""
     try:
         current_user = get_current_user_from_request(request, db)
-        template = db.query(ResponseTemplate).filter_by(id=template_id, tenant_id=current_user.id).first()
+
+        if application_id:
+            # Application-scoped: find template by application_id
+            template = db.query(ResponseTemplate).filter_by(
+                id=template_id,
+                application_id=application_id
+            ).first()
+        else:
+            # Legacy: tenant-scoped
+            template = db.query(ResponseTemplate).filter_by(
+                id=template_id,
+                tenant_id=current_user.id
+            ).first()
+
         if not template:
             raise HTTPException(status_code=404, detail="Response template not found")
-        
+
         db.delete(template)
         db.commit()
-        
+
         # Invalidate template cache immediately
         await template_cache.invalidate_cache()
         await enhanced_template_service.invalidate_cache()
-        
-        logger.info(f"Response template deleted: {template_id} for user: {current_user.email}")
+
+        logger.info(f"Response template deleted: {template_id} for user: {current_user.email}, application_id: {application_id}")
         return ApiResponse(success=True, message="Response template deleted successfully")
     except HTTPException:
         raise

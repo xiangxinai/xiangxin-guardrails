@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from database.connection import Base
 
 class Tenant(Base):
-    """租户表 (原用户表)"""
+    """Tenant table"""
     __tablename__ = "tenants"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
@@ -15,18 +15,79 @@ class Tenant(Base):
     is_active = Column(Boolean, default=False)  # After email verification, activate
     is_verified = Column(Boolean, default=False)  # Whether the email has been verified
     is_super_admin = Column(Boolean, default=False)  # Whether to be a super admin
-    api_key = Column(String(64), unique=True, nullable=False, index=True)
+    # Deprecated: api_key field will be removed in future version, use APIKey table instead
+    api_key = Column(String(64), unique=True, nullable=True, index=True)  # Changed to nullable for migration compatibility
     language = Column(String(10), default='en', nullable=False)  # User language preference
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Association relationships
+    applications = relationship("Application", back_populates="tenant", cascade="all, delete-orphan")
+    api_keys = relationship("APIKey", back_populates="tenant", cascade="all, delete-orphan")
     detection_results = relationship("DetectionResult", back_populates="tenant")
+    # Legacy relationships (deprecated, will be moved to application-level)
     test_models = relationship("TestModelConfig", back_populates="tenant")
     blacklists = relationship("Blacklist", back_populates="tenant")
     whitelists = relationship("Whitelist", back_populates="tenant")
     response_templates = relationship("ResponseTemplate", back_populates="tenant")
     risk_config = relationship("RiskTypeConfig", back_populates="tenant", uselist=False)
+
+class Application(Base):
+    """Application table - Independent AI applications under a tenant, each with its own API keys and protection configs"""
+    __tablename__ = "applications"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey('tenants.id', ondelete='CASCADE'), nullable=False, index=True)
+
+    # Application basic information
+    name = Column(String(100), nullable=False)  # Application name, e.g., "Customer Service", "Content Generation"
+    description = Column(Text)  # Application description
+    is_active = Column(Boolean, default=True, index=True)  # Whether enabled
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Association relationships
+    tenant = relationship("Tenant", back_populates="applications")
+    api_keys = relationship("APIKey", back_populates="application", cascade="all, delete-orphan")
+
+    # Each application has its own set of independent configurations
+    risk_config_app = relationship("RiskTypeConfig", foreign_keys="RiskTypeConfig.application_id", back_populates="application", uselist=False, cascade="all, delete-orphan")
+    blacklists_app = relationship("Blacklist", foreign_keys="Blacklist.application_id", back_populates="application", cascade="all, delete-orphan")
+    whitelists_app = relationship("Whitelist", foreign_keys="Whitelist.application_id", back_populates="application", cascade="all, delete-orphan")
+    response_templates_app = relationship("ResponseTemplate", foreign_keys="ResponseTemplate.application_id", back_populates="application", cascade="all, delete-orphan")
+    knowledge_bases_app = relationship("KnowledgeBase", foreign_keys="KnowledgeBase.application_id", back_populates="application", cascade="all, delete-orphan")
+    data_entity_types_app = relationship("DataSecurityEntityType", foreign_keys="DataSecurityEntityType.application_id", back_populates="application", cascade="all, delete-orphan")
+    test_models_app = relationship("TestModelConfig", foreign_keys="TestModelConfig.application_id", back_populates="application", cascade="all, delete-orphan")
+    proxy_models_app = relationship("ProxyModelConfig", foreign_keys="ProxyModelConfig.application_id", back_populates="application", cascade="all, delete-orphan")
+    detection_results_app = relationship("DetectionResult", foreign_keys="DetectionResult.application_id", back_populates="application")
+
+class APIKey(Base):
+    """API Key table - Support multiple keys per application"""
+    __tablename__ = "api_keys"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey('tenants.id', ondelete='CASCADE'), nullable=False, index=True)
+    application_id = Column(UUID(as_uuid=True), ForeignKey('applications.id', ondelete='CASCADE'), nullable=False, index=True)
+
+    # Key information
+    key_hash = Column(String(128), unique=True, nullable=False, index=True)  # SHA256 hash
+    key_prefix = Column(String(20), nullable=False)  # sk-xxai-xxx prefix for identification
+    name = Column(String(100))  # Key name/note, e.g., "Production", "Testing"
+
+    # Status and lifecycle
+    is_active = Column(Boolean, default=True, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)  # Expiration time (optional)
+    last_used_at = Column(DateTime(timezone=True))  # Last used time
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Association relationships
+    tenant = relationship("Tenant", back_populates="api_keys")
+    application = relationship("Application", back_populates="api_keys")
 
 class EmailVerification(Base):
     """Email verification table"""
@@ -46,6 +107,7 @@ class DetectionResult(Base):
     id = Column(Integer, primary_key=True, index=True)
     request_id = Column(String(64), unique=True, nullable=False, index=True)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)  # Associated tenant
+    application_id = Column(UUID(as_uuid=True), ForeignKey("applications.id", ondelete='CASCADE'), nullable=True, index=True)  # Associated application (nullable for backward compatibility)
     content = Column(Text, nullable=False)
     suggest_action = Column(String(20))  # 'pass', 'reject', 'replace'
     suggest_answer = Column(Text)  # Suggest answer content
@@ -69,13 +131,15 @@ class DetectionResult(Base):
 
     # Association relationships
     tenant = relationship("Tenant", back_populates="detection_results")
+    application = relationship("Application", foreign_keys=[application_id], back_populates="detection_results_app")
 
 class Blacklist(Base):
     """Blacklist table"""
     __tablename__ = "blacklist"
 
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)  # Associated tenant
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True, index=True)  # Associated tenant (nullable for migration compatibility)
+    application_id = Column(UUID(as_uuid=True), ForeignKey("applications.id", ondelete='CASCADE'), nullable=True, index=True)  # Associated application
     name = Column(String(100), nullable=False)  # Blacklist library name
     keywords = Column(JSON, nullable=False)  # Keywords list
     description = Column(Text)  # Description
@@ -85,13 +149,15 @@ class Blacklist(Base):
 
     # Association relationships
     tenant = relationship("Tenant", back_populates="blacklists")
+    application = relationship("Application", foreign_keys=[application_id], back_populates="blacklists_app")
 
 class Whitelist(Base):
     """Whitelist table"""
     __tablename__ = "whitelist"
 
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)  # Associated tenant
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True, index=True)  # Associated tenant (nullable for migration compatibility)
+    application_id = Column(UUID(as_uuid=True), ForeignKey("applications.id", ondelete='CASCADE'), nullable=True, index=True)  # Associated application
     name = Column(String(100), nullable=False)  # Whitelist library name
     keywords = Column(JSON, nullable=False)  # Keywords list
     description = Column(Text)  # Description
@@ -101,14 +167,16 @@ class Whitelist(Base):
 
     # Association relationships
     tenant = relationship("Tenant", back_populates="whitelists")
+    application = relationship("Application", foreign_keys=[application_id], back_populates="whitelists_app")
 
 class ResponseTemplate(Base):
     """Response template table"""
     __tablename__ = "response_templates"
 
     id = Column(Integer, primary_key=True, index=True)
-    # Allow null: When it is a system-level default template, tenant_id is null
+    # Allow null: When it is a system-level default template, tenant_id and application_id are null
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True, index=True)  # Associated tenant (can be null for global templates)
+    application_id = Column(UUID(as_uuid=True), ForeignKey("applications.id", ondelete='CASCADE'), nullable=True, index=True)  # Associated application (can be null for global templates)
     category = Column(String(50), nullable=False, index=True)  # Risk category (S1-S12, default)
     risk_level = Column(String(10), nullable=False)  # Risk level
     template_content = Column(Text, nullable=False)  # Response template content
@@ -119,6 +187,7 @@ class ResponseTemplate(Base):
 
     # Association relationships
     tenant = relationship("Tenant", back_populates="response_templates")
+    application = relationship("Application", foreign_keys=[application_id], back_populates="response_templates_app")
 
 class TenantSwitch(Base):
     """Tenant switch record table (for super admin to switch tenant perspective)"""
@@ -159,7 +228,8 @@ class RiskTypeConfig(Base):
     __tablename__ = "risk_type_config"
 
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True, unique=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True, index=True)  # Legacy field for backward compatibility
+    application_id = Column(UUID(as_uuid=True), ForeignKey("applications.id", ondelete='CASCADE'), nullable=True, index=True, unique=True)  # Associated application
 
     # S1-S12风险类型开关配置
     s1_enabled = Column(Boolean, default=True)  # General political topics
@@ -188,6 +258,7 @@ class RiskTypeConfig(Base):
 
     # Association relationships
     tenant = relationship("Tenant", back_populates="risk_config")
+    application = relationship("Application", foreign_keys=[application_id], back_populates="risk_config_app")
 
 class TenantRateLimit(Base):
     """Tenant rate limit config table"""
@@ -220,7 +291,8 @@ class TestModelConfig(Base):
     __tablename__ = "test_model_configs"
 
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True, index=True)  # Legacy field for backward compatibility
+    application_id = Column(UUID(as_uuid=True), ForeignKey("applications.id", ondelete='CASCADE'), nullable=True, index=True)  # Associated application
     name = Column(String(255), nullable=False)  # Model display name
     base_url = Column(String(512), nullable=False)  # API Base URL
     api_key = Column(String(512), nullable=False)  # API Key
@@ -231,13 +303,15 @@ class TestModelConfig(Base):
 
     # Association relationships
     tenant = relationship("Tenant", back_populates="test_models")
+    application = relationship("Application", foreign_keys=[application_id], back_populates="test_models_app")
 
 class ProxyModelConfig(Base):
     """Reverse proxy model config table"""
     __tablename__ = "proxy_model_configs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True, index=True)  # Legacy field for backward compatibility
+    application_id = Column(UUID(as_uuid=True), ForeignKey("applications.id", ondelete='CASCADE'), nullable=True, index=True)  # Associated application
     config_name = Column(String(100), nullable=False, index=True)  # Proxy model name, for model parameter matching
     api_base_url = Column(String(512), nullable=False)  # Upstream API base URL
     api_key_encrypted = Column(Text, nullable=False)  # Encrypted upstream API key
@@ -255,6 +329,7 @@ class ProxyModelConfig(Base):
 
     # Association relationships
     tenant = relationship("Tenant")
+    application = relationship("Application", foreign_keys=[application_id], back_populates="proxy_models_app")
 
 class ProxyRequestLog(Base):
     """Reverse proxy request log table"""
@@ -297,7 +372,8 @@ class KnowledgeBase(Base):
     __tablename__ = "knowledge_bases"
 
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True, index=True)  # Legacy field for backward compatibility
+    application_id = Column(UUID(as_uuid=True), ForeignKey("applications.id", ondelete='CASCADE'), nullable=True, index=True)  # Associated application
     category = Column(String(50), nullable=False, index=True)  # Risk category (S1-S12)
     name = Column(String(255), nullable=False)  # Knowledge base name
     description = Column(Text)  # Description
@@ -305,12 +381,13 @@ class KnowledgeBase(Base):
     vector_file_path = Column(String(512))  # Vectorized file path
     total_qa_pairs = Column(Integer, default=0)  # Total QA pairs
     is_active = Column(Boolean, default=True, index=True)  # Whether enabled
-    is_global = Column(Boolean, default=False, index=True)  # Whether it is a global knowledge base (all tenants take effect), only admin can set
+    is_global = Column(Boolean, default=False, index=True)  # Whether it is a global knowledge base (all tenants/apps take effect), only admin can set
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Association relationships
     tenant = relationship("Tenant")
+    application = relationship("Application", foreign_keys=[application_id], back_populates="knowledge_bases_app")
 
 class OnlineTestModelSelection(Base):
     """Online test model selection table - record the proxy model selected by the tenant in online test"""
@@ -338,7 +415,8 @@ class DataSecurityEntityType(Base):
     __tablename__ = "data_security_entity_types"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True, index=True)  # Legacy field for backward compatibility
+    application_id = Column(UUID(as_uuid=True), ForeignKey("applications.id", ondelete='CASCADE'), nullable=True, index=True)  # Associated application
     entity_type = Column(String(100), nullable=False, index=True)  # Entity type code, such as ID_CARD_NUMBER
     display_name = Column(String(200), nullable=False)  # Display name, such as "ID Card Number"
     category = Column(String(50), nullable=False, index=True)  # Risk level: low, medium, high
@@ -347,12 +425,13 @@ class DataSecurityEntityType(Base):
     anonymization_method = Column(String(20), default='replace')  # Anonymization method: replace, mask, hash, encrypt, shuffle, random
     anonymization_config = Column(JSON)  # Anonymization config, such as {"replacement": "<ID_CARD>"}
     is_active = Column(Boolean, default=True, index=True)  # Whether enabled
-    is_global = Column(Boolean, default=False, index=True)  # Whether it is a global config
+    is_global = Column(Boolean, default=False, index=True)  # Whether it is a global config (applies to all tenants/apps)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Association relationships
     tenant = relationship("Tenant")
+    application = relationship("Application", foreign_keys=[application_id], back_populates="data_entity_types_app")
 
 class TenantEntityTypeDisable(Base):
     """Tenant entity type disable table"""

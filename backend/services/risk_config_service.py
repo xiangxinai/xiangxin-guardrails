@@ -7,12 +7,23 @@ logger = setup_logger()
 
 class RiskConfigService:
     """Risk type configuration service"""
-    
+
     def __init__(self, db: Session):
         self.db = db
-    
+
+    def get_application_risk_config(self, application_id: str) -> Optional[RiskTypeConfig]:
+        """Get application risk config"""
+        try:
+            config = self.db.query(RiskTypeConfig).filter(
+                RiskTypeConfig.application_id == application_id
+            ).first()
+            return config
+        except Exception as e:
+            logger.error(f"Failed to get application risk config for {application_id}: {e}")
+            return None
+
     def get_user_risk_config(self, tenant_id: str) -> Optional[RiskTypeConfig]:
-        """Get user risk config"""
+        """Get user risk config (legacy method for backward compatibility)"""
         try:
             config = self.db.query(RiskTypeConfig).filter(
                 RiskTypeConfig.tenant_id == tenant_id
@@ -22,8 +33,22 @@ class RiskConfigService:
             logger.error(f"Failed to get user risk config for {tenant_id}: {e}")
             return None
     
+    def create_default_application_risk_config(self, application_id: str, tenant_id: str = None) -> RiskTypeConfig:
+        """Create default risk config for application (all types default enabled)"""
+        try:
+            config = RiskTypeConfig(application_id=application_id, tenant_id=tenant_id)
+            self.db.add(config)
+            self.db.commit()
+            self.db.refresh(config)
+            logger.info(f"Created default risk config for application {application_id}")
+            return config
+        except Exception as e:
+            logger.error(f"Failed to create default risk config for application {application_id}: {e}")
+            self.db.rollback()
+            raise
+
     def create_default_risk_config(self, tenant_id: str) -> RiskTypeConfig:
-        """Create default risk config for user (all types default enabled)"""
+        """Create default risk config for user (legacy method for backward compatibility)"""
         try:
             config = RiskTypeConfig(tenant_id=tenant_id)
             self.db.add(config)
@@ -36,18 +61,39 @@ class RiskConfigService:
             self.db.rollback()
             raise
     
-    def update_risk_config(self, tenant_id: str, config_data: Dict) -> Optional[RiskTypeConfig]:
-        """Update user risk config"""
+    def update_application_risk_config(self, application_id: str, config_data: Dict, tenant_id: str = None) -> Optional[RiskTypeConfig]:
+        """Update application risk config"""
         try:
-            config = self.get_user_risk_config(tenant_id)
+            config = self.get_application_risk_config(application_id)
             if not config:
-                config = self.create_default_risk_config(tenant_id)
-            
+                config = self.create_default_application_risk_config(application_id, tenant_id)
+
             # Update config fields
             for field, value in config_data.items():
                 if hasattr(config, field):
                     setattr(config, field, value)
-            
+
+            self.db.commit()
+            self.db.refresh(config)
+            logger.info(f"Updated risk config for application {application_id}")
+            return config
+        except Exception as e:
+            logger.error(f"Failed to update risk config for application {application_id}: {e}")
+            self.db.rollback()
+            return None
+
+    def update_risk_config(self, tenant_id: str, config_data: Dict) -> Optional[RiskTypeConfig]:
+        """Update user risk config (legacy method for backward compatibility)"""
+        try:
+            config = self.get_user_risk_config(tenant_id)
+            if not config:
+                config = self.create_default_risk_config(tenant_id)
+
+            # Update config fields
+            for field, value in config_data.items():
+                if hasattr(config, field):
+                    setattr(config, field, value)
+
             self.db.commit()
             self.db.refresh(config)
             logger.info(f"Updated risk config for user {tenant_id}")
@@ -57,17 +103,17 @@ class RiskConfigService:
             self.db.rollback()
             return None
     
-    def get_enabled_risk_types(self, tenant_id: str) -> Dict[str, bool]:
-        """Get user enabled risk type mapping"""
-        config = self.get_user_risk_config(tenant_id)
+    def get_application_enabled_risk_types(self, application_id: str) -> Dict[str, bool]:
+        """Get application enabled risk type mapping"""
+        config = self.get_application_risk_config(application_id)
         if not config:
-            # Return default all enabled when user has no configuration
+            # Return default all enabled when application has no configuration
             return {
                 'S1': True, 'S2': True, 'S3': True, 'S4': True,
                 'S5': True, 'S6': True, 'S7': True, 'S8': True,
                 'S9': True, 'S10': True, 'S11': True, 'S12': True
             }
-        
+
         return {
             'S1': config.s1_enabled,
             'S2': config.s2_enabled,
@@ -82,22 +128,53 @@ class RiskConfigService:
             'S11': config.s11_enabled,
             'S12': config.s12_enabled,
         }
-    
+
+    def get_enabled_risk_types(self, tenant_id: str) -> Dict[str, bool]:
+        """Get user enabled risk type mapping (legacy method for backward compatibility)"""
+        config = self.get_user_risk_config(tenant_id)
+        if not config:
+            # Return default all enabled when user has no configuration
+            return {
+                'S1': True, 'S2': True, 'S3': True, 'S4': True,
+                'S5': True, 'S6': True, 'S7': True, 'S8': True,
+                'S9': True, 'S10': True, 'S11': True, 'S12': True
+            }
+
+        return {
+            'S1': config.s1_enabled,
+            'S2': config.s2_enabled,
+            'S3': config.s3_enabled,
+            'S4': config.s4_enabled,
+            'S5': config.s5_enabled,
+            'S6': config.s6_enabled,
+            'S7': config.s7_enabled,
+            'S8': config.s8_enabled,
+            'S9': config.s9_enabled,
+            'S10': config.s10_enabled,
+            'S11': config.s11_enabled,
+            'S12': config.s12_enabled,
+        }
+
+    def is_application_risk_type_enabled(self, application_id: str, risk_type: str) -> bool:
+        """Check if specified risk type is enabled for application"""
+        enabled_types = self.get_application_enabled_risk_types(application_id)
+        return enabled_types.get(risk_type, True)  # Default enabled
+
     def is_risk_type_enabled(self, tenant_id: str, risk_type: str) -> bool:
-        """Check if specified risk type is enabled"""
+        """Check if specified risk type is enabled (legacy method for backward compatibility)"""
         enabled_types = self.get_enabled_risk_types(tenant_id)
         return enabled_types.get(risk_type, True)  # Default enabled
-    
-    def get_risk_config_dict(self, tenant_id: str) -> Dict:
-        """Get user risk config dictionary format"""
-        config = self.get_user_risk_config(tenant_id)
+
+    def get_application_risk_config_dict(self, application_id: str) -> Dict:
+        """Get application risk config dictionary format"""
+        config = self.get_application_risk_config(application_id)
         if not config:
             return {
                 's1_enabled': True, 's2_enabled': True, 's3_enabled': True, 's4_enabled': True,
                 's5_enabled': True, 's6_enabled': True, 's7_enabled': True, 's8_enabled': True,
                 's9_enabled': True, 's10_enabled': True, 's11_enabled': True, 's12_enabled': True
             }
-        
+
         return {
             's1_enabled': config.s1_enabled,
             's2_enabled': config.s2_enabled,
@@ -113,8 +190,54 @@ class RiskConfigService:
             's12_enabled': config.s12_enabled,
         }
 
+    def get_risk_config_dict(self, tenant_id: str) -> Dict:
+        """Get user risk config dictionary format (legacy method for backward compatibility)"""
+        config = self.get_user_risk_config(tenant_id)
+        if not config:
+            return {
+                's1_enabled': True, 's2_enabled': True, 's3_enabled': True, 's4_enabled': True,
+                's5_enabled': True, 's6_enabled': True, 's7_enabled': True, 's8_enabled': True,
+                's9_enabled': True, 's10_enabled': True, 's11_enabled': True, 's12_enabled': True
+            }
+
+        return {
+            's1_enabled': config.s1_enabled,
+            's2_enabled': config.s2_enabled,
+            's3_enabled': config.s3_enabled,
+            's4_enabled': config.s4_enabled,
+            's5_enabled': config.s5_enabled,
+            's6_enabled': config.s6_enabled,
+            's7_enabled': config.s7_enabled,
+            's8_enabled': config.s8_enabled,
+            's9_enabled': config.s9_enabled,
+            's10_enabled': config.s10_enabled,
+            's11_enabled': config.s11_enabled,
+            's12_enabled': config.s12_enabled,
+        }
+
+    def update_application_sensitivity_thresholds(self, application_id: str, threshold_data: Dict, tenant_id: str = None) -> Optional[RiskTypeConfig]:
+        """Update application sensitivity threshold configuration"""
+        try:
+            config = self.get_application_risk_config(application_id)
+            if not config:
+                config = self.create_default_application_risk_config(application_id, tenant_id)
+
+            # Update sensitivity threshold fields
+            for field, value in threshold_data.items():
+                if hasattr(config, field):
+                    setattr(config, field, value)
+
+            self.db.commit()
+            self.db.refresh(config)
+            logger.info(f"Updated sensitivity thresholds for application {application_id}")
+            return config
+        except Exception as e:
+            logger.error(f"Failed to update sensitivity thresholds for application {application_id}: {e}")
+            self.db.rollback()
+            return None
+
     def update_sensitivity_thresholds(self, tenant_id: str, threshold_data: Dict) -> Optional[RiskTypeConfig]:
-        """Update user sensitivity threshold configuration"""
+        """Update user sensitivity threshold configuration (legacy method for backward compatibility)"""
         try:
             config = self.get_user_risk_config(tenant_id)
             if not config:
@@ -134,8 +257,26 @@ class RiskConfigService:
             self.db.rollback()
             return None
 
+    def get_application_sensitivity_threshold_dict(self, application_id: str) -> Dict:
+        """Get application sensitivity threshold configuration dictionary format"""
+        config = self.get_application_risk_config(application_id)
+        if not config:
+            return {
+                'low_sensitivity_threshold': 0.95,
+                'medium_sensitivity_threshold': 0.60,
+                'high_sensitivity_threshold': 0.40,
+                'sensitivity_trigger_level': "medium"
+            }
+
+        return {
+            'low_sensitivity_threshold': config.low_sensitivity_threshold or 0.95,
+            'medium_sensitivity_threshold': config.medium_sensitivity_threshold or 0.60,
+            'high_sensitivity_threshold': config.high_sensitivity_threshold or 0.40,
+            'sensitivity_trigger_level': config.sensitivity_trigger_level or "medium",
+        }
+
     def get_sensitivity_threshold_dict(self, tenant_id: str) -> Dict:
-        """Get user sensitivity threshold configuration dictionary format"""
+        """Get user sensitivity threshold configuration dictionary format (legacy method for backward compatibility)"""
         config = self.get_user_risk_config(tenant_id)
         if not config:
             return {
@@ -152,8 +293,24 @@ class RiskConfigService:
             'sensitivity_trigger_level': config.sensitivity_trigger_level or "medium",
         }
 
+    def get_application_sensitivity_thresholds(self, application_id: str) -> Dict[str, float]:
+        """Get application sensitivity threshold mapping"""
+        config = self.get_application_risk_config(application_id)
+        if not config:
+            return {
+                'low': 0.95,
+                'medium': 0.60,
+                'high': 0.40
+            }
+
+        return {
+            'low': config.low_sensitivity_threshold or 0.95,
+            'medium': config.medium_sensitivity_threshold or 0.60,
+            'high': config.high_sensitivity_threshold or 0.40
+        }
+
     def get_sensitivity_thresholds(self, tenant_id: str) -> Dict[str, float]:
-        """Get user sensitivity threshold mapping"""
+        """Get user sensitivity threshold mapping (legacy method for backward compatibility)"""
         config = self.get_user_risk_config(tenant_id)
         if not config:
             return {
@@ -168,8 +325,15 @@ class RiskConfigService:
             'high': config.high_sensitivity_threshold or 0.40
         }
 
+    def get_application_sensitivity_trigger_level(self, application_id: str) -> str:
+        """Get application sensitivity trigger level"""
+        config = self.get_application_risk_config(application_id)
+        if not config:
+            return "medium"
+        return config.sensitivity_trigger_level or "medium"
+
     def get_sensitivity_trigger_level(self, tenant_id: str) -> str:
-        """Get user sensitivity trigger level"""
+        """Get user sensitivity trigger level (legacy method for backward compatibility)"""
         config = self.get_user_risk_config(tenant_id)
         if not config:
             return "medium"

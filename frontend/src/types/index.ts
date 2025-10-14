@@ -183,3 +183,70 @@ export interface DataSecurityEntityType {
   created_at: string;
   updated_at: string;
 }
+
+// Application management related types
+export interface Application {
+  id: string;
+  tenant_id: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApplicationDetail extends Application {
+  api_key_count: number;
+}
+
+export interface CreateApplicationRequest {
+  name: string;
+  description?: string;
+  copy_from_application_id?: string;
+}
+
+export interface UpdateApplicationRequest {
+  name?: string;
+  description?: string;
+  is_active?: boolean;
+}
+
+export interface CreateApplicationResponse {
+  application: Application;
+  first_api_key: string;
+  message: string;
+}
+
+// API Key management related types
+export interface APIKey {
+  id: string;
+  application_id: string;
+  name?: string;
+  key_prefix: string;  // Only show prefix like "sk-xxai-abc..."
+  is_active: boolean;
+  expires_at?: string;
+  last_used_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateAPIKeyRequest {
+  name?: string;
+  expires_at?: string;  // ISO format
+}
+
+export interface UpdateAPIKeyRequest {
+  name?: string;
+  is_active?: boolean;
+}
+
+export interface CreateAPIKeyResponse {
+  id: string;
+  application_id: string;
+  name?: string;
+  api_key: string;  // Full API key, only shown once during creation
+  key_prefix: string;
+  is_active: boolean;
+  expires_at?: string;
+  created_at: string;
+}

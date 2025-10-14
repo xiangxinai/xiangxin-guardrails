@@ -13,6 +13,9 @@ import Config from './pages/Config/Config';
 import AdminPanel from './pages/Admin/AdminPanel';
 import Account from './pages/Account/Account';
 import OnlineTest from './pages/OnlineTest/OnlineTest';
+import ProxyModelManagement from './pages/Config/ProxyModelManagement';
+import Documentation from './pages/Documentation/Documentation';
+import { ApplicationList, ApplicationDetail, APIKeyManagement } from './pages/Applications';
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -35,9 +38,14 @@ function App() {
               <Route path="/online-test" element={<OnlineTest />} />
               <Route path="/results" element={<Results />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/proxy-models" element={<ProxyModelManagement />} />
               <Route path="/config/*" element={<Config />} />
+              <Route path="/applications" element={<ApplicationList />} />
+              <Route path="/applications/:id" element={<ApplicationDetail />} />
+              <Route path="/applications/:id/api-keys" element={<APIKeyManagement />} />
               <Route path="/admin/*" element={<AdminPanel />} />
               <Route path="/account" element={<Account />} />
+              <Route path="/documentation" element={<Documentation />} />
             </Routes>
           </Layout>
         </ProtectedRoute>

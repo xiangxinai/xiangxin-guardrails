@@ -47,14 +47,19 @@ async def check_guardrails(
         ip_address = request.client.host if request.client else None
         user_agent = request.headers.get("user-agent")
 
-        # Get tenant context
+        # Get authentication context
         auth_context = getattr(request.state, 'auth_context', None)
-        tenant_id = None
-        if auth_context:
-            tenant_id = str(auth_context['data'].get('tenant_id') or auth_context['data'].get('tenant_id'))
+        if not auth_context:
+            raise HTTPException(status_code=401, detail="Authentication required")
+
+        tenant_id = auth_context['data'].get('tenant_id')
+        application_id = auth_context['data'].get('application_id')
 
         if not tenant_id:
             raise HTTPException(status_code=401, detail="Tenant ID not found in auth context")
+
+        if not application_id:
+            raise HTTPException(status_code=401, detail="Application ID not found in auth context")
 
         # Get user ID
         user_id = None
@@ -68,15 +73,16 @@ async def check_guardrails(
         # Check if the user is banned
         await check_user_ban_status(tenant_id, user_id)
 
-        # Create guardrail service
-        guardrail_service = GuardrailService(db)
+        # Create guardrail service with application context
+        guardrail_service = GuardrailService(db, application_id=application_id)
 
-        # Execute detection (pass tenant_id to implement tenant-isolated blacklist and fallback)
+        # Execute detection (pass both tenant_id and application_id)
         result = await guardrail_service.check_guardrails(
             request_data,
             ip_address=ip_address,
             user_agent=user_agent,
-            tenant_id=tenant_id
+            tenant_id=tenant_id,
+            application_id=application_id
         )
 
         # Check and apply ban policy

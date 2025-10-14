@@ -1,21 +1,37 @@
-import React from 'react';
+import React, { useState, createContext, useContext } from 'react';
 import { Tabs } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import ApplicationSelector from '../../components/ApplicationSelector/ApplicationSelector';
 import BlacklistManagement from './BlacklistManagement';
 import WhitelistManagement from './WhitelistManagement';
 import ResponseTemplateManagement from './ResponseTemplateManagement';
 import KnowledgeBaseManagement from './KnowledgeBaseManagement';
 import RiskTypeManagement from './RiskTypeManagement';
-import ProxyModelManagement from './ProxyModelManagement';
 import SensitivityThresholdManagement from './SensitivityThresholdManagement';
 import DataSecurity from '../DataSecurity';
 import BanPolicy from './BanPolicy';
+import type { Application } from '../../types';
+
+// Create context for selected application across all config tabs
+interface ConfigContextType {
+  selectedApplicationId: string | undefined;
+  selectedApplication: Application | undefined;
+}
+
+const ConfigContext = createContext<ConfigContextType>({
+  selectedApplicationId: undefined,
+  selectedApplication: undefined,
+});
+
+export const useConfigContext = () => useContext(ConfigContext);
 
 const Config: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string>();
+  const [selectedApplication, setSelectedApplication] = useState<Application>();
 
   const getActiveKey = () => {
     const path = location.pathname;
@@ -25,7 +41,6 @@ const Config: React.FC = () => {
     if (path.includes('/knowledge-bases')) return 'knowledge-bases';
     if (path.includes('/risk-types')) return 'risk-types';
     if (path.includes('/sensitivity-thresholds')) return 'sensitivity-thresholds';
-    if (path.includes('/proxy-models')) return 'proxy-models';
     if (path.includes('/data-security')) return 'data-security';
     if (path.includes('/ban-policy')) return 'ban-policy';
     return 'risk-types';
@@ -77,23 +92,36 @@ const Config: React.FC = () => {
       label: t('config.knowledge'),
       children: <KnowledgeBaseManagement />,
     },
-    {
-      key: 'proxy-models',
-      label: t('config.proxy'),
-      children: <ProxyModelManagement />,
-    },
   ];
 
+  const handleApplicationChange = (applicationId: string, application: Application | undefined) => {
+    setSelectedApplicationId(applicationId);
+    setSelectedApplication(application);
+  };
+
   return (
-    <div>
-      <h2 style={{ marginBottom: 24 }}>{t('config.title')}</h2>
-      
-      <Tabs
-        activeKey={getActiveKey()}
-        items={items}
-        onChange={handleTabChange}
-      />
-    </div>
+    <ConfigContext.Provider
+      value={{
+        selectedApplicationId,
+        selectedApplication,
+      }}
+    >
+      <div>
+        <h2 style={{ marginBottom: 24 }}>{t('config.title')}</h2>
+
+        <ApplicationSelector
+          value={selectedApplicationId}
+          onChange={handleApplicationChange}
+          style={{ marginBottom: 24 }}
+        />
+
+        <Tabs
+          activeKey={getActiveKey()}
+          items={items}
+          onChange={handleTabChange}
+        />
+      </div>
+    </ConfigContext.Provider>
   );
 };
 

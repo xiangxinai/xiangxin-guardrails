@@ -182,3 +182,51 @@ class DataSecurityEntityTypeResponse(BaseModel):
     is_global: bool
     created_at: datetime
     updated_at: datetime
+
+# ==================== Application Management Response Models ====================
+
+class ApplicationResponse(BaseModel):
+    """Application response model"""
+    id: str
+    tenant_id: str
+    name: str
+    description: Optional[str]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+class ApplicationDetailResponse(BaseModel):
+    """Application detail response model"""
+    id: str
+    tenant_id: str
+    name: str
+    description: Optional[str]
+    is_active: bool
+    api_key_count: int
+    created_at: datetime
+    updated_at: datetime
+
+# ==================== API Key Management Response Models ====================
+
+class APIKeyResponse(BaseModel):
+    """API key response model (without full key)"""
+    id: str
+    application_id: str
+    name: Optional[str]
+    key_prefix: str  # Only show prefix like "sk-xxai-abc..."
+    is_active: bool
+    expires_at: Optional[datetime]
+    last_used_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+class APIKeyCreateResponse(BaseModel):
+    """API key creation response model (includes full key)"""
+    id: str
+    application_id: str
+    name: Optional[str]
+    api_key: str  # Full API key, only shown once during creation
+    key_prefix: str
+    is_active: bool
+    expires_at: Optional[datetime]
+    created_at: datetime

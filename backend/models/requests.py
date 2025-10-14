@@ -200,3 +200,63 @@ class KnowledgeBaseRequest(BaseModel):
         if len(v.strip()) > 255:
             raise ValueError('name too long (max 255 characters)')
         return v.strip()
+
+# ==================== Application Management Request Models ====================
+
+class CreateApplicationRequest(BaseModel):
+    """Create application request model"""
+    name: str = Field(..., description="Application name")
+    description: Optional[str] = Field(None, description="Application description")
+    copy_from_application_id: Optional[str] = Field(None, description="Copy configuration from existing application ID")
+
+    @validator('name')
+    def validate_name(cls, v):
+        if not v or not v.strip():
+            raise ValueError('name cannot be empty')
+        if len(v.strip()) > 100:
+            raise ValueError('name too long (max 100 characters)')
+        return v.strip()
+
+class UpdateApplicationRequest(BaseModel):
+    """Update application request model"""
+    name: Optional[str] = Field(None, description="Application name")
+    description: Optional[str] = Field(None, description="Application description")
+    is_active: Optional[bool] = Field(None, description="Whether the application is active")
+
+    @validator('name')
+    def validate_name(cls, v):
+        if v is not None:
+            if not v.strip():
+                raise ValueError('name cannot be empty')
+            if len(v.strip()) > 100:
+                raise ValueError('name too long (max 100 characters)')
+            return v.strip()
+        return v
+
+# ==================== API Key Management Request Models ====================
+
+class CreateAPIKeyRequest(BaseModel):
+    """Create API key request model"""
+    name: Optional[str] = Field(None, description="API key name/note")
+    expires_at: Optional[str] = Field(None, description="Expiration time in ISO format (optional)")
+
+    @validator('name')
+    def validate_name(cls, v):
+        if v is not None:
+            if len(v.strip()) > 100:
+                raise ValueError('name too long (max 100 characters)')
+            return v.strip()
+        return v
+
+class UpdateAPIKeyRequest(BaseModel):
+    """Update API key request model"""
+    name: Optional[str] = Field(None, description="API key name/note")
+    is_active: Optional[bool] = Field(None, description="Whether the API key is active")
+
+    @validator('name')
+    def validate_name(cls, v):
+        if v is not None:
+            if len(v.strip()) > 100:
+                raise ValueError('name too long (max 100 characters)')
+            return v.strip()
+        return v

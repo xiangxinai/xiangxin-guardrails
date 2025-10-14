@@ -123,13 +123,21 @@ class SensitivityThresholdResponse(BaseModel):
 @router.get("/risk-types", response_model=RiskConfigResponse)
 async def get_risk_config(
     request: Request,
+    application_id: str = None,
     db: Session = Depends(get_db)
 ):
-    """Get user risk type configuration"""
+    """Get risk type configuration (application-scoped or tenant-scoped for backward compatibility)"""
     try:
         current_user = get_current_user_from_request(request, db)
         risk_service = RiskConfigService(db)
-        config_dict = risk_service.get_risk_config_dict(str(current_user.id))
+
+        if application_id:
+            # Application-scoped configuration
+            config_dict = risk_service.get_application_risk_config_dict(application_id)
+        else:
+            # Legacy: tenant-scoped configuration for backward compatibility
+            config_dict = risk_service.get_risk_config_dict(str(current_user.id))
+
         return RiskConfigResponse(**config_dict)
     except Exception as e:
         logger.error(f"Failed to get risk config: {e}")
@@ -139,25 +147,40 @@ async def get_risk_config(
 async def update_risk_config(
     config_request: RiskConfigRequest,
     request: Request,
+    application_id: str = None,
     db: Session = Depends(get_db)
 ):
-    """Update user risk type configuration"""
+    """Update risk type configuration (application-scoped or tenant-scoped for backward compatibility)"""
     try:
         current_user = get_current_user_from_request(request, db)
         risk_service = RiskConfigService(db)
         config_data = config_request.dict()
 
-        updated_config = risk_service.update_risk_config(str(current_user.id), config_data)
-        if not updated_config:
-            raise HTTPException(status_code=500, detail="Failed to update risk config")
-        
-        # Clear the user's cache, force reload
-        await risk_config_cache.invalidate_user_cache(str(current_user.id))
+        if application_id:
+            # Application-scoped configuration
+            updated_config = risk_service.update_application_risk_config(application_id, config_data, str(current_user.id))
+            if not updated_config:
+                raise HTTPException(status_code=500, detail="Failed to update risk config")
 
-        # Return updated configuration
-        config_dict = risk_service.get_risk_config_dict(str(current_user.id))
-        logger.info(f"Updated risk config for user {current_user.id}")
-        
+            # Clear the application's cache, force reload
+            await risk_config_cache.invalidate_application_cache(application_id)
+
+            # Return updated configuration
+            config_dict = risk_service.get_application_risk_config_dict(application_id)
+            logger.info(f"Updated risk config for application {application_id}")
+        else:
+            # Legacy: tenant-scoped configuration for backward compatibility
+            updated_config = risk_service.update_risk_config(str(current_user.id), config_data)
+            if not updated_config:
+                raise HTTPException(status_code=500, detail="Failed to update risk config")
+
+            # Clear the user's cache, force reload
+            await risk_config_cache.invalidate_user_cache(str(current_user.id))
+
+            # Return updated configuration
+            config_dict = risk_service.get_risk_config_dict(str(current_user.id))
+            logger.info(f"Updated risk config for user {current_user.id}")
+
         return RiskConfigResponse(**config_dict)
     except HTTPException:
         raise
@@ -213,13 +236,21 @@ async def reset_risk_config(
 @router.get("/sensitivity-thresholds", response_model=SensitivityThresholdResponse)
 async def get_sensitivity_thresholds(
     request: Request,
+    application_id: str = None,
     db: Session = Depends(get_db)
 ):
-    """Get user sensitivity threshold configuration"""
+    """Get sensitivity threshold configuration (application-scoped or tenant-scoped for backward compatibility)"""
     try:
         current_user = get_current_user_from_request(request, db)
         risk_service = RiskConfigService(db)
-        config_dict = risk_service.get_sensitivity_threshold_dict(str(current_user.id))
+
+        if application_id:
+            # Application-scoped configuration
+            config_dict = risk_service.get_application_sensitivity_threshold_dict(application_id)
+        else:
+            # Legacy: tenant-scoped configuration for backward compatibility
+            config_dict = risk_service.get_sensitivity_threshold_dict(str(current_user.id))
+
         return SensitivityThresholdResponse(**config_dict)
     except Exception as e:
         logger.error(f"Failed to get sensitivity thresholds: {e}")
@@ -229,24 +260,39 @@ async def get_sensitivity_thresholds(
 async def update_sensitivity_thresholds(
     threshold_request: SensitivityThresholdRequest,
     request: Request,
+    application_id: str = None,
     db: Session = Depends(get_db)
 ):
-    """Update user sensitivity threshold configuration"""
+    """Update sensitivity threshold configuration (application-scoped or tenant-scoped for backward compatibility)"""
     try:
         current_user = get_current_user_from_request(request, db)
         risk_service = RiskConfigService(db)
         threshold_data = threshold_request.dict()
 
-        updated_config = risk_service.update_sensitivity_thresholds(str(current_user.id), threshold_data)
-        if not updated_config:
-            raise HTTPException(status_code=500, detail="Failed to update sensitivity thresholds")
+        if application_id:
+            # Application-scoped configuration
+            updated_config = risk_service.update_application_sensitivity_thresholds(application_id, threshold_data, str(current_user.id))
+            if not updated_config:
+                raise HTTPException(status_code=500, detail="Failed to update sensitivity thresholds")
 
-        # Clear the user's sensitivity cache, force reload
-        await risk_config_cache.invalidate_sensitivity_cache(str(current_user.id))
+            # Clear the application's cache, force reload
+            await risk_config_cache.invalidate_application_cache(application_id)
 
-        # Return updated configuration
-        config_dict = risk_service.get_sensitivity_threshold_dict(str(current_user.id))
-        logger.info(f"Updated sensitivity thresholds for user {current_user.id}")
+            # Return updated configuration
+            config_dict = risk_service.get_application_sensitivity_threshold_dict(application_id)
+            logger.info(f"Updated sensitivity thresholds for application {application_id}")
+        else:
+            # Legacy: tenant-scoped configuration for backward compatibility
+            updated_config = risk_service.update_sensitivity_thresholds(str(current_user.id), threshold_data)
+            if not updated_config:
+                raise HTTPException(status_code=500, detail="Failed to update sensitivity thresholds")
+
+            # Clear the user's sensitivity cache, force reload
+            await risk_config_cache.invalidate_sensitivity_cache(str(current_user.id))
+
+            # Return updated configuration
+            config_dict = risk_service.get_sensitivity_threshold_dict(str(current_user.id))
+            logger.info(f"Updated sensitivity thresholds for user {current_user.id}")
 
         return SensitivityThresholdResponse(**config_dict)
     except HTTPException:

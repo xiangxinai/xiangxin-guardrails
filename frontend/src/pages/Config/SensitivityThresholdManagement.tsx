@@ -21,6 +21,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { sensitivityThresholdApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useConfigContext } from './Config';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -41,6 +42,7 @@ interface SensitivityLevel {
 
 const SensitivityThresholdManagement: React.FC = () => {
   const { t } = useTranslation();
+  const { selectedApplicationId } = useConfigContext();
   const [config, setConfig] = useState<SensitivityThresholdConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -48,22 +50,29 @@ const SensitivityThresholdManagement: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const { onUserSwitch } = useAuth();
 
+  // Load config when selected application changes
   useEffect(() => {
-    loadConfig();
-  }, []);
+    if (selectedApplicationId) {
+      loadConfig();
+    }
+  }, [selectedApplicationId]);
 
   // Listen to user switch event, automatically refresh config
   useEffect(() => {
     const unsubscribe = onUserSwitch(() => {
-      loadConfig();
+      if (selectedApplicationId) {
+        loadConfig();
+      }
     });
     return unsubscribe;
-  }, [onUserSwitch]);
+  }, [onUserSwitch, selectedApplicationId]);
 
   const loadConfig = async () => {
+    if (!selectedApplicationId) return;
+
     try {
       setLoading(true);
-      const data = await sensitivityThresholdApi.get();
+      const data = await sensitivityThresholdApi.get(selectedApplicationId);
       setConfig(data);
     } catch (error) {
       message.error(t('sensitivity.fetchFailed'));
@@ -137,7 +146,7 @@ const SensitivityThresholdManagement: React.FC = () => {
 
   // Save config
   const handleSave = async () => {
-    if (!validateThresholds(editingLevels)) return;
+    if (!validateThresholds(editingLevels) || !selectedApplicationId) return;
 
     try {
       setSaving(true);
@@ -149,7 +158,7 @@ const SensitivityThresholdManagement: React.FC = () => {
         sensitivity_trigger_level: config?.sensitivity_trigger_level || 'medium'
       };
 
-      await sensitivityThresholdApi.update(newConfig);
+      await sensitivityThresholdApi.update(newConfig, selectedApplicationId);
       setConfig(newConfig);
       setEditModalVisible(false);
       message.success(t('sensitivity.saveSuccess'));
@@ -163,13 +172,13 @@ const SensitivityThresholdManagement: React.FC = () => {
 
   // Handle current sensitivity level change
   const handleTriggerLevelChange = async (value: string) => {
-    if (!config) return;
+    if (!config || !selectedApplicationId) return;
 
     try {
       setSaving(true);
       const newConfig = { ...config, sensitivity_trigger_level: value };
 
-      await sensitivityThresholdApi.update(newConfig);
+      await sensitivityThresholdApi.update(newConfig, selectedApplicationId);
       setConfig(newConfig);
 
       const levelNames = { low: t('sensitivity.low'), medium: t('sensitivity.medium'), high: t('sensitivity.high') };
@@ -245,6 +254,18 @@ const SensitivityThresholdManagement: React.FC = () => {
       )
     }
   ];
+
+  // Show empty state if no application is selected
+  if (!selectedApplicationId) {
+    return (
+      <Alert
+        message={t('applicationSelector.noApplications')}
+        description={t('applicationSelector.noApplicationsDesc')}
+        type="info"
+        showIcon
+      />
+    );
+  }
 
   if (loading) {
     return (

@@ -135,7 +135,10 @@ export const resultsApi = {
 export const configApi = {
   // Blacklist management
   blacklist: {
-    list: (): Promise<Blacklist[]> => api.get('/api/v1/config/blacklist').then(res => res.data),
+    list: (applicationId?: string): Promise<Blacklist[]> => {
+      const params = applicationId ? { application_id: applicationId } : {};
+      return api.get('/api/v1/config/blacklist', { params }).then(res => res.data);
+    },
     create: (data: Omit<Blacklist, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse> =>
       api.post('/api/v1/config/blacklist', data).then(res => res.data),
     update: (id: number, data: Omit<Blacklist, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse> =>
@@ -143,10 +146,13 @@ export const configApi = {
     delete: (id: number): Promise<ApiResponse> =>
       api.delete(`/api/v1/config/blacklist/${id}`).then(res => res.data),
   },
-  
+
   // Whitelist management
   whitelist: {
-    list: (): Promise<Whitelist[]> => api.get('/api/v1/config/whitelist').then(res => res.data),
+    list: (applicationId?: string): Promise<Whitelist[]> => {
+      const params = applicationId ? { application_id: applicationId } : {};
+      return api.get('/api/v1/config/whitelist', { params }).then(res => res.data);
+    },
     create: (data: Omit<Whitelist, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse> =>
       api.post('/api/v1/config/whitelist', data).then(res => res.data),
     update: (id: number, data: Omit<Whitelist, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse> =>
@@ -157,7 +163,10 @@ export const configApi = {
   
   // Response template management
   responses: {
-    list: (): Promise<ResponseTemplate[]> => api.get('/api/v1/config/responses').then(res => res.data),
+    list: (applicationId?: string): Promise<ResponseTemplate[]> => {
+      const params = applicationId ? { application_id: applicationId } : {};
+      return api.get('/api/v1/config/responses', { params }).then(res => res.data);
+    },
     create: (data: Omit<ResponseTemplate, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse> =>
       api.post('/api/v1/config/responses', data).then(res => res.data),
     update: (id: number, data: Omit<ResponseTemplate, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse> =>
@@ -294,10 +303,13 @@ export const testModelsApi = {
 
 // Risk type configuration API
 export const riskConfigApi = {
-  // Get risk configuration
-  get: () => api.get('/api/v1/config/risk-types').then(res => res.data),
+  // Get risk configuration (application-scoped or tenant-scoped for backward compatibility)
+  get: (applicationId?: string) => {
+    const params = applicationId ? { application_id: applicationId } : {};
+    return api.get('/api/v1/config/risk-types', { params }).then(res => res.data);
+  },
 
-  // Update risk configuration
+  // Update risk configuration (application-scoped or tenant-scoped for backward compatibility)
   update: (config: {
     s1_enabled: boolean;
     s2_enabled: boolean;
@@ -311,7 +323,10 @@ export const riskConfigApi = {
     s10_enabled: boolean;
     s11_enabled: boolean;
     s12_enabled: boolean;
-  }) => api.put('/api/v1/config/risk-types', config).then(res => res.data),
+  }, applicationId?: string) => {
+    const params = applicationId ? { application_id: applicationId } : {};
+    return api.put('/api/v1/config/risk-types', config, { params }).then(res => res.data);
+  },
 
   // Get enabled risk types
   getEnabled: () => api.get('/api/v1/config/risk-types/enabled').then(res => res.data),
@@ -322,16 +337,22 @@ export const riskConfigApi = {
 
 // Sensitivity threshold configuration API
 export const sensitivityThresholdApi = {
-  // Get sensitivity threshold configuration
-  get: () => api.get('/api/v1/config/sensitivity-thresholds').then(res => res.data),
+  // Get sensitivity threshold configuration (application-scoped or tenant-scoped for backward compatibility)
+  get: (applicationId?: string) => {
+    const params = applicationId ? { application_id: applicationId } : {};
+    return api.get('/api/v1/config/sensitivity-thresholds', { params }).then(res => res.data);
+  },
 
-  // Update sensitivity threshold configuration
+  // Update sensitivity threshold configuration (application-scoped or tenant-scoped for backward compatibility)
   update: (config: {
     high_sensitivity_threshold: number;
     medium_sensitivity_threshold: number;
     low_sensitivity_threshold: number;
     sensitivity_trigger_level: string;
-  }) => api.put('/api/v1/config/sensitivity-thresholds', config).then(res => res.data),
+  }, applicationId?: string) => {
+    const params = applicationId ? { application_id: applicationId } : {};
+    return api.put('/api/v1/config/sensitivity-thresholds', config, { params }).then(res => res.data);
+  },
 
   // Reset to default configuration
   reset: () => api.post('/api/v1/config/sensitivity-thresholds/reset').then(res => res.data),
@@ -475,8 +496,50 @@ export const dataSecurityApi = {
     api.get(`/api/v1/results/${requestId}`).then(res => res.data),
 };
 
+// Application management API
+export const applicationApi = {
+  // Get all applications
+  list: (): Promise<Application[]> =>
+    api.get('/api/v1/applications').then(res => res.data),
+
+  // Get application detail
+  get: (id: string): Promise<ApplicationDetail> =>
+    api.get(`/api/v1/applications/${id}`).then(res => res.data),
+
+  // Create application
+  create: (data: CreateApplicationRequest): Promise<CreateApplicationResponse> =>
+    api.post('/api/v1/applications', data).then(res => res.data),
+
+  // Update application
+  update: (id: string, data: UpdateApplicationRequest): Promise<Application> =>
+    api.put(`/api/v1/applications/${id}`, data).then(res => res.data),
+
+  // Delete application
+  delete: (id: string): Promise<ApiResponse> =>
+    api.delete(`/api/v1/applications/${id}`).then(res => res.data),
+};
+
+// API Key management API
+export const apiKeyApi = {
+  // Get all API keys for an application
+  list: (applicationId: string): Promise<APIKey[]> =>
+    api.get(`/api/v1/applications/${applicationId}/api-keys`).then(res => res.data),
+
+  // Create API key
+  create: (applicationId: string, data: CreateAPIKeyRequest): Promise<CreateAPIKeyResponse> =>
+    api.post(`/api/v1/applications/${applicationId}/api-keys`, data).then(res => res.data),
+
+  // Update API key
+  update: (applicationId: string, keyId: string, data: UpdateAPIKeyRequest): Promise<APIKey> =>
+    api.patch(`/api/v1/applications/${applicationId}/api-keys/${keyId}`, data).then(res => res.data),
+
+  // Delete API key
+  delete: (applicationId: string, keyId: string): Promise<ApiResponse> =>
+    api.delete(`/api/v1/applications/${applicationId}/api-keys/${keyId}`).then(res => res.data),
+};
+
 // Convenient functions
-export const getRiskConfig = () => riskConfigApi.get();
-export const updateRiskConfig = (config: any) => riskConfigApi.update(config);
+export const getRiskConfig = (applicationId?: string) => riskConfigApi.get(applicationId);
+export const updateRiskConfig = (config: any, applicationId?: string) => riskConfigApi.update(config, applicationId);
 
 export default api;

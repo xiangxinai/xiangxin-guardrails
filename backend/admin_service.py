@@ -16,7 +16,7 @@ from pathlib import Path
 
 from config import settings
 from database.connection import init_db, create_admin_engine
-from routers import dashboard, config_api, results, auth, user, sync, admin, online_test, test_models, risk_config_api, proxy_management, concurrent_stats, media, data_security
+from routers import dashboard, config_api, results, auth, user, sync, admin, online_test, test_models, risk_config_api, proxy_management, concurrent_stats, media, data_security, applications
 from services.data_sync_service import data_sync_service
 from utils.logger import setup_logger
 from services.admin_service import admin_service
@@ -329,6 +329,9 @@ app.include_router(data_security.router, dependencies=[Depends(verify_user_auth)
 # Import and register ban policy routes
 from routers import ban_policy_api
 app.include_router(ban_policy_api.router, dependencies=[Depends(verify_user_auth)])
+
+# Register application management routes (new)
+app.include_router(applications.router, prefix="/api/v1", dependencies=[Depends(verify_user_auth)])
 # Media router: image upload/delete needs authentication, but image access does not need authentication
 # First register image access routes that do not need authentication
 from fastapi import APIRouter

@@ -84,8 +84,26 @@ class RiskConfigCache:
         config = await self.get_user_risk_config(tenant_id)
         return config.get(risk_type, True)  # Default enabled
     
+    async def invalidate_application_cache(self, application_id: str):
+        """Invalidate cache for specified application"""
+        async with self._lock:
+            # Application cache uses the same structure, just with application_id as key
+            if application_id in self._cache:
+                del self._cache[application_id]
+            if application_id in self._cache_timestamps:
+                del self._cache_timestamps[application_id]
+            if application_id in self._sensitivity_cache:
+                del self._sensitivity_cache[application_id]
+            if application_id in self._sensitivity_timestamps:
+                del self._sensitivity_timestamps[application_id]
+            if application_id in self._trigger_level_cache:
+                del self._trigger_level_cache[application_id]
+            if application_id in self._trigger_level_timestamps:
+                del self._trigger_level_timestamps[application_id]
+            logger.info(f"Invalidated risk config cache for application {application_id}")
+
     async def invalidate_user_cache(self, tenant_id: str):
-        """Invalidate cache for specified user"""
+        """Invalidate cache for specified user (legacy method for backward compatibility)"""
         async with self._lock:
             if tenant_id in self._cache:
                 del self._cache[tenant_id]

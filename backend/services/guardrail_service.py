@@ -52,8 +52,16 @@ CATEGORY_NAMES = {
 class GuardrailService:
     """Guardrail Detection Service"""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, application_id: Optional[str] = None):
+        """
+        Initialize GuardrailService
+
+        Args:
+            db: Database session
+            application_id: Application ID for application-level configuration
+        """
         self.db = db
+        self.application_id = application_id
         self.keyword_service = KeywordService(db)
         self.risk_config_service = RiskConfigService(db)
 
@@ -62,29 +70,34 @@ class GuardrailService:
         request: GuardrailRequest,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
-        tenant_id: Optional[str] = None  # tenant_id for backward compatibility
+        tenant_id: Optional[str] = None,  # For ban policy and logging
+        application_id: Optional[str] = None  # Application ID for application-level config
     ) -> GuardrailResponse:
         """Execute guardrail detection"""
 
         # Generate request ID
         request_id = f"guardrails-{uuid.uuid4().hex}"
 
+        # Use application_id if provided, otherwise use instance application_id
+        app_id = application_id or self.application_id
+
         # Extract user content
         user_content = self._extract_user_content(request.messages)
         try:
-            # 1. Blacklist/whitelist pre-check (using high-performance memory cache, isolated by tenant)
-            blacklist_hit, blacklist_name, blacklist_keywords = await keyword_cache.check_blacklist(user_content, tenant_id)
+            # 1. Blacklist/whitelist pre-check (using high-performance memory cache, isolated by application)
+            # Use application_id for keyword checking instead of tenant_id
+            blacklist_hit, blacklist_name, blacklist_keywords = await keyword_cache.check_blacklist(user_content, app_id)
             if blacklist_hit:
                 return await self._handle_blacklist_hit(
                     request_id, user_content, blacklist_name, blacklist_keywords,
-                    ip_address, user_agent, tenant_id
+                    ip_address, user_agent, tenant_id, app_id
                 )
 
-            whitelist_hit, whitelist_name, whitelist_keywords = await keyword_cache.check_whitelist(user_content, tenant_id)
+            whitelist_hit, whitelist_name, whitelist_keywords = await keyword_cache.check_whitelist(user_content, app_id)
             if whitelist_hit:
                 return await self._handle_whitelist_hit(
                     request_id, user_content, whitelist_name, whitelist_keywords,
-                    ip_address, user_agent, tenant_id
+                    ip_address, user_agent, tenant_id, app_id
                 )
 
             # 2. Model detection
@@ -150,7 +163,7 @@ class GuardrailService:
             await self._log_detection_result(
                 request_id, user_content, compliance_result, security_result,
                 suggest_action, suggest_answer, model_response,
-                ip_address, user_agent, tenant_id,
+                ip_address, user_agent, tenant_id, app_id,
                 has_image=has_image, image_count=len(saved_image_paths), image_paths=saved_image_paths
             )
 
@@ -317,7 +330,8 @@ class GuardrailService:
     async def _handle_blacklist_hit(
         self, request_id: str, content: str, list_name: str,
         keywords: List[str], ip_address: Optional[str], user_agent: Optional[str],
-        tenant_id: Optional[str] = None
+        tenant_id: Optional[str] = None,
+        application_id: Optional[str] = None
     ) -> GuardrailResponse:
         """Handle blacklist hit"""
 
@@ -325,6 +339,7 @@ class GuardrailService:
         detection_data = {
             "request_id": request_id,
             "tenant_id": tenant_id,
+            "application_id": application_id,
             "content": content,
             "suggest_action": "reject",
             "suggest_answer": f"I'm sorry, I cannot provide content related to {list_name}.",
@@ -354,14 +369,16 @@ class GuardrailService:
     async def _handle_whitelist_hit(
         self, request_id: str, content: str, list_name: str,
         keywords: List[str], ip_address: Optional[str], user_agent: Optional[str],
-        tenant_id: Optional[str] = None
+        tenant_id: Optional[str] = None,
+        application_id: Optional[str] = None
     ) -> GuardrailResponse:
         """Handle whitelist hit"""
-        
+
         # Asynchronously record to log
         detection_data = {
             "request_id": request_id,
             "tenant_id": tenant_id,
+            "application_id": application_id,
             "content": content,
             "suggest_action": "pass",
             "suggest_answer": None,
@@ -392,7 +409,9 @@ class GuardrailService:
         self, request_id: str, content: str, compliance_result: ComplianceResult,
         security_result: SecurityResult, suggest_action: str, suggest_answer: Optional[str],
         model_response: str, ip_address: Optional[str], user_agent: Optional[str],
-        tenant_id: Optional[str] = None, has_image: bool = False,
+        tenant_id: Optional[str] = None,
+        application_id: Optional[str] = None,
+        has_image: bool = False,
         image_count: int = 0, image_paths: List[str] = None
     ):
         """Asynchronously record detection results to log"""
@@ -403,6 +422,7 @@ class GuardrailService:
         detection_data = {
             "request_id": request_id,
             "tenant_id": tenant_id,
+            "application_id": application_id,
             "content": clean_null_characters(content) if content else content,
             "suggest_action": suggest_action,
             "suggest_answer": clean_null_characters(suggest_answer) if suggest_answer else suggest_answer,
