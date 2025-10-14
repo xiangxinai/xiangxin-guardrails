@@ -9,6 +9,19 @@ services:
       POSTGRES_USER: xiangxin
       POSTGRES_PASSWORD: your_password
       POSTGRES_HOST_AUTH_METHOD: md5
+    command: [
+      "postgres",
+      "-c", "max_connections=600",           # 增加最大连接数以支持多Worker架构
+      "-c", "shared_buffers=256MB",          # 增加共享缓冲区
+      "-c", "effective_cache_size=1GB",      # 设置有效缓存大小
+      "-c", "maintenance_work_mem=64MB",     # 维护操作内存
+      "-c", "checkpoint_completion_target=0.9",
+      "-c", "wal_buffers=16MB",
+      "-c", "default_statistics_target=100",
+      "-c", "random_page_cost=1.1",
+      "-c", "effective_io_concurrency=200",
+      "-c", "work_mem=4MB"                   # 每个操作的工作内存
+    ]
     ports:
       - "54321:5432"
     volumes:

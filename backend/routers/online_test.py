@@ -528,8 +528,9 @@ async def test_model_api(model: ModelConfig, messages: List[Dict[str, Any]]) -> 
         # Extract response content
         # If there is reasoning_content, return reasoning_content
         reasoning_content = None
-        if response.choices[0].message.reasoning_content:
-            reasoning_content = response.choices[0].message.reasoning_content
+        # Use getattr to safely access reasoning_content (not all models support this field)
+        if response.choices and response.choices[0].message:
+            reasoning_content = getattr(response.choices[0].message, 'reasoning_content', None)
         
         answer_content = response.choices[0].message.content if response.choices else 'No response'
         if reasoning_content:

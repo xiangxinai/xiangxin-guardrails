@@ -1060,7 +1060,8 @@
     "rateLimitUpdated": "限速配置更新成功",
     "rateLimitDeleted": "限速配置删除成功",
     "loadRateLimitsFailed": "加载限速配置失败",
-    "totalConfigCount": "共 {{count}} 个配置"
+    "totalConfigCount": "共 {{count}} 个配置",
+    "searchByEmail": "搜索租户邮箱"
   },
   "login": {
     "title": "象信AI安全护栏",

@@ -146,7 +146,7 @@ async def _sync_input_detection(model_config, input_messages: list, tenant_id: s
             )
 
         # Check if blocking is needed
-        if model_config.block_on_input_risk and detection_result.get('suggest_action') in ['拒答', '代答']:
+        if model_config.block_on_input_risk and detection_result.get('suggest_action') in ['reject', 'replace']:
             logger.warning(f"同步输入检测阻断请求 - request {request_id}")
             logger.warning(f"检测结果: {detection_result}")
 
