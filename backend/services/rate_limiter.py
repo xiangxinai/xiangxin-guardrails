@@ -257,16 +257,29 @@ class RateLimitService:
             logger.error(f"Failed to disable tenant rate limit for {tenant_id}: {e}")
             raise
     
-    def list_user_rate_limits(self, skip: int = 0, limit: int = 100):
+    def list_user_rate_limits(self, skip: int = 0, limit: int = 100, search: str = None):
         """List all tenant rate limit configurations
 
         Note: For backward compatibility, function name remains list_user_rate_limits
+        Args:
+            skip: Number of records to skip for pagination
+            limit: Maximum number of records to return
+            search: Search string to filter by tenant email
         """
-        return (
+        query = (
             self.db.query(TenantRateLimit)
             .join(Tenant, TenantRateLimit.tenant_id == Tenant.id)
             .filter(TenantRateLimit.is_active == True)
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
+        
+        # Add search filter if provided
+        if search:
+            query = query.filter(Tenant.email.ilike(f'%{search}%'))
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Apply pagination
+        results = query.offset(skip).limit(limit).all()
+        
+        return results, total

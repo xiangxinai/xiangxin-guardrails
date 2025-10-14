@@ -16,7 +16,8 @@ import {
   Popconfirm,
   Statistic,
   Row,
-  Col
+  Col,
+  Input
 } from 'antd';
 import {
   ThunderboltOutlined,
@@ -25,7 +26,8 @@ import {
   PlusOutlined,
   ReloadOutlined,
   UserOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { adminApi } from '../../services/api';
@@ -55,13 +57,21 @@ const RateLimitManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRateLimit, setEditingRateLimit] = useState<RateLimit | null>(null);
+  const [searchText, setSearchText] = useState('');
+  const [total, setTotal] = useState(0);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [form] = Form.useForm();
 
-  const loadRateLimits = async () => {
+  const loadRateLimits = async (search?: string, page = 1, pageSize = 10) => {
     setLoading(true);
     try {
-      const response = await adminApi.getRateLimits();
+      const response = await adminApi.getRateLimits({
+        skip: (page - 1) * pageSize,
+        limit: pageSize,
+        search: search || undefined
+      });
       setRateLimits(response.data || []);
+      setTotal(response.total || 0);
     } catch (error) {
       console.error('Failed to load rate limits:', error);
       message.error(t('rateLimit.loadRateLimitsFailed'));
@@ -80,9 +90,20 @@ const RateLimitManagement: React.FC = () => {
   };
 
   useEffect(() => {
-    loadRateLimits();
+    loadRateLimits(searchText, pagination.current, pagination.pageSize);
     loadUsers();
   }, []);
+
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+    setPagination({ ...pagination, current: 1 });
+    loadRateLimits(value, 1, pagination.pageSize);
+  };
+
+  const handleTableChange = (newPagination: any) => {
+    setPagination(newPagination);
+    loadRateLimits(searchText, newPagination.current, newPagination.pageSize);
+  };
 
   const handleEdit = (rateLimit: RateLimit) => {
     setEditingRateLimit(rateLimit);
@@ -120,7 +141,7 @@ const RateLimitManagement: React.FC = () => {
       
       setModalVisible(false);
       form.resetFields();
-      loadRateLimits();
+      loadRateLimits(searchText, pagination.current, pagination.pageSize);
     } catch (error: any) {
       console.error('Save rate limit failed:', error);
       message.error(error.response?.data?.detail || t('common.saveFailed'));
@@ -131,7 +152,7 @@ const RateLimitManagement: React.FC = () => {
     try {
       await adminApi.removeUserRateLimit(tenantId);
       message.success(t('rateLimit.rateLimitDeleted'));
-      loadRateLimits();
+      loadRateLimits(searchText, pagination.current, pagination.pageSize);
     } catch (error: any) {
       console.error('Delete rate limit failed:', error);
       message.error(error.response?.data?.detail || t('common.deleteFailed'));
@@ -139,9 +160,9 @@ const RateLimitManagement: React.FC = () => {
   };
 
   const getAvailableUsers = () => {
-    // Filter out tenants with existing rate limit config
-    const configuredTenantIds = rateLimits.map(rl => rl.tenant_id);
-    return users.filter(user => !configuredTenantIds.includes(user.id));
+    // Show all users - Allow configuring any tenant
+    // This allows updating existing configurations or adding new ones
+    return users;
   };
 
   const getRpsDisplay = (rps: number) => {
@@ -296,9 +317,21 @@ const RateLimitManagement: React.FC = () => {
             </Text>
           </div>
           <Space>
+            <Input.Search
+              placeholder={t('rateLimit.searchByEmail')}
+              allowClear
+              onSearch={handleSearch}
+              onChange={(e) => {
+                if (!e.target.value) {
+                  handleSearch('');
+                }
+              }}
+              style={{ width: 300 }}
+              prefix={<SearchOutlined />}
+            />
             <Button
               icon={<ReloadOutlined />}
-              onClick={loadRateLimits}
+              onClick={() => loadRateLimits(searchText, pagination.current, pagination.pageSize)}
               loading={loading}
             >
               {t('common.refresh')}
@@ -307,7 +340,6 @@ const RateLimitManagement: React.FC = () => {
               type="primary"
               icon={<PlusOutlined />}
               onClick={handleAdd}
-              disabled={getAvailableUsers().length === 0}
             >
               {t('rateLimit.addConfig')}
             </Button>
@@ -320,10 +352,13 @@ const RateLimitManagement: React.FC = () => {
           rowKey="tenant_id"
           loading={loading}
           pagination={{
+            ...pagination,
+            total: total,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total) => t('rateLimit.totalConfigCount', { count: total }),
           }}
+          onChange={handleTableChange}
         />
       </Card>
 

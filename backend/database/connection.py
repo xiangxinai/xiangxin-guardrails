@@ -8,8 +8,8 @@ from config import settings
 # Detection service engine - minimal connection pool (only for authentication)
 detection_engine = create_engine(
     settings.database_url,
-    pool_size=2,  # Detection service only needs authentication, minimal connection pool
-    max_overflow=3,  # Detection service minimal overflow connection
+    pool_size=1,  # Detection service only needs authentication, minimal connection pool
+    max_overflow=2,  # Detection service minimal overflow connection
     pool_pre_ping=True,
     pool_recycle=1800,
     pool_timeout=30,
@@ -30,8 +30,8 @@ admin_engine = create_engine(
 # Proxy service engine - medium concurrency optimization
 proxy_engine = create_engine(
     settings.database_url,
-    pool_size=5,  # Proxy service connection pool
-    max_overflow=10,  # Proxy service overflow connection
+    pool_size=3,  # Proxy service connection pool (reduced from 5)
+    max_overflow=5,  # Proxy service overflow connection (reduced from 10)
     pool_pre_ping=True,
     pool_recycle=1800,
     pool_timeout=30,

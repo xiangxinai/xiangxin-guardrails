@@ -259,10 +259,16 @@ async def get_all_rate_limits(
     request: Request,
     skip: int = 0,
     limit: int = 100,
+    search: str = None,
     db: Session = Depends(get_db)
 ):
     """
     Get all tenants rate limit configuration (only super admin can access)
+    
+    Args:
+        skip: Number of records to skip for pagination
+        limit: Maximum number of records to return
+        search: Search string to filter by tenant email
     """
     try:
         current_tenant = get_current_user(request)
@@ -270,7 +276,7 @@ async def get_all_rate_limits(
             raise HTTPException(status_code=403, detail="Access denied: Super admin required")
         
         rate_limit_service = RateLimitService(db)
-        rate_limits = rate_limit_service.list_user_rate_limits(skip, limit)
+        rate_limits, total = rate_limit_service.list_user_rate_limits(skip, limit, search)
         
         result = []
         for rate_limit in rate_limits:
@@ -284,7 +290,7 @@ async def get_all_rate_limits(
         return {
             "status": "success",
             "data": result,
-            "total": len(result)
+            "total": total
         }
         
     except HTTPException:

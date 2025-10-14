@@ -1108,7 +1108,8 @@
     "rateLimitUpdated": "Rate limit configuration updated successfully",
     "rateLimitDeleted": "Rate limit configuration deleted successfully",
     "loadRateLimitsFailed": "Failed to load rate limit configurations",
-    "totalConfigCount": "{{count}} configurations"
+    "totalConfigCount": "{{count}} configurations",
+    "searchByEmail": "Search by tenant email"
   },
   "login": {
     "title": "Xiangxin AI Guardrails",

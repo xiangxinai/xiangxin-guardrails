@@ -33,33 +33,7 @@ def migrate_add_rate_limit_table():
         TenantRateLimit.__table__.create(engine)
 
         logger.info("tenant_rate_limits table created successfully")
-
-        # 为现有租户创建默认限速配置（每秒1个请求）
-        db = SessionLocal()
-        try:
-            tenants = db.query(Tenant).all()
-            logger.info(f"Setting default rate limits for {len(tenants)} tenants...")
-
-            for tenant in tenants:
-                # 检查是否已有限速配置
-                existing_limit = db.query(TenantRateLimit).filter(TenantRateLimit.tenant_id == tenant.id).first()
-                if not existing_limit:
-                    rate_limit = TenantRateLimit(
-                        tenant_id=tenant.id,
-                        requests_per_second=1,  # 默认每秒1个请求
-                        is_active=True
-                    )
-                    db.add(rate_limit)
-            
-            db.commit()
-            logger.info("Default rate limits created successfully")
-            
-        except Exception as e:
-            db.rollback()
-            logger.error(f"Failed to create default rate limits: {e}")
-            raise
-        finally:
-            db.close()
+        logger.info("注意：系统默认为未配置的租户提供1 QPS限速，只需为特殊租户配置即可")
         
         return True
         
