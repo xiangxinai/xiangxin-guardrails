@@ -9,6 +9,113 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.1] - 2025-10-08
+
+### 🌍 Internationalization (i18n)
+
+#### Added
+- 🌐 **Multi-language Support**
+  - Complete internationalization framework implementation
+  - Support for English (en) and Chinese (zh) languages
+  - Dynamic language switching in the frontend interface
+  - Persistent language preference storage in localStorage
+  - Comprehensive translation coverage for all UI components
+
+- 📝 **Translation Management**
+  - Structured translation files: `frontend/src/locales/en.json` and `frontend/src/locales/zh.json`
+  - Translation keys organized by feature modules (dashboard, detection, config, etc.)
+  - Consistent naming convention for translation keys
+  - Support for pluralization and parameter interpolation
+
+- 🔧 **Technical Implementation**
+  - React i18next integration for frontend internationalization
+  - Language detection based on browser preferences
+  - Fallback language mechanism (defaults to English)
+  - Type-safe translation key validation
+  - Hot-reload support for translation updates during development
+
+#### Changed
+- 🎨 **User Interface Updates**
+  - All static text replaced with translatable keys
+  - Language selector added to the main navigation
+  - Consistent UI layout across different languages
+  - Responsive design maintained for both language versions
+  - Date and number formatting localized appropriately
+
+- 📊 **Dashboard Localization**
+  - Risk level indicators translated (Safe, Low, Medium, High)
+  - Chart labels and tooltips localized
+  - Statistical data descriptions in multiple languages
+  - Time-based filters and date ranges localized
+
+- ⚙️ **Configuration Pages**
+  - All configuration forms and labels translated
+  - Help text and tooltips localized
+  - Error messages and validation feedback in user's language
+  - Success notifications and status messages translated
+
+#### Technical Features
+- **Framework**: React i18next with namespace support
+- **Storage**: Browser localStorage for language persistence
+- **Detection**: Automatic browser language detection
+- **Fallback**: Graceful fallback to English for missing translations
+- **Performance**: Lazy loading of translation resources
+
+#### Files Added
+- `frontend/src/locales/en.json` - English translations
+- `frontend/src/locales/zh.json` - Chinese translations
+- `frontend/src/i18n/index.ts` - i18n configuration and setup
+- `frontend/src/hooks/useTranslation.ts` - Custom translation hook
+
+#### Files Modified
+- Updated all React components to use translation keys
+- Modified navigation components for language switching
+- Enhanced configuration pages with localized content
+- Updated dashboard components with translated labels
+
+### Usage Examples
+
+#### Language Switching
+```typescript
+import { useTranslation } from 'react-i18next';
+
+function MyComponent() {
+  const { t, i18n } = useTranslation();
+  
+  const switchLanguage = (lang: string) => {
+    i18n.changeLanguage(lang);
+  };
+  
+  return (
+    <div>
+      <h1>{t('dashboard.title')}</h1>
+      <button onClick={() => switchLanguage('en')}>English</button>
+      <button onClick={() => switchLanguage('zh')}>中文</button>
+    </div>
+  );
+}
+```
+
+#### Translation Key Usage
+```typescript
+// Simple translation
+{t('common.save')}
+
+// Translation with parameters
+{t('detection.results_count', { count: 42 })}
+
+// Pluralization support
+{t('user.ban_duration', { count: days, duration: days })}
+```
+
+### Documentation Updates
+- Updated README.md with internationalization feature description
+- Added i18n setup instructions for developers
+- Updated contribution guidelines for translation contributions
+- Added language support information to API documentation
+
+---
+
 ## [2.5.0] - 2025-10-06
 
 ### 🚀 Major Updates
@@ -254,7 +361,6 @@ curl -X POST "http://localhost:5001/v1/guardrails" \
 * Updated `README_ZH.md` with Chinese DLP documentation
 * Added detailed `DATA_SECURITY_README.md`
 * Updated API documentation for new response schema
-当然可以 👍 以下是保持原 Markdown 结构和格式的 **英文完整翻译版**：
 
 ---
 

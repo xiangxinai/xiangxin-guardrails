@@ -339,8 +339,8 @@ class BanPolicyService:
                 SELECT id, user_id, banned_at, ban_until, trigger_count,
                        risk_level, reason, is_active,
                        CASE
-                           WHEN ban_until > CURRENT_TIMESTAMP THEN 'Banned'
-                           ELSE '已解封'
+                           WHEN ban_until > CURRENT_TIMESTAMP THEN 'banned'
+                           ELSE 'unbanned'
                        END as status
                 FROM user_ban_records
                 WHERE tenant_id = :tenant_id

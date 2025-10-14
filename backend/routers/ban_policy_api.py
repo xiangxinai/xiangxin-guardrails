@@ -27,7 +27,7 @@ router = APIRouter(prefix="/api/v1/ban-policy", tags=["ban-policy"])
 class BanPolicyUpdate(BaseModel):
     """Ban policy update model"""
     enabled: bool = Field(False, description="Whether to enable ban policy")
-    risk_level: str = Field("High risk", description="Minimum risk level to trigger ban", pattern="^(High risk|Medium risk|Low risk)$")
+    risk_level: str = Field("high_risk", description="Minimum risk level to trigger ban", pattern="^(high_risk|medium_risk|low_risk)$")
     trigger_count: int = Field(3, ge=1, le=100, description="Trigger count threshold")
     time_window_minutes: int = Field(10, ge=1, le=1440, description="Time window (minutes)")
     ban_duration_minutes: int = Field(60, ge=1, le=10080, description="Ban duration (minutes)")
@@ -48,7 +48,7 @@ async def get_ban_policy(tenant_id: str = Depends(get_current_tenant_id)):
             # If no policy, return default values
             return {
                 "enabled": False,
-                "risk_level": "高风险",
+                "risk_level": "high_risk",
                 "trigger_count": 3,
                 "time_window_minutes": 10,
                 "ban_duration_minutes": 60
@@ -93,7 +93,7 @@ async def get_ban_policy_templates():
                 "name": "Strict mode",
                 "description": "High security requirements",
                 "enabled": True,
-                "risk_level": "High risk",
+                "risk_level": "high_risk",
                 "trigger_count": 3,
                 "time_window_minutes": 10,
                 "ban_duration_minutes": 60
@@ -102,7 +102,7 @@ async def get_ban_policy_templates():
                 "name": "Standard mode",
                 "description": "Balance security and user experience",
                 "enabled": True,
-                "risk_level": "High risk",
+                "risk_level": "high_risk",
                 "trigger_count": 5,
                 "time_window_minutes": 30,
                 "ban_duration_minutes": 30
@@ -111,7 +111,7 @@ async def get_ban_policy_templates():
                 "name": "Relaxed mode",
                 "description": "Test or low risk scenarios",
                 "enabled": True,
-                "risk_level": "High risk",
+                "risk_level": "high_risk",
                 "trigger_count": 10,
                 "time_window_minutes": 60,
                 "ban_duration_minutes": 15
@@ -120,7 +120,7 @@ async def get_ban_policy_templates():
                 "name": "Disabled",
                 "description": "Disable ban policy",
                 "enabled": False,
-                "risk_level": "High risk",
+                "risk_level": "high_risk",
                 "trigger_count": 3,
                 "time_window_minutes": 10,
                 "ban_duration_minutes": 60

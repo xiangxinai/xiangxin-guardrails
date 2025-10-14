@@ -173,7 +173,7 @@ const SensitivityThresholdManagement: React.FC = () => {
       setConfig(newConfig);
 
       const levelNames = { low: t('sensitivity.low'), medium: t('sensitivity.medium'), high: t('sensitivity.high') };
-      message.success(`Current sensitivity level is set to ${levelNames[value as keyof typeof levelNames]} sensitivity`);
+      message.success(t('sensitivity.levelChangeSuccess', { level: levelNames[value as keyof typeof levelNames] }));
     } catch (error) {
       message.error(t('sensitivity.fetchFailed'));
       console.error('Failed to update sensitivity trigger level:', error);
@@ -219,7 +219,7 @@ const SensitivityThresholdManagement: React.FC = () => {
       key: 'name',
       render: (text: string) => {
         const colors = { [t('sensitivity.high')]: '#f5222d', [t('sensitivity.medium')]: '#fa8c16', [t('sensitivity.low')]: '#52c41a' };
-        return <Tag color={colors[text as keyof typeof colors]}>{text}sensitivity</Tag>;
+        return <Tag color={colors[text as keyof typeof colors]}>{text}</Tag>;
       }
     },
     {

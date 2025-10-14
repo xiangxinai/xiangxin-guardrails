@@ -48,6 +48,36 @@ const BanPolicy: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [userHistory, setUserHistory] = useState<RiskTrigger[]>([]);
 
+  // Get translated risk level text
+  const getRiskLevelText = (level: string): string => {
+    if (level === 'high_risk') return t('banPolicy.highRisk');
+    if (level === 'medium_risk') return t('banPolicy.mediumRisk');
+    if (level === 'low_risk') return t('banPolicy.lowRisk');
+    return level;
+  };
+
+  // Get risk level color
+  const getRiskLevelColor = (level: string): string => {
+    if (level === 'high_risk') return 'red';
+    if (level === 'medium_risk') return 'orange';
+    if (level === 'low_risk') return 'blue';
+    return 'default';
+  };
+
+  // Get translated status text
+  const getStatusText = (status: string): string => {
+    if (status === 'banned') return t('banPolicy.banned');
+    if (status === 'unbanned') return t('banPolicy.unbanned');
+    return status;
+  };
+
+  // Get status color
+  const getStatusColor = (status: string): string => {
+    if (status === 'banned') return 'red';
+    if (status === 'unbanned') return 'green';
+    return 'default';
+  };
+
   // 获取封禁策略
   const fetchPolicy = async () => {
     try {
@@ -106,28 +136,28 @@ const BanPolicy: React.FC = () => {
     const templates: { [key: string]: any } = {
       strict: {
         enabled: true,
-        risk_level: '高风险',
+        risk_level: 'high_risk',
         trigger_count: 3,
         time_window_minutes: 10,
         ban_duration_minutes: 60,
       },
       standard: {
         enabled: true,
-        risk_level: '高风险',
+        risk_level: 'high_risk',
         trigger_count: 5,
         time_window_minutes: 30,
         ban_duration_minutes: 30,
       },
       relaxed: {
         enabled: true,
-        risk_level: '高风险',
+        risk_level: 'high_risk',
         trigger_count: 10,
         time_window_minutes: 60,
         ban_duration_minutes: 15,
       },
       disabled: {
         enabled: false,
-        risk_level: '高风险',
+        risk_level: 'high_risk',
         trigger_count: 3,
         time_window_minutes: 10,
         ban_duration_minutes: 60,
@@ -172,14 +202,14 @@ const BanPolicy: React.FC = () => {
       dataIndex: 'banned_at',
       key: 'banned_at',
       width: 180,
-      render: (text) => new Date(text).toLocaleString('zh-CN'),
+      render: (text) => new Date(text).toLocaleString(),
     },
     {
       title: t('banPolicy.unbanTimeColumn'),
       dataIndex: 'ban_until',
       key: 'ban_until',
       width: 180,
-      render: (text) => new Date(text).toLocaleString('zh-CN'),
+      render: (text) => new Date(text).toLocaleString(),
     },
     {
       title: t('banPolicy.triggerTimesColumn'),
@@ -192,14 +222,9 @@ const BanPolicy: React.FC = () => {
       dataIndex: 'risk_level',
       key: 'risk_level',
       width: 100,
-      render: (level) => {
-        const color = level === 'high_risk' ? 'red' : level === 'medium_risk' ? 'orange' : 'blue';
-        let displayLevel = level;
-        if (level === 'high_risk') displayLevel = t('banPolicy.highRisk');
-        else if (level === 'medium_risk') displayLevel = t('banPolicy.mediumRisk');
-        else if (level === 'low_risk') displayLevel = t('banPolicy.lowRisk');
-        return <Tag color={color}>{displayLevel}</Tag>;
-      },
+      render: (level) => (
+        <Tag color={getRiskLevelColor(level)}>{getRiskLevelText(level)}</Tag>
+      ),
     },
     {
       title: t('banPolicy.banReasonColumn'),
@@ -212,13 +237,9 @@ const BanPolicy: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (status) => {
-        const color = status === 'banned' ? 'red' : 'green';
-        let displayStatus = status;
-        if (status === 'banned') displayStatus = t('banPolicy.banned');
-        else if (status === 'unbanned') displayStatus = t('banPolicy.unbanned');
-        return <Tag color={color}>{displayStatus}</Tag>;
-      },
+      render: (status) => (
+        <Tag color={getStatusColor(status)}>{getStatusText(status)}</Tag>
+      ),
     },
     {
       title: t('banPolicy.operationColumn'),
@@ -244,20 +265,15 @@ const BanPolicy: React.FC = () => {
       title: t('banPolicy.triggeredAt'),
       dataIndex: 'triggered_at',
       key: 'triggered_at',
-      render: (text) => new Date(text).toLocaleString('zh-CN'),
+      render: (text) => new Date(text).toLocaleString(),
     },
     {
       title: t('banPolicy.riskLevelColumn'),
       dataIndex: 'risk_level',
       key: 'risk_level',
-      render: (level) => {
-        const color = level === 'high_risk' ? 'red' : level === 'medium_risk' ? 'orange' : 'blue';
-        let displayLevel = level;
-        if (level === 'high_risk') displayLevel = t('banPolicy.highRisk');
-        else if (level === 'medium_risk') displayLevel = t('banPolicy.mediumRisk');
-        else if (level === 'low_risk') displayLevel = t('banPolicy.lowRisk');
-        return <Tag color={color}>{displayLevel}</Tag>;
-      },
+      render: (level) => (
+        <Tag color={getRiskLevelColor(level)}>{getRiskLevelText(level)}</Tag>
+      ),
     },
     {
       title: t('banPolicy.detectionResultId'),

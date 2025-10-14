@@ -207,7 +207,7 @@ class DetectionGuardrailService:
             model_response, sensitivity_score = await model_service.check_messages_with_sensitivity(messages_dict, use_vl_model=has_image)
 
             # 4. Parse model response and apply risk type filtering and sensitivity threshold
-            compliance_result, security_result, sensitivity_level = await self._parse_model_response_with_sensitivity(
+            compliance_result, security_result = await self._parse_model_response_with_sensitivity(
                 model_response, sensitivity_score, tenant_id, model_sensitivity_trigger_level
             )
 
@@ -220,7 +220,7 @@ class DetectionGuardrailService:
             await self._log_detection_result(
                 request_id, user_content, compliance_result, security_result, data_result,
                 suggest_action, suggest_answer, model_response,
-                ip_address, user_agent, tenant_id, sensitivity_level, sensitivity_score,
+                ip_address, user_agent, tenant_id, sensitivity_score,
                 has_image=has_image, image_count=len(saved_image_paths), image_paths=saved_image_paths
             )
 
@@ -323,16 +323,14 @@ class DetectionGuardrailService:
     async def _parse_model_response_with_sensitivity(
         self, response: str, sensitivity_score: Optional[float], tenant_id: Optional[str] = None,
         model_sensitivity_trigger_level: Optional[str] = None
-    ) -> Tuple[ComplianceResult, SecurityResult, Optional[str]]:
+    ) -> Tuple[ComplianceResult, SecurityResult]:
         """Parse model response and apply risk type filtering and sensitivity threshold"""
         response = response.strip()
 
         if response == "safe":
-            sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id) if sensitivity_score else None
             return (
                 ComplianceResult(risk_level="no_risk", categories=[]),
-                SecurityResult(risk_level="no_risk", categories=[]),
-                sensitivity_level
+                SecurityResult(risk_level="no_risk", categories=[])
             )
 
         if response.startswith("unsafe\n"):
@@ -341,49 +339,38 @@ class DetectionGuardrailService:
             # Check if tenant has disabled this risk type
             if tenant_id and not await risk_config_cache.is_risk_type_enabled(tenant_id, category):
                 logger.info(f"Risk type {category} is disabled for user {tenant_id}, treating as safe")
-                sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id) if sensitivity_score else None
                 return (
                     ComplianceResult(risk_level="no_risk", categories=[]),
-                    SecurityResult(risk_level="no_risk", categories=[]),
-                    sensitivity_level
+                    SecurityResult(risk_level="no_risk", categories=[])
                 )
 
             # Check sensitivity trigger level (use model specific configuration first)
             if sensitivity_score is not None and tenant_id:
-                sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id)
-                trigger_level = model_sensitivity_trigger_level or await self._get_sensitivity_trigger_level(tenant_id)
-
                 if not await self._should_trigger_detection(sensitivity_score, tenant_id):
                     logger.info(f"Sensitivity score {sensitivity_score} below current threshold for {category}, treating as safe")
                     return (
                         ComplianceResult(risk_level="no_risk", categories=[]),
-                        SecurityResult(risk_level="no_risk", categories=[]),
-                        sensitivity_level
+                        SecurityResult(risk_level="no_risk", categories=[])
                     )
 
             risk_level = RISK_LEVEL_MAPPING.get(category, "medium_risk")
             category_name = CATEGORY_NAMES.get(category, category)
-            sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id) if sensitivity_score else None
 
             if category == "S9":  # Prompt injection
                 return (
                     ComplianceResult(risk_level="no_risk", categories=[]),
-                    SecurityResult(risk_level=risk_level, categories=[category_name]),
-                    sensitivity_level
+                    SecurityResult(risk_level=risk_level, categories=[category_name])
                 )
             else:  # Compliance issues
                 return (
                     ComplianceResult(risk_level=risk_level, categories=[category_name]),
-                    SecurityResult(risk_level="no_risk", categories=[]),
-                    sensitivity_level
+                    SecurityResult(risk_level="no_risk", categories=[])
                 )
 
         # Default return safe
-        sensitivity_level = await self._calculate_sensitivity_level(sensitivity_score, tenant_id) if sensitivity_score else None
         return (
             ComplianceResult(risk_level="no_risk", categories=[]),
-            SecurityResult(risk_level="no_risk", categories=[]),
-            sensitivity_level
+            SecurityResult(risk_level="no_risk", categories=[])
         )
     
     async def _check_data_security(self, text: str, tenant_id: Optional[str], direction: str = "input") -> DataSecurityResult:
@@ -523,36 +510,6 @@ class DetectionGuardrailService:
         from services.enhanced_template_service import enhanced_template_service
         return await enhanced_template_service.get_suggest_answer(categories, tenant_id, user_query)
 
-    async def _calculate_sensitivity_level(self, sensitivity_score: float, tenant_id: Optional[str] = None) -> str:
-        """Calculate sensitivity level based on sensitivity score and user configuration"""
-        if not tenant_id:
-            # Use default thresholds
-            if sensitivity_score >= 0.95:
-                return "low"
-            elif sensitivity_score >= 0.60:
-                return "medium"
-            else:
-                return "high"
-
-        try:
-            # Get user sensitivity threshold configuration
-            thresholds = await risk_config_cache.get_sensitivity_thresholds(tenant_id)
-
-            if sensitivity_score >= thresholds.get("low", 0.95):
-                return "low"
-            elif sensitivity_score >= thresholds.get("medium", 0.60):
-                return "medium"
-            else:
-                return "high"
-        except Exception as e:
-            logger.warning(f"Failed to get sensitivity thresholds for user {tenant_id}: {e}")
-            # Use default thresholds
-            if sensitivity_score >= 0.95:
-                return "low"
-            elif sensitivity_score >= 0.60:
-                return "medium"
-            else:
-                return "high"
 
 
     async def _get_sensitivity_trigger_level(self, tenant_id: str) -> str:
@@ -675,9 +632,8 @@ class DetectionGuardrailService:
         security_result: SecurityResult, data_result: DataSecurityResult,
         suggest_action: str, suggest_answer: Optional[str],
         model_response: str, ip_address: Optional[str], user_agent: Optional[str],
-        tenant_id: Optional[str] = None, sensitivity_level: Optional[str] = None,
-        sensitivity_score: Optional[float] = None, has_image: bool = False,
-        image_count: int = 0, image_paths: List[str] = None
+        tenant_id: Optional[str] = None, sensitivity_score: Optional[float] = None,
+        has_image: bool = False, image_count: int = 0, image_paths: List[str] = None
     ):
         """Asynchronously record detection results to log file (not write to database)"""
 
@@ -699,7 +655,6 @@ class DetectionGuardrailService:
             "compliance_categories": compliance_result.categories,
             "data_risk_level": data_result.risk_level,
             "data_categories": data_result.categories,
-            "sensitivity_level": sensitivity_level,
             "sensitivity_score": sensitivity_score,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "hit_keywords": None,

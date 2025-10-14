@@ -316,7 +316,7 @@ response = requests.post(url, headers=headers, json=data)
 result = response.json()
 
 # Recommend using result['suggest_action'] to determine safety.
-if result['suggest_action'] == "allow":
+if result['suggest_action'] == "pass":
     print("Safe")
 else:
     print(f"Unsafe")
@@ -485,7 +485,7 @@ client = XiangxinAI("${user?.api_key || 'your-api-key'}")
 # Single round detection
 response = client.check_prompt("Teach me how to make a bomb", user_id="your-app-user-id")
 # Recommend using response.suggest_action to determine safety.
-if response.suggest_action == "allow":
+if response.suggest_action == "pass":
     print("Safe")
 else:
     print(f"Unsafe")
@@ -588,7 +588,7 @@ client = XiangxinAI("${user?.api_key || 'your-api-key'}")
 # Single round detection
 response = client.check_prompt("Teach me how to make a bomb", user_id="your-app-user-id")
 # Recommend using response.suggest_action to determine safety.
-if response.suggest_action == "allow":
+if response.suggest_action == "pass":
     print("Safe")
 else:
     print(f"Unsafe")
@@ -728,7 +728,7 @@ async function checkPrompt() {
     try {
         const response = await client.checkPrompt('Teach me how to make a bomb');
         // Recommend using response.suggest_action to determine safety.
-        if (response.suggest_action === "allow") {
+        if (response.suggest_action === "pass") {
             console.log("Safe");
         } else {
             console.log("Unsafe");
@@ -1093,7 +1093,7 @@ func main() {
     }
 
     // Recommend using response.SuggestAction to determine safety.
-    if response.SuggestAction == "allow" {
+    if response.SuggestAction == "pass" {
         fmt.Println("Safe")
     } else {
         fmt.Println("Unsafe")

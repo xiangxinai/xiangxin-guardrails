@@ -47,7 +47,7 @@ class DetectionResult(Base):
     request_id = Column(String(64), unique=True, nullable=False, index=True)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)  # Associated tenant
     content = Column(Text, nullable=False)
-    suggest_action = Column(String(20))  # 'allow', 'reject', 'replace'
+    suggest_action = Column(String(20))  # 'pass', 'reject', 'replace'
     suggest_answer = Column(Text)  # Suggest answer content
     hit_keywords = Column(Text)  # Hit keywords (blacklist/whitelist)
     model_response = Column(Text)  # Original model response
@@ -62,9 +62,6 @@ class DetectionResult(Base):
     # Data security detection results
     data_risk_level = Column(String(10), default='no_risk')  # Data leakage risk level
     data_categories = Column(JSON, default=list)  # Data leakage categories
-    # Sensitivity related fields
-    sensitivity_level = Column(String(10))  # Sensitivity level: 'high', 'medium', 'low'
-    sensitivity_score = Column(Float)  # Original sensitivity score (0.0-1.0)
     # Multimodal related fields
     has_image = Column(Boolean, default=False, index=True)  # Whether contains image
     image_count = Column(Integer, default=0)  # Image count
