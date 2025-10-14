@@ -2,7 +2,10 @@ import React, { useState, createContext, useContext } from 'react';
 import { Tabs } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+<<<<<<< HEAD
 import ApplicationSelector from '../../components/ApplicationSelector/ApplicationSelector';
+=======
+>>>>>>> 861b916 (feat: implement tenant migration scripts and database initialization)
 import BlacklistManagement from './BlacklistManagement';
 import WhitelistManagement from './WhitelistManagement';
 import ResponseTemplateManagement from './ResponseTemplateManagement';
@@ -84,7 +87,11 @@ const Config: React.FC = () => {
     },
     {
       key: 'responses',
+<<<<<<< HEAD
       label: t('config.rejectAnswers'),
+=======
+      label: t('config.template'),
+>>>>>>> 861b916 (feat: implement tenant migration scripts and database initialization)
       children: <ResponseTemplateManagement />,
     },
     {
@@ -92,6 +99,14 @@ const Config: React.FC = () => {
       label: t('config.knowledge'),
       children: <KnowledgeBaseManagement />,
     },
+<<<<<<< HEAD
+=======
+    {
+      key: 'proxy-models',
+      label: t('config.proxy'),
+      children: <ProxyModelManagement />,
+    },
+>>>>>>> 861b916 (feat: implement tenant migration scripts and database initialization)
   ];
 
   const handleApplicationChange = (applicationId: string, application: Application | undefined) => {
@@ -100,6 +115,7 @@ const Config: React.FC = () => {
   };
 
   return (
+<<<<<<< HEAD
     <ConfigContext.Provider
       value={{
         selectedApplicationId,
@@ -122,6 +138,17 @@ const Config: React.FC = () => {
         />
       </div>
     </ConfigContext.Provider>
+=======
+    <div>
+      <h2 style={{ marginBottom: 24 }}>{t('config.title')}</h2>
+      
+      <Tabs
+        activeKey={getActiveKey()}
+        items={items}
+        onChange={handleTabChange}
+      />
+    </div>
+>>>>>>> 861b916 (feat: implement tenant migration scripts and database initialization)
   );
 };
 

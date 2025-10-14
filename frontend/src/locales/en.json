@@ -384,6 +384,7 @@
     "knowledge": "Knowledge Base",
     "sensitivity": "Sensitivity Threshold",
     "dataSecurity": "Data Leak Prevention",
+<<<<<<< HEAD
     "proxy": "Security Gateway",
     "banPolicy": "Ban Policy",
     "rejectAnswers": "Reject Answer Library",
@@ -401,6 +402,102 @@
       "s11": "Privacy Violation",
       "s12": "Business Violations"
     }
+=======
+    "data": {
+      "title": "Data Leak Prevention",
+      "description": "Identify and mask sensitive data using regular expressions to prevent leakage of personal/enterprise sensitive data when using large language models.",
+      "descriptionHighlight": "regular expressions",
+      "inputProtectionTitle": "Input Data Leak Prevention",
+      "inputProtectionDesc": "Prevents users' sensitive data from being leaked to large language models, protecting users.",
+      "enterpriseScenario": "For deployments in enterprises, this prevents internal data from being leaked to external large language models (most common scenario).",
+      "publicServiceScenario": "For public service deployments, this prevents users' sensitive data from being provided to service deployment clients (less common scenario).",
+      "outputProtectionTitle": "Output Data Leak Prevention",
+      "outputProtectionDesc": "Prevents models from leaking sensitive data to users, protecting models and systems.",
+      "outputEnterpriseScenario": "For enterprise deployments, this prevents internal data from being leaked to internal users.",
+      "outputPublicServiceScenario": "For public service deployments, this prevents an organization's sensitive data from being provided to external users.",
+      "entityManagementTitle": "Sensitive Entity Management",
+      "entityManagementDesc": "Define sensitive data types using regular expressions and configure desensitization rules.",
+      "types": "Types",
+      "patterns": "Patterns",
+      "levels": "Levels",
+      "desensitization": "Desensitization",
+      "actions": "Actions",
+      "addType": "Add Type",
+      "editType": "Edit Type",
+      "deleteType": "Delete Type",
+      "typeName": "Type Name",
+      "typeDescription": "Type Description",
+      "pattern": "Pattern",
+      "sensitivityLevel": "Sensitivity Level",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "desensitizationRules": "Desensitization Rules",
+      "replace": "Replace",
+      "mask": "Mask",
+      "hash": "Hash",
+      "encrypt": "Encrypt",
+      "shuffle": "Shuffle",
+      "random": "Random Replace",
+      "placeholder": "Placeholder",
+      "createEntitySuccess": "Sensitive entity created successfully",
+      "updateEntitySuccess": "Sensitive entity updated successfully",
+      "deleteEntitySuccess": "Sensitive entity deleted successfully",
+      "fetchEntityFailed": "Failed to fetch sensitive entities",
+      "deleteConfirm": "Are you sure you want to delete this sensitive entity definition?",
+      "inputEntityName": "Please enter entity type name",
+      "inputPattern": "Please enter regular expression pattern",
+      "inputSensitivityLevel": "Please select sensitivity level",
+      "invalidPattern": "Invalid regular expression pattern"
+    }
+  },
+  "data": {
+    "title": "Data Leak Prevention",
+    "description": "Identify and mask sensitive data using regular expressions to prevent leakage of personal/enterprise sensitive data when using large language models.",
+    "descriptionHighlight": "regular expressions",
+    "inputProtectionTitle": "Input Data Leak Prevention",
+    "inputProtectionDesc": "Prevents users' sensitive data from being leaked to large language models, protecting users.",
+    "enterpriseScenario": "For deployments in enterprises, this prevents internal data from being leaked to external large language models (most common scenario).",
+    "publicServiceScenario": "For public service deployments, this prevents users' sensitive data from being provided to service deployment clients (less common scenario).",
+    "outputProtectionTitle": "Output Data Leak Prevention",
+    "outputProtectionDesc": "Prevents models from leaking sensitive data to users, protecting models and systems.",
+    "outputEnterpriseScenario": "For enterprise deployments, this prevents internal data from being leaked to internal users.",
+    "outputPublicServiceScenario": "For public service deployments, this prevents an organization's sensitive data from being provided to external users.",
+    "entityManagementTitle": "Sensitive Entity Management",
+    "entityManagementDesc": "Define sensitive data types using regular expressions and configure desensitization rules.",
+    "types": "Types",
+    "patterns": "Patterns",
+    "levels": "Levels",
+    "desensitization": "Desensitization",
+    "actions": "Actions",
+    "addType": "Add Type",
+    "editType": "Edit Type",
+    "deleteType": "Delete Type",
+    "typeName": "Type Name",
+    "typeDescription": "Type Description",
+    "pattern": "Pattern",
+    "sensitivityLevel": "Sensitivity Level",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "desensitizationRules": "Desensitization Rules",
+    "replace": "Replace",
+    "mask": "Mask",
+    "hash": "Hash",
+    "encrypt": "Encrypt",
+    "shuffle": "Shuffle",
+    "random": "Random Replace",
+    "placeholder": "Placeholder",
+    "createEntitySuccess": "Sensitive entity created successfully",
+    "updateEntitySuccess": "Sensitive entity updated successfully",
+    "deleteEntitySuccess": "Sensitive entity deleted successfully",
+    "fetchEntityFailed": "Failed to fetch sensitive entities",
+    "deleteConfirm": "Are you sure you want to delete this sensitive entity definition?",
+    "inputEntityName": "Please enter entity type name",
+    "inputPattern": "Please enter regular expression pattern",
+    "inputSensitivityLevel": "Please select sensitivity level",
+    "invalidPattern": "Invalid regular expression pattern"
+>>>>>>> 861b916 (feat: implement tenant migration scripts and database initialization)
   },
   "blacklist": {
     "title": "Blacklist Management",
@@ -463,6 +560,7 @@
     "saveSuccess": "Configuration saved successfully",
     "fetchFailed": "Failed to fetch configuration",
     "atLeastOne": "At least one risk category must be enabled",
+<<<<<<< HEAD
     "loadFailed": "Failed to load risk configuration",
     "itemCount": "{{count}} items",
     "currentEnabled": "Currently enabled: {{enabled}}/{{total}}",
@@ -472,6 +570,11 @@
     "notice1": "Risk type configuration affects all detection results. Please configure carefully.",
     "notice2": "Disabling a risk type will stop detecting that category of content.",
     "notice3": "Changes take effect immediately and apply to all subsequent detections."
+=======
+    "loadConfigFailed": "Failed to load risk configuration",
+    "currentEnabled": "Currently {{enabled}} of {{total}} risk categories are enabled",
+    "itemCount": "{{count}} items"
+>>>>>>> 861b916 (feat: implement tenant migration scripts and database initialization)
   },
   "template": {
     "title": "Answer Template Management",
@@ -1274,4 +1377,23 @@
     "noApplications": "No Applications Available",
     "noApplicationsDesc": "Please create an application first in the Application Management page before configuring protection settings."
   }
+<<<<<<< HEAD
 }
+=======
+},
+  "riskTypeCategories": {
+    "s1": "General Political Topics",
+    "s2": "Sensitive Political Topics",
+    "s3": "Disrespect to National Leaders",
+    "s4": "Harm to Minors",
+    "s5": "Violent Crimes",
+    "s6": "Illegal Activities",
+    "s7": "Pornography",
+    "s8": "Discriminatory Content",
+    "s9": "Prompt Attacks",
+    "s10": "Profanity",
+    "s11": "Privacy Violations",
+    "s12": "Commercial Violations"
+  }
+}
+>>>>>>> 861b916 (feat: implement tenant migration scripts and database initialization)

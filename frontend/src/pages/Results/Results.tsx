@@ -4,6 +4,13 @@ import { EyeOutlined, ReloadOutlined, SearchOutlined, FileImageOutlined, Picture
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { resultsApi } from '../../services/api';
+import {
+  translateRiskLevel,
+  translateAction,
+  translateCategory,
+  getRiskLevelColor as getRiskColorFromMapper,
+  getActionColor as getActionColorFromMapper
+} from '../../utils/i18nMapper';
 import type { DetectionResult, PaginatedResponse } from '../../types';
 
 const { RangePicker } = DatePicker;
@@ -106,6 +113,7 @@ const Results: React.FC = () => {
     }
   };
 
+<<<<<<< HEAD
   const getRiskLevelColor = (level: string) => {
     // 后端返回的是标准化的英文值，直接匹配
     switch (level) {
@@ -123,16 +131,17 @@ const Results: React.FC = () => {
     }
   };
 
+=======
+>>>>>>> 861b916 (feat: implement tenant migration scripts and database initialization)
   // Helper function to format risk display
   const formatRiskDisplay = (riskLevel: string, categories: string[]) => {
-    const noRisk = t('risk.level.no_risk');
-    if (riskLevel === '无风险' || riskLevel === noRisk) {
-      return noRisk;
+    if (riskLevel === 'no_risk') {
+      return translateRiskLevel(riskLevel, t);
     }
     if (categories && categories.length > 0) {
-      return `${riskLevel} ${categories[0]}`;
+      return `${translateRiskLevel(riskLevel, t)} ${translateCategory(categories[0], t)}`;
     }
-    return riskLevel;
+    return translateRiskLevel(riskLevel, t);
   };
 
   // Helper function to format request ID display - show latter half with ellipsis
@@ -147,6 +156,7 @@ const Results: React.FC = () => {
   // 定义所有风险类别
   const getAllCategories = () => {
     return [
+<<<<<<< HEAD
       'sensitive_political_topic',
       'damage_to_national_image',
       'violent_crime',
@@ -159,6 +169,9 @@ const Results: React.FC = () => {
       'insults',
       'privacy_violation',
       'business_violations',
+=======
+      'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12'
+>>>>>>> 861b916 (feat: implement tenant migration scripts and database initialization)
     ];
   };
 
@@ -218,7 +231,7 @@ const Results: React.FC = () => {
 
         return (
           <Tag
-            color={getRiskLevelColor(riskLevel)}
+            color={getRiskColorFromMapper(riskLevel)}
             style={{ fontSize: '12px' }}
             title={categories.join(', ')}
           >
@@ -238,7 +251,7 @@ const Results: React.FC = () => {
 
         return (
           <Tag
-            color={getRiskLevelColor(riskLevel)}
+            color={getRiskColorFromMapper(riskLevel)}
             style={{ fontSize: '12px' }}
             title={categories.join(', ')}
           >
@@ -258,7 +271,7 @@ const Results: React.FC = () => {
 
         return (
           <Tag
-            color={getRiskLevelColor(riskLevel)}
+            color={getRiskColorFromMapper(riskLevel)}
             style={{ fontSize: '12px' }}
             title={categories.join(', ')}
           >
@@ -272,20 +285,11 @@ const Results: React.FC = () => {
       dataIndex: 'suggest_action',
       key: 'suggest_action',
       width: 90,
-      render: (action: string) => {
-        const pass = t('action.pass');
-        const reject = t('action.reject');
-        const replace = t('action.replace');
-        let color = 'default';
-        if (action === pass || action === '通过') {
-          color = 'green';
-        } else if (action === reject || action === '拒答') {
-          color = 'red';
-        } else if (action === replace || action === '代答') {
-          color = 'orange';
-        }
-        return <Tag color={color} style={{ fontSize: '12px' }}>{action}</Tag>;
-      },
+      render: (action: string) => (
+        <Tag color={getActionColorFromMapper(action)} style={{ fontSize: '12px' }}>
+          {translateAction(action, t)}
+        </Tag>
+      ),
     },
     {
       title: t('results.detectionTime'),
@@ -437,8 +441,8 @@ const Results: React.FC = () => {
                 <Text strong>{t('results.promptAttack')}:</Text>
               </Col>
               <Col span={16}>
-                <Tag color={getRiskLevelColor(selectedResult.security_risk_level || t('risk.level.no_risk'))}>
-                  {formatRiskDisplay(selectedResult.security_risk_level || t('risk.level.no_risk'), selectedResult.security_categories || [])}
+                <Tag color={getRiskColorFromMapper(selectedResult.security_risk_level || 'no_risk')}>
+                  {formatRiskDisplay(selectedResult.security_risk_level || 'no_risk', selectedResult.security_categories || [])}
                 </Tag>
               </Col>
             </Row>
@@ -448,8 +452,8 @@ const Results: React.FC = () => {
                 <Text strong>{t('results.contentCompliance')}:</Text>
               </Col>
               <Col span={16}>
-                <Tag color={getRiskLevelColor(selectedResult.compliance_risk_level || t('risk.level.no_risk'))}>
-                  {formatRiskDisplay(selectedResult.compliance_risk_level || t('risk.level.no_risk'), selectedResult.compliance_categories || [])}
+                <Tag color={getRiskColorFromMapper(selectedResult.compliance_risk_level || 'no_risk')}>
+                  {formatRiskDisplay(selectedResult.compliance_risk_level || 'no_risk', selectedResult.compliance_categories || [])}
                 </Tag>
               </Col>
             </Row>
@@ -459,8 +463,8 @@ const Results: React.FC = () => {
                 <Text strong>{t('results.dataLeak')}:</Text>
               </Col>
               <Col span={16}>
-                <Tag color={getRiskLevelColor(selectedResult.data_risk_level || t('risk.level.no_risk'))}>
-                  {formatRiskDisplay(selectedResult.data_risk_level || t('risk.level.no_risk'), selectedResult.data_categories || [])}
+                <Tag color={getRiskColorFromMapper(selectedResult.data_risk_level || 'no_risk')}>
+                  {formatRiskDisplay(selectedResult.data_risk_level || 'no_risk', selectedResult.data_categories || [])}
                 </Tag>
               </Col>
             </Row>
@@ -470,8 +474,8 @@ const Results: React.FC = () => {
                 <Text strong>{t('results.suggestedAction')}:</Text>
               </Col>
               <Col span={16}>
-                <Tag color={selectedResult.suggest_action === t('action.pass') || selectedResult.suggest_action === '通过' ? 'green' : selectedResult.suggest_action === t('action.reject') || selectedResult.suggest_action === '拒答' ? 'red' : 'orange'}>
-                  {selectedResult.suggest_action}
+                <Tag color={getActionColorFromMapper(selectedResult.suggest_action)}>
+                  {translateAction(selectedResult.suggest_action, t)}
                 </Tag>
               </Col>
             </Row>

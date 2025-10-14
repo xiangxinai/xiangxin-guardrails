@@ -18,6 +18,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api, { testModelsApi } from '../../services/api';
+import { translateRiskLevel, translateAction, translateCategory, getRiskLevelColor, getActionColor } from '../../utils/i18nMapper';
 import {
   PlayCircleOutlined,
   ClearOutlined,
@@ -368,6 +369,7 @@ const OnlineTest: React.FC = () => {
 
 
   const getRiskColor = (level: string) => {
+<<<<<<< HEAD
     // The backend returns standardized English values, directly match
     switch (level) {
       case 'high_risk':
@@ -385,9 +387,15 @@ const OnlineTest: React.FC = () => {
         return 'red';
       default: 
         return 'default';
+=======
+    if (level === '测试失败' || level === '检测失败' || level === t('onlineTest.testFailed') || level === t('onlineTest.detectionFailed')) {
+      return 'red';
+>>>>>>> 861b916 (feat: implement tenant migration scripts and database initialization)
     }
+    return getRiskLevelColor(level);
   };
 
+<<<<<<< HEAD
   const getActionColor = (action: string) => {
     // The backend returns standardized English values, directly match
     switch (action) {
@@ -403,7 +411,13 @@ const OnlineTest: React.FC = () => {
         return 'red';
       default: 
         return 'default';
+=======
+  const getActionColorLocal = (action: string) => {
+    if (action === '测试失败' || action === '系统错误' || action === t('onlineTest.testFailed')) {
+      return 'red';
+>>>>>>> 861b916 (feat: implement tenant migration scripts and database initialization)
     }
+    return getActionColor(action);
   };
 
   return (
@@ -590,7 +604,7 @@ const OnlineTest: React.FC = () => {
                                 <div>
                                   <Text>{t('onlineTest.riskLevel')} </Text>
                                   <Tag color={getRiskColor(testResult.guardrail.security?.risk_level)}>
-                                    {testResult.guardrail.security?.risk_level || t('risk.level.no_risk')}
+                                    {translateRiskLevel(testResult.guardrail.security?.risk_level || 'no_risk', t)}
                                   </Tag>
                                 </div>
                                 {testResult.guardrail.security?.categories?.length > 0 && (
@@ -610,7 +624,7 @@ const OnlineTest: React.FC = () => {
                                 <div>
                                   <Text>{t('onlineTest.riskLevel')} </Text>
                                   <Tag color={getRiskColor(testResult.guardrail.compliance?.risk_level)}>
-                                    {testResult.guardrail.compliance?.risk_level || t('risk.level.no_risk')}
+                                    {translateRiskLevel(testResult.guardrail.compliance?.risk_level || 'no_risk', t)}
                                   </Tag>
                                 </div>
                                 {testResult.guardrail.compliance?.categories?.length > 0 && (
@@ -630,7 +644,7 @@ const OnlineTest: React.FC = () => {
                                 <div>
                                   <Text>{t('onlineTest.riskLevel')} </Text>
                                   <Tag color={getRiskColor(testResult.guardrail.data?.risk_level || t('risk.level.no_risk'))}>
-                                    {testResult.guardrail.data?.risk_level || t('risk.level.no_risk')}
+                                    {translateRiskLevel(testResult.guardrail.data?.risk_level || 'no_risk', t)}
                                   </Tag>
                                 </div>
                                 {testResult.guardrail.data?.categories && testResult.guardrail.data.categories.length > 0 && (
@@ -652,13 +666,13 @@ const OnlineTest: React.FC = () => {
                           <Col span={8}>
                             <Text>{t('onlineTest.overallRiskLevel')} </Text>
                             <Tag color={getRiskColor(testResult.guardrail.overall_risk_level)}>
-                              <strong>{testResult.guardrail.overall_risk_level}</strong>
+                              <strong>{translateRiskLevel(testResult.guardrail.overall_risk_level, t)}</strong>
                             </Tag>
                           </Col>
                           <Col span={8}>
                             <Text>{t('onlineTest.suggestedAction')} </Text>
-                            <Tag color={getActionColor(testResult.guardrail.suggest_action)}>
-                              <strong>{testResult.guardrail.suggest_action}</strong>
+                            <Tag color={getActionColorLocal(testResult.guardrail.suggest_action)}>
+                              <strong>{translateAction(testResult.guardrail.suggest_action, t)}</strong>
                             </Tag>
                           </Col>
                           <Col span={8}>

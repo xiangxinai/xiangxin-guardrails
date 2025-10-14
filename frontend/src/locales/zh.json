@@ -399,6 +399,53 @@
       "s12": "商业违法违规"
     }
   },
+  "data": {
+    "title": "数据防泄漏",
+    "description": "通过正则表达式识别并脱敏敏感信息，防止个人/企业敏感数据在使用大模型时的泄露风险。",
+    "descriptionHighlight": "正则表达式",
+    "inputProtectionTitle": "输入数据防泄漏",
+    "inputProtectionDesc": "防止用户的敏感数据泄漏给大模型，保护用户。",
+    "enterpriseScenario": "对于在企业内部部署的场景，这是为了防止内部数据泄漏给外部大模型（最常见的情况）。",
+    "publicServiceScenario": "对于公共服务部署的场景，这是为了防止用户的敏感数据提供给部署服务的客户（不常见的情况）。",
+    "outputProtectionTitle": "输出数据防泄漏",
+    "outputProtectionDesc": "防止模型泄漏敏感数据给用户，保护模型和系统。",
+    "outputEnterpriseScenario": "对于企业内部部署的场景，这是为了防止内部数据泄漏给内部用户，防止模型被恶意操纵或用户越权访问获得不该他获得的敏感数据。",
+    "outputPublicServiceScenario": "对于公共服务部署的场景，这是为了防止部署机构的敏感数据提供给外部用户。",
+    "entityManagementTitle": "敏感实体管理",
+    "entityManagementDesc": "使用正则表达式定义敏感数据类型，配置脱敏规则。",
+    "types": "类型",
+    "patterns": "识别规则",
+    "levels": "敏感等级",
+    "desensitization": "脱敏规则",
+    "actions": "操作",
+    "addType": "添加类型",
+    "editType": "编辑类型",
+    "deleteType": "删除类型",
+    "typeName": "类型名称",
+    "typeDescription": "类型描述",
+    "pattern": "识别规则",
+    "sensitivityLevel": "敏感等级",
+    "low": "低",
+    "medium": "中",
+    "high": "高",
+    "desensitizationRules": "脱敏规则",
+    "replace": "替换",
+    "mask": "掩码",
+    "hash": "哈希",
+    "encrypt": "加密",
+    "shuffle": "重排",
+    "random": "随机替换",
+    "placeholder": "占位符",
+    "createEntitySuccess": "敏感实体创建成功",
+    "updateEntitySuccess": "敏感实体更新成功",
+    "deleteEntitySuccess": "敏感实体删除成功",
+    "fetchEntityFailed": "获取敏感实体失败",
+    "deleteConfirm": "确定要删除这个敏感实体定义吗？",
+    "inputEntityName": "请输入实体类型名称",
+    "inputPattern": "请输入正则表达式",
+    "inputSensitivityLevel": "请选择敏感等级",
+    "invalidPattern": "无效的正则表达式"
+  },
   "blacklist": {
     "title": "黑名单管理",
     "description": "描述",
@@ -459,6 +506,7 @@
     "saveSuccess": "配置保存成功",
     "fetchFailed": "获取配置失败",
     "atLeastOne": "至少需要启用一个风险类别",
+<<<<<<< HEAD
     "loadFailed": "加载风险配置失败",
     "currentEnabled": "当前已启用：{{enabled}}/{{total}}",
     "itemCount": "{{count}} 项",
@@ -468,6 +516,11 @@
     "notice3": "配置更改立即生效，适用于所有后续检测。",
     "updateFailed": "更新风险配置失败",
     "loadConfigFailed": "加载风险配置失败"
+=======
+    "loadConfigFailed": "加载风险配置失败",
+    "currentEnabled": "当前已启用 {{enabled}}/{{total}} 个风险类别",
+    "itemCount": "{{count}} 个"
+>>>>>>> 861b916 (feat: implement tenant migration scripts and database initialization)
   },
   "template": {
     "title": "代答模板管理",
@@ -1271,5 +1324,20 @@
     "description": "配置是应用独立的。选择一个应用以查看和管理其配置。",
     "noApplications": "暂无可用应用",
     "noApplicationsDesc": "请先在应用管理页面创建应用，然后再配置防护设置。"
+  }
+},
+  "riskTypeCategories": {
+    "s1": "一般政治话题",
+    "s2": "敏感政治话题",
+    "s3": "不尊敬国家领导人",
+    "s4": "伤害未成年人",
+    "s5": "暴力犯罪",
+    "s6": "违法犯罪",
+    "s7": "色情",
+    "s8": "歧视内容",
+    "s9": "提示词攻击",
+    "s10": "辱骂",
+    "s11": "侵犯个人隐私",
+    "s12": "商业违法违规"
   }
 }

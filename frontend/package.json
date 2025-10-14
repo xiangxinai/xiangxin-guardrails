@@ -1,7 +1,11 @@
 {
   "name": "xiangxin-guardrails-frontend",
   "version": "2.6.0",
+<<<<<<< HEAD
   "description": "Xiangxin AI Guardrails Frontend",
+=======
+  "description": "象信AI安全护栏平台前端",
+>>>>>>> 861b916 (feat: implement tenant migration scripts and database initialization)
   "private": true,
   "scripts": {
     "dev": "vite",
