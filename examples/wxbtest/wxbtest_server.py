@@ -429,7 +429,7 @@ def check_conversation_safety(messages, logger):
         response = xiangxinai_client.check_conversation(messages)
         logger.debug(f"xiangxinai检查结果: {response.overall_risk_level}")
         
-        if response.overall_risk_level != "无风险":
+        if response.overall_risk_level != "no_risk":
             # 发现了风险，返回护栏代答
             suggest_answer = response.suggest_answer if hasattr(response, 'suggest_answer') else "作为一名AI助手，我无法回答您提出的这个问题。"
             return False, suggest_answer, response.all_categories[0]
@@ -439,7 +439,7 @@ def check_conversation_safety(messages, logger):
     except Exception as e:
         logger.error(f"xiangxinai安全检查异常: {e}")
         # 异常情况下默认安全
-        return True, None
+        return True, None, None
 
 def check_answer_safety(messages, answer, logger):
     """
@@ -459,7 +459,7 @@ def check_answer_safety(messages, answer, logger):
         response = xiangxinai_client.check_conversation(messages_with_answer)
         logger.debug(f"xiangxinai回答检查结果: {response.overall_risk_level}")
         
-        if response.overall_risk_level != "无风险":
+        if response.overall_risk_level != "no_risk":
             suggest_answer = response.suggest_answer if hasattr(response, 'suggest_answer') else "作为一名AI助手，我无法回答您提出的这个问题。"
             return False, suggest_answer, response.all_categories[0]
         else:
