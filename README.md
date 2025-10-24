@@ -1,6 +1,5 @@
-<p align="center">
-    <img src="assets/logo.png" width="400"/>
-<p>
+# This project has been replaced by [OpenGuardrails](https://github.com/openguardrails/openguardrails)
+
 <br>
 
 <p align="center">
